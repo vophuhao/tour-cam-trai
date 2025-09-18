@@ -1,110 +1,100 @@
-import { APP_ORIGIN } from "../constants/env";
+import { AppErrorCode } from "@/constants/appErrorCode";
+import { APP_ORIGIN } from "@/constants/env";
 import {
   CONFLICT,
   INTERNAL_SERVER_ERROR,
   NOT_FOUND,
   TOO_MANY_REQUESTS,
   UNAUTHORIZED,
-  UNPROCESSABLE_CONTENT,
-} from "../constants/http";
-import VerificationCodeType from "../constants/verificationCodeType";
-import SessionModel, { SessionDocument } from "../models/session.model";
-import UserModel, { UserDocument } from "../models/user.model";
-import VerificationCodeModel from "../models/verificationCode.model";
-import appAssert from "../utils/appAssert";
-import { hashValue } from "../utils/bcrypt";
+} from "@/constants/http";
+import VerificationCodeType from "@/constants/verificationCodeType";
+import SessionModel from "@/models/session.model";
+import UserModel from "@/models/user.model";
+import VerificationCodeModel from "@/models/verificationCode.model";
+import appAssert from "@/utils/appAssert";
+import { hashValue } from "@/utils/bcrypt";
 import {
   ONE_DAY_MS,
   fiveMinutesAgo,
   oneHourFromNow,
   oneYearFromNow,
   thirtyDaysFromNow,
-} from "../utils/date";
-import {
-  getPasswordResetTemplate,
-  getVerifyEmailTemplate,
-} from "../utils/emailTemplates";
-import {
-  RefreshTokenPayload,
-  refreshTokenSignOptions,
-  signToken,
-  verifyToken,
-} from "../utils/jwt";
-import { sendMail } from "../utils/sendMail";
+} from "@/utils/date";
+import { getPasswordResetTemplate, getVerifyEmailTemplate } from "@/utils/emailTemplates";
+import { RefreshTokenPayload, refreshTokenSignOptions, signToken, verifyToken } from "@/utils/jwt";
+import { sendMail } from "@/utils/sendMail";
 
 type CreateAccountParams = {
   email: string;
   password: string;
-  userAgent?: string;
+  username: string;
+  userAgent?: string | undefined;
 };
-export const createAccount = async (data: CreateAccountParams) => {
-  // verify email is not taken
-  const existingUser = await UserModel.exists({
-    email: data.email,
-  });
-  appAssert(!existingUser, CONFLICT, "Email already in use");
 
-  const user = await UserModel.create({
-    email: data.email,
-    password: data.password,
-  });
-  const userId = user._id;
+export const sendEmailVerification = async (email: string) => {
+  const user = await UserModel.findOne({ email });
+  appAssert(user, NOT_FOUND, "User not found");
+
   const verificationCode = await VerificationCodeModel.create({
-    userId,
+    userId: user._id,
     type: VerificationCodeType.EmailVerification,
     expiresAt: oneYearFromNow(),
   });
 
-  const url = `${APP_ORIGIN}/email/verify/${verificationCode._id}`;
+  const url = `${APP_ORIGIN}/verify/${verificationCode._id}`;
 
-  // send verification email
   const { error } = await sendMail({
-    to: user.email,
+    to: email,
     ...getVerifyEmailTemplate(url),
   });
-  // ignore email errors for now
+
   if (error) console.error(error);
 
-  // create session
-  const session = await SessionModel.create({
-    userId,
-    userAgent: data.userAgent,
+  return verificationCode;
+};
+
+
+export const createAccount = async (data: CreateAccountParams) => {
+  const existingUser = await UserModel.exists({ email: data.email });
+  appAssert(!existingUser, CONFLICT, "Email already in use");
+
+ 
+  const user = await UserModel.create({
+    email: data.email,
+    username: data.username,
+    password: data.password,
   });
 
-  const refreshToken = signToken(
-    {
-      sessionId: session._id,
-    },
-    refreshTokenSignOptions
-  );
-  const accessToken = signToken({
-    userId,
-    sessionId: session._id,
-  });
+  await sendEmailVerification(user.email);
+
   return {
+    message: "Account created successfully. Please check your email to verify your account.",
     user: user.omitPassword(),
-    accessToken,
-    refreshToken,
   };
 };
 
 type LoginParams = {
   email: string;
   password: string;
-  userAgent?: string;
+  userAgent?: string | undefined;
 };
-export const loginUser = async ({
-  email,
-  password,
-  userAgent,
-}: LoginParams) => {
+
+export const loginUser = async ({ email, password, userAgent }: LoginParams) => {
   const user = await UserModel.findOne({ email });
-  appAssert(user, UNAUTHORIZED, "Invalid email or password");
+  appAssert(user, UNAUTHORIZED, "Invalid email or password", AppErrorCode.INVALID_CREDENTIALS);
 
   const isValid = await user.comparePassword(password);
-  appAssert(isValid, UNAUTHORIZED, "Invalid email or password");
+  appAssert(isValid, UNAUTHORIZED, "Invalid email or password", AppErrorCode.INVALID_CREDENTIALS);
+
+  appAssert(
+    user.isVerified,
+    UNAUTHORIZED,
+    "Please verify your email before logging in",
+    AppErrorCode.EMAIL_NOT_VERIFIED
+  );
 
   const userId = user._id;
+  const role=user.role
   const session = await SessionModel.create({
     userId,
     userAgent,
@@ -121,43 +111,66 @@ export const loginUser = async ({
   });
   return {
     user: user.omitPassword(),
+    role,
     accessToken,
     refreshToken,
   };
 };
+
 export const loginWithGoogle = async ({
   email,
-  name,
+  username,
   avatarUrl,
+  googleId,
   userAgent,
 }: {
   email: string;
-  name: string;
+  username: string;
   avatarUrl?: string;
+  googleId: string;
   userAgent: string;
 }) => {
   let user = await UserModel.findOne({ email });
-
   if (!user) {
-  // ✅ Chưa có tài khoản nào → tạo mới bằng Google
-  user = await UserModel.create({
-    email,
-    provider: 'google',
-    verified: true,
-    avatarUrl,
-  });
-} else {
-  // ✅ Đã có tài khoản, kiểm tra provider
-  if (user.provider === 'local') {
-    // 👉 Cho phép login bằng Google nếu email khớp
-    // 👉 Liên kết Google với tài khoản hiện có
-    user.provider = 'google+local';
-    user.avatarUrl = avatarUrl;
-    await user.save();
-  }
-  // nếu là google hoặc google+local thì không cần làm gì
-}
+    // ✅ Chưa có tài khoản nào → tạo mới bằng Google
+    user = await UserModel.create({
+      email,
+      username, 
+      provider: "google",
+      isVerified: true,
+      avatarUrl,
+      googleId, // Lưu Google ID để tracking
+    });
+  } else {
+    // ✅ Đã có tài khoản, kiểm tra provider
+    if (user.provider === "local") {
+      // 👉 Cho phép login bằng Google nếu email khớp
+      // 👉 Liên kết Google với tài khoản hiện có
+      user.provider = "google+local";
+      if (avatarUrl) {
+        user.avatarUrl = avatarUrl;
+      }
+      user.googleId = googleId; // Lưu Google ID
+      await user.save();
+    } else if (user.provider === "google" || user.provider === "google+local") {
+      // Cập nhật thông tin nếu có thay đổi
+      if (avatarUrl && user.avatarUrl !== avatarUrl) {
+        user.avatarUrl = avatarUrl;
+      }
+      if (user.googleId !== googleId) {
+        user.googleId = googleId;
+      }
+      // Cập nhật username nếu user chưa có hoặc muốn sync với Google
+      if (!user.username || user.username === "Google User") {
+        user.username = username;
+      }
 
+      // Chỉ save nếu có thay đổi
+      if (user.isModified()) {
+        await user.save();
+      }
+    }
+  }
 
   const session = await SessionModel.create({
     userId: user._id,
@@ -192,7 +205,7 @@ export const verifyEmail = async (code: string) => {
   const updatedUser = await UserModel.findByIdAndUpdate(
     validCode.userId,
     {
-      verified: true,
+      isVerified: true,
     },
     { new: true }
   );
@@ -213,11 +226,7 @@ export const refreshUserAccessToken = async (refreshToken: string) => {
 
   const session = await SessionModel.findById(payload.sessionId);
   const now = Date.now();
-  appAssert(
-    session && session.expiresAt.getTime() > now,
-    UNAUTHORIZED,
-    "Session expired"
-  );
+  appAssert(session && session.expiresAt.getTime() > now, UNAUTHORIZED, "Session expired");
 
   // refresh the session if it expires in the next 24hrs
   const sessionNeedsRefresh = session.expiresAt.getTime() - now <= ONE_DAY_MS;
@@ -260,11 +269,7 @@ export const sendPasswordResetEmail = async (email: string) => {
       type: VerificationCodeType.PasswordReset,
       createdAt: { $gt: fiveMinAgo },
     });
-    appAssert(
-      count <= 1,
-      TOO_MANY_REQUESTS,
-      "Too many requests, please try again later"
-    );
+    appAssert(count <= 1, TOO_MANY_REQUESTS, "Too many requests, please try again later");
 
     const expiresAt = oneHourFromNow();
     const verificationCode = await VerificationCodeModel.create({
@@ -282,11 +287,7 @@ export const sendPasswordResetEmail = async (email: string) => {
       ...getPasswordResetTemplate(url),
     });
 
-    appAssert(
-      data?.id,
-      INTERNAL_SERVER_ERROR,
-      `${error?.name} - ${error?.message}`
-    );
+    appAssert(data?.id, INTERNAL_SERVER_ERROR, `${error?.name} - ${error?.message}`);
     return {
       url,
       emailId: data.id,
@@ -302,10 +303,7 @@ type ResetPasswordParams = {
   verificationCode: string;
 };
 
-export const resetPassword = async ({
-  verificationCode,
-  password,
-}: ResetPasswordParams) => {
+export const resetPassword = async ({ verificationCode, password }: ResetPasswordParams) => {
   const validCode = await VerificationCodeModel.findOne({
     _id: verificationCode,
     type: VerificationCodeType.PasswordReset,
@@ -324,4 +322,8 @@ export const resetPassword = async ({
   await SessionModel.deleteMany({ userId: validCode.userId });
 
   return { user: updatedUser.omitPassword() };
+};
+
+export const logoutUser = async (sessionId: string) => {
+  await SessionModel.findByIdAndDelete(sessionId);
 };

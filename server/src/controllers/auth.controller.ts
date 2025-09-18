@@ -1,27 +1,26 @@
-import { CREATED, OK, UNAUTHORIZED } from "../constants/http";
-import { Request, Response } from 'express';
-import { OAuth2Client } from 'google-auth-library';
-import SessionModel from "../models/session.model";
-import { GOOGLE_CLIENT_ID } from "../constants/env";
-import {BAD_REQUEST} from "../constants/http"
+import { BAD_REQUEST, OK, UNAUTHORIZED } from "@/constants/http";
 import {
   createAccount,
   loginUser,
   loginWithGoogle,
+  logoutUser,
   refreshUserAccessToken,
   resetPassword,
+  sendEmailVerification,
   sendPasswordResetEmail,
   verifyEmail,
-} from "../services/auth.service";
-import appAssert from "../utils/appAssert";
+} from "@/services/auth.service";
+import appAssert from "@/utils/appAssert";
+
+import catchErrors from "@/utils/catchErrors";
 import {
   clearAuthCookies,
   getAccessTokenCookieOptions,
   getRefreshTokenCookieOptions,
   setAuthCookies,
-} from "../utils/cookies";
-import { verifyToken } from "../utils/jwt";
-import catchErrors from "../utils/catchErrors";
+} from "@/utils/cookies";
+import { verifyToken } from "@/utils/jwt";
+import { ResponseUtil } from "@/utils/response";
 import {
   emailSchema,
   loginSchema,
@@ -30,30 +29,31 @@ import {
   verificationCodeSchema,
 } from "./auth.schemas";
 
-const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+export const sendEmailVerificationHandler = catchErrors(async (req, res) => {
+  const email = emailSchema.parse(req.body.email);
+
+  await sendEmailVerification(email);
+
+  return ResponseUtil.success(res, undefined, "Verification email sent");
+});
+
 export const registerHandler = catchErrors(async (req, res) => {
   const request = registerSchema.parse({
     ...req.body,
-    userAgent: req.headers["user-agent"],
+    userAgent: req.headers["user-agent"] || undefined,
   });
-  const { user, accessToken, refreshToken } = await createAccount(request);
-  return setAuthCookies({ res, accessToken, refreshToken })
-    .status(CREATED)
-    .json(user);
+
+  const result = await createAccount(request);
+
+  return ResponseUtil.created(res, result);
 });
+
 export const googleLoginHandler = catchErrors(async (req, res) => {
-  const { credential } = req.body;
-  appAssert(credential, BAD_REQUEST, "Missing credential");
+  const { email, name, picture, googleId } = req.body;
 
-  const ticket = await googleClient.verifyIdToken({
-    idToken: credential,
-    audience: process.env.GOOGLE_CLIENT_ID,
-  });
-
-  const payload = ticket.getPayload();
-  appAssert(payload?.email, BAD_REQUEST, "Invalid Google token");
-
-  const { email, name = "Google User", picture } = payload;
+  // Validate required fields
+  appAssert(email, BAD_REQUEST, "Missing email");
+  appAssert(googleId, BAD_REQUEST, "Missing Google ID");
 
   const userAgentRaw = req.headers["user-agent"];
   const userAgent = Array.isArray(userAgentRaw)
@@ -62,8 +62,9 @@ export const googleLoginHandler = catchErrors(async (req, res) => {
 
   const { user, accessToken, refreshToken } = await loginWithGoogle({
     email,
-    name,
+    username: name || "Google User",
     avatarUrl: picture,
+    googleId, // Thêm googleId để identify user
     userAgent,
   });
 
@@ -76,14 +77,13 @@ export const googleLoginHandler = catchErrors(async (req, res) => {
 export const loginHandler = catchErrors(async (req, res) => {
   const request = loginSchema.parse({
     ...req.body,
-    userAgent: req.headers["user-agent"],
+    userAgent: req.headers["user-agent"] || undefined,
   });
-  const { accessToken, refreshToken } = await loginUser(request);
+  const { role,accessToken, refreshToken } = await loginUser(request);
 
-  // set cookies
-  return setAuthCookies({ res, accessToken, refreshToken })
-    .status(OK)
-    .json({ message: "Login successful" });
+  // set cookies and send response
+  setAuthCookies({ res, accessToken, refreshToken });
+  return ResponseUtil.success(res,{role, accessToken }, "Login successful");
 });
 
 export const logoutHandler = catchErrors(async (req, res) => {
@@ -92,25 +92,22 @@ export const logoutHandler = catchErrors(async (req, res) => {
 
   if (payload) {
     // remove session from db
-    await SessionModel.findByIdAndDelete(payload.sessionId);
+    await logoutUser(payload.sessionId as string);
   }
 
   // clear cookies
-  return clearAuthCookies(res)
-    .status(OK)
-    .json({ message: "Logout successful" });
+  return clearAuthCookies(res).status(OK).json({ message: "Logout successful" });
 });
 
 export const refreshHandler = catchErrors(async (req, res) => {
   const refreshToken = req.cookies.refreshToken as string | undefined;
   appAssert(refreshToken, UNAUTHORIZED, "Missing refresh token");
 
-  const { accessToken, newRefreshToken } = await refreshUserAccessToken(
-    refreshToken
-  );
+  const { accessToken, newRefreshToken } = await refreshUserAccessToken(refreshToken);
   if (newRefreshToken) {
     res.cookie("refreshToken", newRefreshToken, getRefreshTokenCookieOptions());
   }
+
   return res
     .status(OK)
     .cookie("accessToken", accessToken, getAccessTokenCookieOptions())
@@ -138,8 +135,5 @@ export const resetPasswordHandler = catchErrors(async (req, res) => {
 
   await resetPassword(request);
 
-  return clearAuthCookies(res)
-    .status(OK)
-    .json({ message: "Password was reset successfully" });
+  return clearAuthCookies(res).status(OK).json({ message: "Password was reset successfully" });
 });
-
