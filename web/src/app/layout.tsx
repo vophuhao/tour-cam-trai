@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins, Rubik } from "next/font/google";
 import "./globals.css";
+import { Providers } from "@/components/Providers";
 const poppins = Poppins({
   subsets: ["latin"],
   weight: "400",
@@ -20,9 +21,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${poppins.variable} ${rubik.variable}`}>
-        <main>
-             
-          {children}
+        <main>       
+          <Providers>{children}</Providers>
         </main>
       </body>
     </html>
