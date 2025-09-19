@@ -23,6 +23,7 @@ export default function Sidebar() {
   const handleLogout = async () => {
     try {
       await logout() // gọi API backend
+      localStorage.removeItem("role")
       router.push("/login") // chuyển về trang login
     } catch (err) {
       console.error("Logout failed:", err)
@@ -62,7 +63,7 @@ export default function Sidebar() {
               onMouseLeave={() => setHovered(null)}
               className={cn(
                 "flex w-full items-center gap-3 px-4 py-4 rounded-lg text-sm font-medium transition-colors text-left",
-                isHovered
+                hovered === item.name
                   ? "bg-[#4279F1] text-white"
                   : "hover:bg-gray-200"
               )}
@@ -70,6 +71,7 @@ export default function Sidebar() {
               <Icon className="h-5 w-5" />
               {item.name}
             </button>
+
           ) : (
             <Link
               key={item.name}
@@ -80,9 +82,9 @@ export default function Sidebar() {
                 "flex items-center gap-3 px-4 py-4 rounded-lg text-sm font-medium transition-colors",
                 hovered === item.href
                   ? "bg-[#4279F1] text-white"
-                  : isActive
-                  ? "bg-[#4279F1] text-white"
-                  : "hover:bg-gray-200"
+                  : !hovered && isActive
+                    ? "bg-[#4279F1] text-white"
+                    : "hover:bg-gray-200"
               )}
             >
               <Icon className="h-5 w-5" />
@@ -92,10 +94,8 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-gray-800 text-sm text-gray-400">
-        © 2025 MyCompany
-      </div>
+
+
     </aside>
   )
 }

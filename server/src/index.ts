@@ -10,6 +10,7 @@ import userRoutes from "./routes/user.route";
 import sessionRoutes from "./routes/session.route";
 import { APP_ORIGIN, NODE_ENV, PORT } from "./constants/env";
 import categoryRoutes from "./routes/category.route";
+import requireAdmin from "./middleware/requireAdmin";
 
 const app = express();
 
@@ -37,7 +38,7 @@ app.use("/auth", authRoutes);
 // protected routes
 app.use("/user", authenticate, userRoutes);
 app.use("/sessions", authenticate, sessionRoutes);
-app.use("/category",categoryRoutes)
+app.use("/category",authenticate,requireAdmin,categoryRoutes)
 
 // error handler
 app.use(errorHandler);

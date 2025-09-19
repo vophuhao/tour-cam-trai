@@ -29,6 +29,7 @@ const Login: React.FC = () => {
 
     if (loginUser.fulfilled.match(resultAction)) {
       const role = resultAction.payload.data.role;
+      localStorage.setItem("role",role)
       if (role === "admin") {
         router.push("/admin");
       } else {

@@ -9,6 +9,7 @@ import GoogleIcon from "./GoogleIcon";
 
 interface GoogleUserInfo {
   email: string;
+  role:string;
   name: string;
   picture: string;
   id: string;
@@ -37,7 +38,6 @@ const GoogleLoginButton: React.FC = () => {
           picture: userInfo.picture,
           googleId: userInfo.id,
         });
-
         router.push("/home");
       } catch (error) {
         console.error("Google login error:", error);

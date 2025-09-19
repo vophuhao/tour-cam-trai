@@ -11,21 +11,24 @@ import { getCategoryByIdSchema } from "@/validators/category.validator";
  * @route POST /categories
  */
 export const createCategoryHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-    const  name  = req.body;
-    const result = await CategoryService.createCategory( name );
-    return ResponseUtil.success(res, result);
-  }
-);
+    const { name, isActive } = req.body;  // destructure cho rõ ràng
+    const result = await CategoryService.createCategory({ name, isActive });
+    return ResponseUtil.success(res, result, "Tạo category thành công");
+});
 
 /**
  * Get all categories
  * @route GET /categories
  */
-export const getAllCategoriesHandler = catchErrors(async (_req: AuthenticatedRequest, res: Response) => {
-    const result = await CategoryService.getAllCategories();
-    return ResponseUtil.success(res, result);
-  }
-);
+export const getCategoriesPaginatedHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+  const search = (req.query.search as string) || undefined;
+
+  const result = await CategoryService.getCategoriesPaginated(page, limit, search);
+
+  return ResponseUtil.success(res, result, "Lấy danh sách categories phân trang thành công");
+});
 
 /**
  * Get category by ID

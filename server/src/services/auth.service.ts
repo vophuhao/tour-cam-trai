@@ -132,43 +132,25 @@ export const loginWithGoogle = async ({
 }) => {
   let user = await UserModel.findOne({ email });
   if (!user) {
-    // ✅ Chưa có tài khoản nào → tạo mới bằng Google
     user = await UserModel.create({
       email,
-      username, 
+      username,
       provider: "google",
       isVerified: true,
       avatarUrl,
-      googleId, // Lưu Google ID để tracking
+      googleId,
     });
   } else {
-    // ✅ Đã có tài khoản, kiểm tra provider
     if (user.provider === "local") {
-      // 👉 Cho phép login bằng Google nếu email khớp
-      // 👉 Liên kết Google với tài khoản hiện có
       user.provider = "google+local";
-      if (avatarUrl) {
-        user.avatarUrl = avatarUrl;
-      }
-      user.googleId = googleId; // Lưu Google ID
+      if (avatarUrl) user.avatarUrl = avatarUrl;
+      user.googleId = googleId;
       await user.save();
     } else if (user.provider === "google" || user.provider === "google+local") {
-      // Cập nhật thông tin nếu có thay đổi
-      if (avatarUrl && user.avatarUrl !== avatarUrl) {
-        user.avatarUrl = avatarUrl;
-      }
-      if (user.googleId !== googleId) {
-        user.googleId = googleId;
-      }
-      // Cập nhật username nếu user chưa có hoặc muốn sync với Google
-      if (!user.username || user.username === "Google User") {
-        user.username = username;
-      }
-
-      // Chỉ save nếu có thay đổi
-      if (user.isModified()) {
-        await user.save();
-      }
+      if (avatarUrl && user.avatarUrl !== avatarUrl) user.avatarUrl = avatarUrl;
+      if (user.googleId !== googleId) user.googleId = googleId;
+      if (!user.username || user.username === "Google User") user.username = username;
+      if (user.isModified()) await user.save();
     }
   }
 
@@ -189,10 +171,12 @@ export const loginWithGoogle = async ({
 
   return {
     user: user.omitPassword(),
+    role: user.role,       // ✅ trả role ra đây
     accessToken,
     refreshToken,
   };
 };
+
 
 export const verifyEmail = async (code: string) => {
   const validCode = await VerificationCodeModel.findOne({

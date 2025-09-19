@@ -1,11 +1,19 @@
+
 import API from "../config/apiClient";
 
 // Kiểu response chung (nếu backend trả JSON chuẩn { data, message, ... })
-export interface ApiResponse<T = any> {
+export interface UserResponse<T = any> {
   role: string | null;
   data: T;
   message?: string;
   status?: number;
+}
+// Định nghĩa chung, giống ResponseUtil.success ở backend
+export interface ApiResponse<T = any> {
+  success: boolean;
+  message: string;
+  timestamp: string;
+  data?: T;
 }
 
 
@@ -20,7 +28,7 @@ export const register = async (data: {
 export const login = async (data: {
   email: string;
   password: string;
-}): Promise<ApiResponse> => API.post("/auth/login", data);
+}): Promise<UserResponse> => API.post("/auth/login", data);
 
 export const googleLogin = async (data: {
   email: string
@@ -28,7 +36,7 @@ export const googleLogin = async (data: {
   picture: string,
   googleId: string,
 
-}): Promise<ApiResponse> => API.post("/auth/login/google", data);
+}): Promise<UserResponse> => API.post("/auth/login/google", data);
 
 export const logout = async (): Promise<ApiResponse> => API.get("/auth/logout");
 
@@ -53,7 +61,7 @@ export const resetPassword = async (params: {
 }): Promise<ApiResponse> => API.post("/auth/password/reset", params);
 
 // ================== USER API ==================
-export const getUser = async (): Promise<ApiResponse> => API.get("/users/me");
+export const getUser = async (): Promise<ApiResponse> => API.get("/user");
 
 export const getSuggestedUsers = async (): Promise<ApiResponse> =>
   API.get("/users/suggestions");
@@ -93,3 +101,26 @@ export const analyzeMedia = async (formData: FormData): Promise<ApiResponse> =>
     headers: { "Content-Type": "multipart/form-data" },
   });
 
+//category
+export const getAllCategories = async (page = 1, limit = 10, search?: string):
+   Promise<ApiResponse> =>  API.get("/category", {
+    params: { page, limit, search }})
+
+
+// Lấy 1 category theo id
+export const getCategoryById = async (id: string) : Promise<ApiResponse> => 
+  API.get(`/category/get/${id}`);
+
+export const createCategory = async( data: { name: string; isActive: boolean }) 
+: Promise<ApiResponse> => API.post("/category/create", data);
+
+// Cập nhật category
+export const updateCategory = async (
+  id: string,
+  data: { name: string; isActive: boolean }
+) : Promise<ApiResponse> => API.post(`/category/update/${id}`, data);
+
+
+// Xóa category
+export const deleteCategory = async (id: string) : Promise<ApiResponse> => 
+  API.post(`/category/delete/${id}`);

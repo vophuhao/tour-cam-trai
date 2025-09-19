@@ -2,6 +2,7 @@ import CategoryModel, { CategoryDocument } from "../models/category.model";
 
 type CreateCategoryInput = {
   name: string;
+  isActive: boolean
 };
 
 type UpdateCategoryInput = {
@@ -16,8 +17,25 @@ export const createCategory = async (data: CreateCategoryInput): Promise<Categor
 };
 
 // Lấy tất cả category
-export const getAllCategories = async (): Promise<CategoryDocument[]> => {
-  return CategoryModel.find().exec();
+export const getCategoriesPaginated = async (
+  page: number = 1,
+  limit: number = 10,
+  search?: string
+): Promise<{ data: CategoryDocument[]; total: number; page: number; limit: number }> => {
+  const query: any = {};
+  if (search) {
+    query.name = { $regex: search, $options: "i" }; // tìm theo tên, không phân biệt hoa thường
+  }
+
+  const total = await CategoryModel.countDocuments(query);
+
+  const data = await CategoryModel.find(query)
+    .sort({ createdAt: -1 }) // mới nhất lên đầu
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .exec();
+
+  return { data, total, page, limit };
 };
 
 // Lấy category theo id
@@ -46,7 +64,7 @@ export const deleteCategory = async (id: string): Promise<boolean> => {
 
 const CategoryService = {
   createCategory,
-  getAllCategories,
+  getCategoriesPaginated,
   getCategoryById,
   updateCategory,
   deleteCategory,

@@ -1,22 +1,50 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { X } from "lucide-react"
+
+interface Category {
+  id?: string
+  name: string
+  isActive: boolean
+}
 
 interface CategoryModalProps {
   isOpen: boolean
+  mode: "create" | "edit"
+  initialData?: Category
   onClose: () => void
-  onSubmit: (data: { name: string; isActive: boolean }) => void
+  onSubmit: (id: string | undefined, data: { name: string; isActive: boolean }) => Promise<void>
 }
 
-export default function CategoryModal({ isOpen, onClose, onSubmit }: CategoryModalProps) {
-  const [formData, setFormData] = useState({ name: "", isActive: true })
+export default function CategoryModal({
+  isOpen,
+  mode,
+  initialData,
+  onClose,
+  onSubmit,
+}: CategoryModalProps) {
+  const [formData, setFormData] = useState<Category>({ name: "", isActive: true })
   const [showConfirm, setShowConfirm] = useState(false)
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  // Khi mở modal edit thì đổ dữ liệu cũ vào form
+  useEffect(() => {
+    if (mode === "edit" && initialData) {
+      setFormData(initialData)
+    } else if (mode === "create") {
+      setFormData({ name: "", isActive: true })
+    }
+  }, [mode, initialData, isOpen])
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit(formData)
-    setFormData({ name: "", isActive: true })
+    try {
+      await onSubmit(initialData?.id, formData)
+      setFormData({ name: "", isActive: true })
+      onClose()
+    } catch (error) {
+      console.error("Submit thất bại:", error)
+    }
   }
 
   const handleClose = () => setShowConfirm(true)
@@ -49,30 +77,33 @@ export default function CategoryModal({ isOpen, onClose, onSubmit }: CategoryMod
             <X size={20} />
           </button>
 
-          <h2 className="text-xl font-semibold mb-7 text-gray-800">Tạo mới danh mục</h2>
+          <h2 className="text-xl font-semibold mb-7 text-gray-800">
+            {mode === "create" ? "Tạo mới danh mục" : "Chỉnh sửa danh mục"}
+          </h2>
+
           <form onSubmit={handleFormSubmit} className="space-y-4">
             <div>
-              <label className="block text-xm font-medium text-gray-700 mb-3">Tên</label>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Tên
+              </label>
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
                 placeholder="Nhập tên danh mục..."
                 required
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">Trạng thái</label>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Trạng thái
+              </label>
               <select
                 value={formData.isActive ? "active" : "inactive"}
                 onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    isActive: e.target.value === "active",
-                  })
+                  setFormData({ ...formData, isActive: e.target.value === "active" })
                 }
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
               >
@@ -80,6 +111,7 @@ export default function CategoryModal({ isOpen, onClose, onSubmit }: CategoryMod
                 <option value="inactive">Ngừng hoạt động</option>
               </select>
             </div>
+
             <div className="flex justify-end gap-2 pt-3">
               <button
                 type="button"
@@ -92,7 +124,7 @@ export default function CategoryModal({ isOpen, onClose, onSubmit }: CategoryMod
                 type="submit"
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
-                Tạo
+                {mode === "create" ? "Tạo" : "Lưu"}
               </button>
             </div>
           </form>
