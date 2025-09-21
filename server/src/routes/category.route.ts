@@ -1,7 +1,8 @@
 import { getCategoriesPaginatedHandler , createCategoryHandler,
     updateCategoryHandler,
     deleteCategoryHandler,
-    getCategoryByIdHandler
+    getCategoryByIdHandler,
+    getCategoriesHandler
 } from "@/controllers/category.controller";
 import { Router } from "express";
 
@@ -10,6 +11,7 @@ const categoryRoutes = Router();
 
 // prefix: /sessions
 categoryRoutes.get("/", getCategoriesPaginatedHandler);
+categoryRoutes.get("/all", getCategoriesHandler);
 categoryRoutes.post("/create", createCategoryHandler);
 categoryRoutes.post("/update/:id", updateCategoryHandler);
 categoryRoutes.post("/delete/:id", deleteCategoryHandler);

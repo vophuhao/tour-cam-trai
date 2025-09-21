@@ -42,6 +42,9 @@ export const getCategoriesPaginated = async (
 export const getCategoryById = async (id: string): Promise<CategoryDocument | null> => {
   return CategoryModel.findById(id).exec();
 };
+export const getCategory = async (): Promise<CategoryDocument[]> => {
+  return CategoryModel.find().exec();
+};
 
 // Cập nhật category
 export const updateCategory = async (data: UpdateCategoryInput): Promise<CategoryDocument | null> => {
@@ -66,6 +69,7 @@ const CategoryService = {
   createCategory,
   getCategoriesPaginated,
   getCategoryById,
+  getCategory,
   updateCategory,
   deleteCategory,
 };

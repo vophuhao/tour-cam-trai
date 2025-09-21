@@ -1,0 +1,98 @@
+import ProductModel, { ProductDocument } from "../models/product.model";
+
+type CreateProductInput = {
+  name: string;
+  description?: string;
+  price: number;
+  stock: number;
+  images?: string[];
+  category: string;
+  isActive?: boolean;
+};
+
+type UpdateProductInput = {
+  id: string;
+  name?: string;
+  description?: string;
+  price?: number;
+  stock?: number;
+  images?: string[];
+  category?: string;
+  isActive?: boolean;
+};
+
+// Tạo product
+export const createProduct = async (data: CreateProductInput): Promise<ProductDocument> => {
+  return ProductModel.create(data);
+};
+
+// Lấy tất cả product có phân trang + tìm kiếm
+export const getProductsPaginated = async (
+  page: number = 1,
+  limit: number = 10,
+  search?: string,
+  category?: string
+): Promise<{ data: ProductDocument[]; total: number; page: number; limit: number }> => {
+  const query: any = {};
+  if (search) {
+    query.$text = { $search: search }; // tìm theo name + description
+  }
+  if (category) {
+    query.category = category;
+  }
+
+  const total = await ProductModel.countDocuments(query);
+
+  const data = await ProductModel.find(query)
+    .populate("category", "name") // chỉ lấy field name của category
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .exec();
+
+  return { data, total, page, limit };
+};
+
+export const getProduct = async (): Promise<ProductDocument[]> => {
+  return ProductModel.find().exec();
+};
+
+// Lấy product theo id
+export const getProductById = async (id: string): Promise<ProductDocument | null> => {
+  return ProductModel.findById(id).populate("category", "name").exec();
+};
+
+// Cập nhật product
+export const updateProduct = async (data: UpdateProductInput): Promise<ProductDocument | null> => {
+  const product = await ProductModel.findById(data.id);
+  if (!product) return null;
+
+  if (data.name !== undefined) product.name = data.name;
+  if (data.description !== undefined) product.description = data.description;
+  if (data.price !== undefined) product.price = data.price;
+  if (data.stock !== undefined) product.stock = data.stock;
+  if (data.images !== undefined) product.images = data.images;
+  if (data.category !== undefined) product.category = data.category as any;
+  if (data.isActive !== undefined) product.isActive = data.isActive;
+
+  return product.save();
+};
+
+// Xóa product
+export const deleteProduct = async (id: string): Promise<boolean> => {
+  const product = await ProductModel.findById(id);
+  if (!product) return false;
+  await product.deleteOne();
+  return true;
+};
+
+const ProductService = {
+  createProduct,
+  getProductsPaginated,
+  getProductById,
+  updateProduct,
+  getProduct,
+  deleteProduct,
+};
+
+export default ProductService;

@@ -101,26 +101,61 @@ export const analyzeMedia = async (formData: FormData): Promise<ApiResponse> =>
     headers: { "Content-Type": "multipart/form-data" },
   });
 
-//category
-export const getAllCategories = async (page = 1, limit = 10, search?: string):
+// ================== category API ==================
+export const getCategories = async (page = 1, limit = 10, search?: string):
    Promise<ApiResponse> =>  API.get("/category", {
     params: { page, limit, search }})
 
-
+export const getAllCategories = async ():
+   Promise<ApiResponse> =>  API.get("/category/all")
+   
 // Lấy 1 category theo id
 export const getCategoryById = async (id: string) : Promise<ApiResponse> => 
   API.get(`/category/get/${id}`);
-
 export const createCategory = async( data: { name: string; isActive: boolean }) 
 : Promise<ApiResponse> => API.post("/category/create", data);
-
 // Cập nhật category
 export const updateCategory = async (
   id: string,
   data: { name: string; isActive: boolean }
 ) : Promise<ApiResponse> => API.post(`/category/update/${id}`, data);
-
-
 // Xóa category
 export const deleteCategory = async (id: string) : Promise<ApiResponse> => 
   API.post(`/category/delete/${id}`);
+
+// ================== product API ==================
+
+export const createProduct = async( data: {  
+  name: string;
+  description?: string;
+  price: number;
+  deal: number;
+  images : string[]
+  stock: number;
+  category: string;
+  isActive: boolean; }) 
+: Promise<ApiResponse> => API.post("/product/create", data);
+
+
+export const updateProduct = async( id: string, data: {  
+  name: string;
+  description?: string;
+  price: number;
+  deal?: number;
+  images : string[]
+  stock: number;
+  category: string;
+  isActive: boolean; }) 
+: Promise<ApiResponse> => API.post(`/product/update/${id}`, data);
+
+export const getProduct = async (page = 1, limit = 10, search?: string):
+   Promise<ApiResponse> =>  API.get("/product", {
+    params: { page, limit, search }})
+
+export const getAllProduct = async ():
+   Promise<ApiResponse> =>  API.get("/product/all")
+
+export const deleteProduct = async (id: string) : Promise<ApiResponse> => 
+  API.post(`/product/delete/${id}`)
+
+

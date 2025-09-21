@@ -1,7 +1,7 @@
 "use client";
 
 import CategoryModal from "@/components/modals/CategoryModal";
-import { createCategory, deleteCategory, getAllCategories, updateCategory } from "@/lib/api";
+import { createCategory, deleteCategory, getCategories, updateCategory } from "@/lib/api";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 
@@ -37,7 +37,7 @@ export default function CategoryPage() {
 
   const fetchCategories = async () => {
     try {
-      const res = await getAllCategories(page, limit, search);
+      const res = await getCategories(page, limit, search);
       if (res.success) {
         setCategories(res.data.data);
         setTotal(res.data.total);

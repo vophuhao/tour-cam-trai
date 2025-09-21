@@ -30,6 +30,15 @@ export const getCategoriesPaginatedHandler = catchErrors(async (req: Authenticat
   return ResponseUtil.success(res, result, "Lấy danh sách categories phân trang thành công");
 });
 
+export const getCategoriesHandler = catchErrors(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const result = await CategoryService.getCategory();
+
+    return ResponseUtil.success(res, result, "Lấy danh sách categories thành công");
+  }
+);
+
+
 /**
  * Get category by ID
  * @route GET /categories/:id

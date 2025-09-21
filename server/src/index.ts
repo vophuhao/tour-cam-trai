@@ -11,6 +11,8 @@ import sessionRoutes from "./routes/session.route";
 import { APP_ORIGIN, NODE_ENV, PORT } from "./constants/env";
 import categoryRoutes from "./routes/category.route";
 import requireAdmin from "./middleware/requireAdmin";
+import productRoutes from "./routes/product.route";
+import mediaRoutes from "./routes/media.route";
 
 const app = express();
 
@@ -38,8 +40,11 @@ app.use("/auth", authRoutes);
 // protected routes
 app.use("/user", authenticate, userRoutes);
 app.use("/sessions", authenticate, sessionRoutes);
-app.use("/category",authenticate,requireAdmin,categoryRoutes)
 
+app.use("/category",authenticate,requireAdmin,categoryRoutes)
+app.use("/product",authenticate,requireAdmin,productRoutes)
+
+app.use("/media",authenticate,requireAdmin,mediaRoutes)
 // error handler
 app.use(errorHandler);
 
