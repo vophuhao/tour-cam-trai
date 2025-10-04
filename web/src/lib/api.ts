@@ -159,3 +159,135 @@ export const deleteProduct = async (id: string) : Promise<ApiResponse> =>
   API.post(`/product/delete/${id}`)
 
 
+// ================== TOUR API ==================
+
+// 🟢 Lấy danh sách tour (phân trang + tìm kiếm)
+export const getTours = async (
+  page = 1,
+  limit = 10,
+  search?: string
+): Promise<ApiResponse> =>
+  API.get("/tour", { params: { page, limit, search } });
+
+// 🟢 Lấy tất cả tour (không phân trang)
+export const getAllTours = async (): Promise<ApiResponse> =>
+  API.get("/tour/all");
+
+// 🟢 Lấy tour theo ID
+export const getTourById = async (id: string): Promise<ApiResponse> =>
+  API.get(`/tour/get/${id}`);
+
+// 🟢 Tạo mới tour
+export const createTour = async (data: {
+  code?: string;
+  name: string;
+  description: string;
+  durationDays: number;
+  durationNights: number;
+  stayType: string;
+  transportation: string;
+  departurePoint: string;
+  departureFrequency?: string;
+  targetAudience?: string;
+
+  itinerary: {
+    day: number;
+    title: string;
+    activities: {
+      timeFrom?: string;
+      timeTo?: string;
+      description: string;
+    }[];
+  }[];
+
+  priceOptions: {
+    name: string;
+    price: number;
+    minPeople?: number;
+    maxPeople?: number;
+  }[];
+
+  servicesIncluded: {
+    title: string;
+    details: { value: string }[];
+  }[];
+  servicesExcluded: {
+    title: string;
+    details: { value: string }[];
+  }[];
+  notes: {
+    title: string;
+    details: { value: string }[];
+  }[];
+
+  images: string[];
+  isActive: boolean;
+}): Promise<ApiResponse> => API.post("/tour/create", data);
+
+// 🟡 Cập nhật tour
+export const updateTour = async (
+  id: string,
+  data: {
+    name: string;
+    description?: string;
+    durationDays: number;
+    durationNights: number;
+    stayType: string;
+    transportation: string;
+    departurePoint: string;
+    departureFrequency?: string;
+    targetAudience?: string;
+
+    itinerary: {
+      day: number;
+      title: string;
+      activities: {
+        timeFrom?: string;
+        timeTo?: string;
+        description: string;
+      }[];
+    }[];
+
+    priceOptions: {
+      name: string;
+      price: number;
+      minPeople?: number;
+      maxPeople?: number;
+    }[];
+
+    servicesIncluded: {
+      title: string;
+      details: { value: string }[];
+    }[];
+    servicesExcluded: {
+      title: string;
+      details: { value: string }[];
+    }[];
+    notes: {
+      title: string;
+      details: { value: string }[];
+    }[];
+
+    images: string[];
+    isActive: boolean;
+  }
+): Promise<ApiResponse> => API.post(`/tour/update/${id}`, data);
+
+// 🔴 Xóa tour
+export const deleteTour = async (id: string): Promise<ApiResponse> =>
+  API.post(`/tour/delete/${id}`);
+
+// 🟢 Kích hoạt tour
+export const activateTour = async (id: string): Promise<ApiResponse> =>
+  API.post(`/tour/activate/${id}`);
+
+// 🔴 Vô hiệu hóa tour
+export const deactivateTour = async (id: string): Promise<ApiResponse> =>
+  API.post(`/tour/deactivate/${id}`);
+
+// 🟣 Lấy top tour bán chạy / được xem nhiều
+export const getTopTours = async (
+  type: "popular" | "bestseller",
+  limit = 5
+): Promise<ApiResponse> =>
+  API.get(`/tour/top`, { params: { type, limit } });

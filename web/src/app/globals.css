@@ -143,3 +143,31 @@
     transform: translateY(-83.33%);
   }
 }
+
+/* .sidebar {
+  background-color: #3B6E5F;
+  color: #F4FAF4;
+}
+.sidebar a:hover {
+  background-color: #4A7A57;
+}
+.sidebar a.active {
+  background-color: #2F5D3A;
+}
+
+
+.table thead {
+  background-color: #4A7A57;
+  color: #fff;
+}
+.table tr:nth-child(even) {
+  background-color: #E6F0E9;
+}
+.table tr:hover {
+  background-color: #A3C940;
+  color: #1F3A2F;
+}
+
+Primary: #3B6E5F (nền) + #F4FAF4 (chữ)
+
+Hover: #4A7A57 */

@@ -13,6 +13,7 @@ import categoryRoutes from "./routes/category.route";
 import requireAdmin from "./middleware/requireAdmin";
 import productRoutes from "./routes/product.route";
 import mediaRoutes from "./routes/media.route";
+import tourRoutes from "./routes/tour.route";
 
 const app = express();
 
@@ -43,6 +44,9 @@ app.use("/sessions", authenticate, sessionRoutes);
 
 app.use("/category",authenticate,requireAdmin,categoryRoutes)
 app.use("/product",authenticate,requireAdmin,productRoutes)
+app.use("/tour",authenticate,requireAdmin,tourRoutes)
+
+
 
 app.use("/media",authenticate,requireAdmin,mediaRoutes)
 // error handler

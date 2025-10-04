@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
-import { Home, Users, Package, BarChart, Settings, LogOut } from "lucide-react"
+import { Home, Users, Package, BarChart, Settings, LogOut ,Tent} from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 
 import { logout } from "@/lib/api"  // <-- API logout ở backend
@@ -36,6 +36,7 @@ export default function Sidebar() {
     { name: "Products", href: "/admin/products", icon: Package },
     { name: "Analytics", href: "/admin/analytics", icon: BarChart },
     { name: "Settings", href: "/admin/settings", icon: Settings },
+    { name: "Tours", href: "/admin/tours", icon: Tent }, 
     { name: "Category", href: "/admin/category", icon: Package },
     { name: "Đăng xuất", icon: LogOut, action: handleLogout }, // xử lý riêng
   ]
@@ -64,7 +65,7 @@ export default function Sidebar() {
               className={cn(
                 "flex w-full items-center gap-3 px-4 py-4 rounded-lg text-sm font-medium transition-colors text-left",
                 hovered === item.name
-                  ? "bg-[#4279F1] text-white"
+                  ? "bg-[#3B6E5F] text-[#F4FAF4]"
                   : "hover:bg-gray-200"
               )}
             >
@@ -81,9 +82,9 @@ export default function Sidebar() {
               className={cn(
                 "flex items-center gap-3 px-4 py-4 rounded-lg text-sm font-medium transition-colors",
                 hovered === item.href
-                  ? "bg-[#4279F1] text-white"
+                  ? "bg-[#3B6E5F] text-[#F4FAF4]"
                   : !hovered && isActive
-                    ? "bg-[#4279F1] text-white"
+                    ? "bg-[#3B6E5F] text-[#F4FAF4]"
                     : "hover:bg-gray-200"
               )}
             >

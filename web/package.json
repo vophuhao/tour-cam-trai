@@ -9,6 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
+    "@headlessui/tailwindcss": "^0.2.2",
+    "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-label": "^2.0.2",
     "@radix-ui/react-toast": "^1.1.5",
     "@radix-ui/react-tooltip": "^1.0.7",
@@ -23,11 +26,13 @@
     "next": "^15.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-hook-form": "^7.63.0",
     "react-redux": "^9.2.0",
     "react-toastify": "^11.0.5",
     "resend": "^0.16.0",
     "tailwind-merge": "^2.0.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^4.1.11"
   },
   "devDependencies": {
     "@types/node": "^20",

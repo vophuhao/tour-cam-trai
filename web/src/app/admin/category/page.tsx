@@ -1,9 +1,15 @@
 "use client";
 
 import CategoryModal from "@/components/modals/CategoryModal";
-import { createCategory, deleteCategory, getCategories, updateCategory } from "@/lib/api";
+import {
+  createCategory,
+  deleteCategory,
+  getCategories,
+  updateCategory,
+} from "@/lib/api";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import { Pencil, Trash2, Plus, Search } from "lucide-react";
 
 type Category = {
   id: string;
@@ -18,7 +24,9 @@ export default function CategoryPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
-  const [editingCategory, setEditingCategory] = useState<Category | undefined>();
+  const [editingCategory, setEditingCategory] = useState<
+    Category | undefined
+  >();
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
@@ -70,7 +78,10 @@ export default function CategoryPage() {
     }
   };
 
-  const handleSubmit = async (id: string | undefined, data: { name: string; isActive: boolean }) => {
+  const handleSubmit = async (
+    id: string | undefined,
+    data: { name: string; isActive: boolean }
+  ) => {
     try {
       if (modalMode === "create") {
         const res = await createCategory(data);
@@ -89,71 +100,116 @@ export default function CategoryPage() {
   };
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
+    <div className="p-8 bg-gradient-to-br from-gray-50 via-white to-gray-100 min-h-screen">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Category Management</h1>
-        <div className="flex space-x-3">
+      <div className="flex justify-between items-center mb-10">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <span className=" text-blue-600 p-2 rounded-lg ">📂</span>
+            Quản Lý Danh Mục
+          </h1>
+        </div>
+
+      </div>
+      {/* Search */}
+      <div className="flex justify-between items-center mb-8">
+        <div className="relative w-96">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="Search categories..."
+            placeholder="Tìm kiếm danh mục..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2 w-64 focus:ring-2 focus:ring-blue-400 outline-none"
+            className="pl-12 pr-4 py-3 w-full bg-white border border-gray-200 rounded-xl shadow 
+                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                     transition-all duration-200 ease-in-out"
           />
-          <button
-            onClick={() => { setModalMode("create"); setIsModalOpen(true); }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg shadow hover:shadow-lg transition"
-          >
-            + Create
-          </button>
         </div>
+        <button
+          onClick={() => {
+            setModalMode("create");
+            setIsModalOpen(true);
+          }}
+          className="flex items-center gap-2 bg-[#3B6E5F]
+                   hover:bg-[#4A7A57] text-white px-5 py-2
+                   rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 
+                   transform hover:-translate-y-0.5"
+        >
+          <Plus className="w-5 h-5" /> Tao
+        </button>
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto bg-white rounded-lg shadow-lg">
-        <table className="min-w-full border-collapse">
-          <thead className="bg-gray-100 sticky top-0">
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
+        <table className="min-w-full divide-y divide-gray-200">
+          {/* Header */}
+          <thead className="bg-[#4A7A57]">
             <tr>
-              <th className="p-4 text-left text-gray-700 font-semibold">Name</th>
-              <th className="p-4 text-left text-gray-700 font-semibold">Created At</th>
-              <th className="p-4 text-left text-gray-700 font-semibold">Updated At</th>
-              <th className="p-4 text-left text-gray-700 font-semibold">Status</th>
-              <th className="p-4 text-right text-gray-700 font-semibold">Actions</th>
+              {["Tên", "Ngày Tạo", "Ngày Cập Nhật", "Trạng Thái", "Hành Động"].map((h) => (
+                <th
+                  key={h}
+                  className="px-6 py-4 text-left text-sm font-semibold text-[#F4FAF4] uppercase tracking-wider"
+                >
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
-          <tbody>
+
+          {/* Body */}
+          <tbody className="divide-y divide-gray-200">
             {filtered.length > 0 ? (
-              filtered.map((cat) => (
-                <tr key={cat.id} className="hover:bg-gray-50 transition">
-                  <td className="p-4">{cat.name}</td>
-                  <td className="p-4">{formatDate(cat.createdAt)}</td>
-                  <td className="p-4">{formatDate(cat.updatedAt)}</td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${cat.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                      {cat.isActive ? "Active" : "Inactive"}
+              filtered.map((cat, idx) => (
+                <tr
+                  key={cat.id}
+                  className={`transition-all duration-200 ease-in-out ${idx % 2 === 0 ? "bg-[#E6F0E9]" : "bg-[#F4FAF4]"
+                    } hover:bg-[#89a984] hover:shadow-sm`}
+                >
+                  <td className="px-6 py-4 font-medium text-gray-900">{cat.name}</td>
+                  <td className="px-6 py-4 text-gray-600">{formatDate(cat.createdAt)}</td>
+                  <td className="px-6 py-4 text-gray-600">{formatDate(cat.updatedAt)}</td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${cat.isActive
+                          ? "bg-green-50 text-green-700 border border-green-200"
+                          : "bg-red-50 text-red-700 border border-red-200"
+                        }`}
+                    >
+                      {cat.isActive ? "Hoạt Động" : "Không Hoạt Động"}
                     </span>
                   </td>
-                  <td className="p-4 text-right space-x-2">
+                  <td className="px-6 py-4 text-right space-x-4">
                     <button
-                      onClick={() => { setModalMode("edit"); setEditingCategory(cat); setIsModalOpen(true); }}
-                      className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition"
+                      onClick={() => {
+                        setModalMode("edit");
+                        setEditingCategory(cat);
+                        setIsModalOpen(true);
+                      }}
+                      className="text-blue-500 hover:text-blue-700 transition-colors"
+                      title="Chỉnh sửa"
                     >
-                      Edit
+                      <Pencil className="w-5 h-5" />
                     </button>
                     <button
-                      onClick={() => { setConfirmDeleteId(cat.id); setIsConfirmOpen(true); }}
-                      className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition"
+                      onClick={() => {
+                        setConfirmDeleteId(cat.id);
+                        setIsConfirmOpen(true);
+                      }}
+                      className="text-red-500 hover:text-red-700 transition-colors"
+                      title="Xóa"
                     >
-                      Delete
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="p-6 text-center text-gray-500">
-                  No categories found.
+                <td
+                  colSpan={5}
+                  className="px-6 py-10 text-center text-gray-500 text-lg"
+                >
+                  Không tìm thấy danh mục nào.
                 </td>
               </tr>
             )}
@@ -161,28 +217,37 @@ export default function CategoryPage() {
         </table>
       </div>
 
+
       {/* Pagination */}
       {total > limit && (
-        <div className="flex justify-center items-center mt-6 space-x-3">
+        <div className="flex justify-center items-center mt-10 gap-3">
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition"
+            className="w-10 h-10 flex items-center justify-center rounded-full 
+                     bg-white border border-gray-200 text-gray-600 
+                     hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed 
+                     transition transform hover:scale-105"
           >
-            Prev
+            ‹
           </button>
-          <span className="px-4 py-2 bg-gray-100 rounded">{page}</span>
+          <span className="px-5 py-2 bg-blue-100 text-blue-700 rounded-lg font-semibold shadow-sm">
+            {page}
+          </span>
           <button
             disabled={page * limit >= total}
             onClick={() => setPage((p) => p + 1)}
-            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300 transition"
+            className="w-10 h-10 flex items-center justify-center rounded-full 
+                     bg-white border border-gray-200 text-gray-600 
+                     hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed 
+                     transition transform hover:scale-105"
           >
-            Next
+            ›
           </button>
         </div>
       )}
 
-      {/* Category Modal */}
+      {/* Modal */}
       <CategoryModal
         isOpen={isModalOpen}
         mode={modalMode}
@@ -192,35 +257,47 @@ export default function CategoryPage() {
       />
 
       {/* Confirm Delete Modal */}
-      {/* Confirm Delete Modal */}
-{isConfirmOpen && (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-    <div className="bg-white rounded-2xl shadow-2xl p-6 w-96 transform transition duration-300 scale-95 animate-in slide-in-from-bottom-5">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">Xác nhận xóa</h2>
-      <p className="text-gray-600 mb-6">
-        Bạn có chắc chắn muốn xóa category này?
-      </p>
-      <div className="flex justify-end gap-3">
-        <button
-          onClick={() => { setIsConfirmOpen(false); setConfirmDeleteId(null); }}
-          className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
-        >
-          Hủy
-        </button>
-        <button
-          onClick={() => {
-            if (confirmDeleteId) handleDelete(confirmDeleteId);
-            setIsConfirmOpen(false);
-            setConfirmDeleteId(null);
-          }}
-          className="px-5 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition shadow-lg"
-        >
-          Xóa
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+      {isConfirmOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md 
+                        transform transition-all duration-300 scale-95 animate-scaleIn">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-3 bg-red-50 rounded-full">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900">Xác Nhận Xóa</h2>
+            </div>
+            <p className="text-gray-600 mb-8 leading-relaxed">
+              Bạn có chắc chắn muốn xóa danh mục này? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => {
+                  setIsConfirmOpen(false);
+                  setConfirmDeleteId(null);
+                }}
+                className="px-5 py-2 bg-white border border-gray-200 text-gray-700 
+                         rounded-lg hover:bg-gray-100 transition-all duration-200"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  if (confirmDeleteId) handleDelete(confirmDeleteId);
+                  setIsConfirmOpen(false);
+                  setConfirmDeleteId(null);
+                }}
+                className="px-5 py-2 bg-red-600 text-white rounded-lg font-semibold 
+                         hover:bg-red-700 shadow-md hover:shadow-lg 
+                         transition-all duration-200 transform hover:scale-105"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+
 }
