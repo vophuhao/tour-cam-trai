@@ -16,10 +16,13 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="bg-[hsl(var(--primary))] text-white sticky top-0 z-50 shadow-md">
-      <div className="max-w-7xl mx-auto flex items-center justify-between p-4">
+    <header className="relative w-full">
+
+
+      {/* Header Content */}
+      <div className="relative z-10 max-w-7xl mx-auto flex items-center justify-between p-4">
         {/* Logo */}
-        <Link href="/" className="text-2xl font-bold">
+        <Link href="/" className="text-2xl md:text-3xl font-bold text-black drop-shadow-lg">
           CampAdventure
         </Link>
 
@@ -38,8 +41,8 @@ export default function Header() {
                 onMouseLeave={() => setHovered(null)}
                 className={`px-3 py-2 rounded-md font-medium transition-colors ${
                   hovered === item.href || isActive
-                    ? "bg-[hsl(var(--primary-light))]"
-                    : "hover:bg-[hsl(var(--primary-light))]/50"
+                    ? "bg-[hsl(var(--primary-light))] text-black"
+                    : "hover:bg-[hsl(var(--primary-light))]/50 text-black"
                 }`}
               >
                 {item.name}
@@ -53,22 +56,21 @@ export default function Header() {
           className="md:hidden p-2 rounded-md hover:bg-[hsl(var(--primary-light))]/50 transition-colors"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
-          {/* Hamburger icon */}
-          <span className="block w-6 h-0.5 bg-white mb-1"></span>
-          <span className="block w-6 h-0.5 bg-white mb-1"></span>
-          <span className="block w-6 h-0.5 bg-white"></span>
+          <span className="block w-6 h-0.5 mb-1"></span>
+          <span className="block w-6 h-0.5 mb-1"></span>
+          <span className="block w-6 h-0.5 "></span>
         </button>
       </div>
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <nav className="md:hidden bg-[hsl(var(--primary))]/95">
+        <nav className="md:hidden relative z-10 bg-[hsl(var(--primary))]/90">
           {navItems.map((item) => (
             <Link
               key={item.name}
               href={item.href}
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-4 py-3 text-white hover:bg-[hsl(var(--primary-light))]/50 transition-colors"
+              className="block px-4 py-3 text-black hover:bg-[hsl(var(--primary-light))]/50 transition-colors"
             >
               {item.name}
             </Link>

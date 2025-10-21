@@ -31,6 +31,9 @@ export type TourFormData = {
   notes: ServiceSection[];
   images?: string[]; // ✅ optional
   isActive: boolean;
+   viewsCount?: number;
+   soldCount?: number;
+   rating?: { average: number; count: number }
 };
 
 type Tour = TourFormData & {
@@ -160,7 +163,7 @@ export default function TourPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-[#4A7A57]">
             <tr>
-              {["Tên Tour", "Khởi Hành", "Thời Lượng", "Giá", "Trạng Thái", "Ngày Tạo", "Hành Động"].map((h) => (
+              {["Tên Tour", "Mã Tour", "Đã bán", "Đánh giá", "Trạng Thái", "Ngày Tạo", "Hành Động"].map((h) => (
                 <th
                   key={h}
                   className="px-6 py-4 text-left text-sm font-semibold text-[#F4FAF4] uppercase tracking-wider"
@@ -178,14 +181,12 @@ export default function TourPage() {
                   className={`transition-all duration-200 ${idx % 2 === 0 ? "bg-[#E6F0E9]" : "bg-[#F4FAF4]"}`}
                 >
                   <td className="px-6 py-4 font-medium text-gray-900">{tour.name}</td>
-                  <td className="px-6 py-4 text-gray-600">{tour.departurePoint}</td>
+                  <td className="px-6 py-4 text-gray-600">{tour.code}</td>
                   <td className="px-6 py-4 text-gray-600">
-                    {tour.durationDays}N {tour.durationNights}Đ
+                    {tour.soldCount}
                   </td>
                   <td className="px-6 py-4 text-gray-600">
-                    {tour.priceOptions?.[0]?.price
-                      ? `${tour.priceOptions[0].price.toLocaleString()}₫`
-                      : "—"}
+                    {tour.rating?.average ? `${tour.rating.average} (${tour.rating.count})` : "Chưa có đánh giá"}
                   </td>
                   <td className="px-6 py-4">
                     <span

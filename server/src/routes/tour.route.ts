@@ -25,7 +25,7 @@ tourRoutes.get("/:id", getTourByIdHandler);
 tourRoutes.post("/update/:id", updateTourHandler);
 
 // Xóa tour
-tourRoutes.delete("/:id", deleteTourHandler);
+tourRoutes.post("/delete/:id", deleteTourHandler);
 
 // Kích hoạt tour
 tourRoutes.patch("/:id/activate", activateTourHandler);
