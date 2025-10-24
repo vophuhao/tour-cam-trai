@@ -2,6 +2,7 @@ import ProductModel, { ProductDocument } from "../models/product.model";
 
 type CreateProductInput = {
   name: string;
+  slug?: string;
   description?: string;
   price: number;
   stock: number;
@@ -12,6 +13,7 @@ type CreateProductInput = {
 
 type UpdateProductInput = {
   id: string;
+  slug?: string;
   name?: string;
   description?: string;
   price?: number;
@@ -23,6 +25,7 @@ type UpdateProductInput = {
 
 // Tạo product
 export const createProduct = async (data: CreateProductInput): Promise<ProductDocument> => {
+  data.slug = data.name.toLowerCase().replace(/ /g, "-");
   return ProductModel.create(data);
 };
 
@@ -57,6 +60,10 @@ export const getProduct = async (): Promise<ProductDocument[]> => {
   return ProductModel.find().exec();
 };
 
+const getProductBySlug = async (slug: string): Promise<ProductDocument | null> => {
+  return ProductModel.findOne({ slug }).populate("category", "name").exec();
+};
+
 // Lấy product theo id
 export const getProductById = async (id: string): Promise<ProductDocument | null> => {
   return ProductModel.findById(id).populate("category", "name").exec();
@@ -65,8 +72,10 @@ export const getProductById = async (id: string): Promise<ProductDocument | null
 // Cập nhật product
 export const updateProduct = async (data: UpdateProductInput): Promise<ProductDocument | null> => {
   const product = await ProductModel.findById(data.id);
+
   if (!product) return null;
 
+  if (data.name !== undefined) product.slug = data.name.toLowerCase().replace(/ /g, "-");
   if (data.name !== undefined) product.name = data.name;
   if (data.description !== undefined) product.description = data.description;
   if (data.price !== undefined) product.price = data.price;
@@ -93,6 +102,7 @@ const ProductService = {
   updateProduct,
   getProduct,
   deleteProduct,
+  getProductBySlug,
 };
 
 export default ProductService;

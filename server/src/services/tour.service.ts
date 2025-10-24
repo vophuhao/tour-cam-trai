@@ -60,6 +60,11 @@ static async getToursPaginated(page: number, limit: number, search?: string) {
   static async deactivateTour(id: string) {
     return await TourModel.findByIdAndUpdate(id, { isActive: false }, { new: true });
   }
+
+  static async getTourBySlug(slug: string) {
+    return await TourModel.findOne({ slug });
+  }
+
 }
 
 export default TourService;

@@ -80,7 +80,7 @@ type Props = {
   mode: "create" | "edit";
   initialData?: Partial<TourFormData>;
   onClose: () => void;
-  onSubmit: (data: TourFormData) => void;
+  onSubmit: (data: TourFormData, existingImages: string[], newImages: File[]) => void;
 };
 
 /* ================== MAIN MODAL ================== */
@@ -104,19 +104,26 @@ export default function TourModal({
     },
   });
 
-  // Upload ảnh
+  // Upload ảnh mới
   const handleUploadImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files ? Array.from(e.target.files) : [];
-    setNewImages((prev) => [...prev, ...files]);
     const newPreviews = files.map((file) => URL.createObjectURL(file));
+
+    setNewImages((prev) => [...prev, ...files]);
     setPreviewImages((prev) => [...prev, ...newPreviews]);
-    setCurrentImgIndex(previewImages.length + files.length - 1);
+    setCurrentImgIndex((prev) => Math.max(prev, previewImages.length + newPreviews.length - 1));
   };
 
   // Xóa ảnh
   const removeImage = (url: string) => {
+    // Nếu là ảnh cũ (link thật)
+    if (existingImages.includes(url)) {
+      setExistingImages((prev) => prev.filter((img) => img !== url));
+    } else {
+      // Nếu là ảnh mới (blob)
+      setNewImages((prev) => prev.filter((file) => URL.createObjectURL(file) !== url));
+    }
     setPreviewImages((prev) => prev.filter((img) => img !== url));
-    setNewImages((prev) => prev.filter((file) => URL.createObjectURL(file) !== url));
     setCurrentImgIndex((prev) => Math.max(0, prev - 1));
   };
 
@@ -128,8 +135,12 @@ export default function TourModal({
     if (previewImages.length > 0) setCurrentImgIndex((prev) => (prev - 1 + previewImages.length) % previewImages.length);
   };
 
-  const [previewImages, setPreviewImages] = useState<string[]>(initialData?.images || []);
+  // Danh sách ảnh hiện có (URL thật)
+  const [existingImages, setExistingImages] = useState<string[]>(initialData?.images || []);
+  // Danh sách file mới (ảnh local)
   const [newImages, setNewImages] = useState<File[]>([]);
+  // Danh sách preview (mix giữa ảnh cũ và mới)
+  const [previewImages, setPreviewImages] = useState<string[]>(initialData?.images || []);
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
 
   // Reset form khi initialData thay đổi (edit mode)
@@ -171,7 +182,7 @@ export default function TourModal({
   const submitHandler: SubmitHandler<TourFormData> = (data) => {
     // chuyển ảnh mới sang string hoặc file
     const formData = { ...data, images: previewImages };
-    onSubmit(formData);
+    onSubmit(formData, existingImages, newImages);
     reset();
     setPreviewImages([]);
     setNewImages([]);
@@ -376,7 +387,7 @@ export default function TourModal({
                               >
                                 <Image
                                   src={url}
-                                  alt={`thumb-${idx}`}
+                                  alt={"anh"}
                                   fill
                                   sizes="80px"
                                   className="object-cover"
@@ -575,9 +586,9 @@ function DetailsArray({
   name,
 }: {
   name:
-    | `servicesIncluded.${number}.details`
-    | `servicesExcluded.${number}.details`
-    | `notes.${number}.details`;
+  | `servicesIncluded.${number}.details`
+  | `servicesExcluded.${number}.details`
+  | `notes.${number}.details`;
 }) {
   const { control, register } = useFormContext<TourFormData>();
   const { fields, append, remove } = useFieldArray({ control, name });

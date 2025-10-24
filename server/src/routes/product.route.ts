@@ -4,7 +4,8 @@ import {
   updateProductHandler,
   deleteProductHandler,
   getProductByIdHandler,
-  getProductHandler
+  getProductHandler,
+  getProductBySlugHandler
 } from "@/controllers/product.controller";
 import { Router } from "express";
 
@@ -17,5 +18,6 @@ productRoutes.post("/create", createProductHandler);
 productRoutes.post("/update/:id", updateProductHandler);
 productRoutes.post("/delete/:id", deleteProductHandler);
 productRoutes.get("/get/:id", getProductByIdHandler);
+productRoutes.get("/slug/:slug", getProductBySlugHandler);
 
 export default productRoutes;

@@ -42,6 +42,10 @@ export const getProductByIdSchema = z.object({
   id: mongoIdSchema,
 });
 
+export const getProductBySlugSchema = z.object({
+  slug: z.string().min(1, "Slug is required"),
+});
+
 // Delete Product
 export const deleteProductSchema = z.object({
   id: mongoIdSchema,

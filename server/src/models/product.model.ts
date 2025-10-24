@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 // Interface cho document Product
 export interface ProductDocument extends mongoose.Document {
   name: string;
+  slug?: string;
   description?: string;
   price: number;
   deal?:number,
@@ -26,6 +27,10 @@ const productSchema = new mongoose.Schema<ProductDocument>(
       trim: true,
       maxlength: 255,
       index: true,
+    },
+    slug: {
+      type: String,
+      trim: true,
     },
     description: {
       type: String,

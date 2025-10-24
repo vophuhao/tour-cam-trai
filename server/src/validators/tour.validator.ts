@@ -102,6 +102,10 @@ export const getTourByIdSchema = z.object({
   id: mongoIdSchema,
 });
 
+export const getTourBySlugSchema = z.object({
+  slug: z.string().min(1, "Slug là bắt buộc"),
+});
+
 export const deleteTourSchema = z.object({
   id: mongoIdSchema,
 });

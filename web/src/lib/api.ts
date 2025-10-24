@@ -177,6 +177,10 @@ export const getAllTours = async (): Promise<ApiResponse> =>
 export const getTourById = async (id: string): Promise<ApiResponse> =>
   API.get(`/tour/get/${id}`);
 
+//Lay tour theo slug
+export const getTourBySlug = async (slug: string): Promise<ApiResponse> =>
+  API.get(`/tour/slug/${slug}`);
+
 // 🟢 Tạo mới tour
 export const createTour = async (data: {
   code?: string;

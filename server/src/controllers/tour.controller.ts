@@ -7,6 +7,7 @@ import {
   createTourSchema,
   updateTourSchema,
   getTourByIdSchema,
+  getTourBySlugSchema,
 } from "@/validators/tour.validator";
 
 /**
@@ -97,4 +98,13 @@ export const deactivateTourHandler = catchErrors(async (req: AuthenticatedReques
   if (!tour) return ResponseUtil.notFound(res, "Không tìm thấy tour để hủy kích hoạt");
 
   return ResponseUtil.success(res, tour, "Hủy kích hoạt tour thành công");
+});
+
+export const getTourBySlugHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { slug } = getTourBySlugSchema.parse(req.params);
+  const tour = await TourService.getTourBySlug(slug); 
+
+  if (!tour) return ResponseUtil.notFound(res, "Không tìm thấy tour");
+
+  return ResponseUtil.success(res, tour, "Lấy thông tin tour thành công");
 });

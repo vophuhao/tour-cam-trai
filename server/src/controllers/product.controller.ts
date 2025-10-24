@@ -1,9 +1,11 @@
+
 import type { Response } from "express";
 import type { AuthenticatedRequest } from "@/types";
 import catchErrors from "@/utils/catchErrors";
 import { ResponseUtil } from "@/utils/response";
 import ProductService from "../services/product.service";
-import { getProductByIdSchema } from "@/validators/product.validator"; // bạn cần tạo file validator tương tự category
+import { getProductByIdSchema, getProductBySlugSchema } from "@/validators/product.validator"; // bạn cần tạo file validator tương tự category
+import { get } from "http";
 
 /**
  * Create a new product
@@ -85,4 +87,10 @@ export const deleteProductHandler = catchErrors(async (req: AuthenticatedRequest
   const { id } = getProductByIdSchema.parse(req.params);
   await ProductService.deleteProduct(id);
   return ResponseUtil.success(res, { message: "Product deleted successfully" });
+});
+
+export const getProductBySlugHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+  const { slug } = getProductBySlugSchema.parse(req.params);
+  const result = await ProductService.getProductBySlug(slug);
+  return ResponseUtil.success(res, result);
 });

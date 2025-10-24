@@ -8,6 +8,7 @@ import {
   deleteTourHandler,
   activateTourHandler,
   deactivateTourHandler,
+  getTourBySlugHandler,
 } from "../controllers/tour.controller";
 
 const tourRoutes = Router();
@@ -32,5 +33,7 @@ tourRoutes.patch("/:id/activate", activateTourHandler);
 
 // Hủy kích hoạt tour
 tourRoutes.patch("/:id/deactivate", deactivateTourHandler);
+
+tourRoutes.get("/slug/:slug", getTourBySlugHandler);
 
 export default tourRoutes;

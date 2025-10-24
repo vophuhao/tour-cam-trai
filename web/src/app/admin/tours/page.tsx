@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getTours, deleteTour, getTourById, createTour, updateTour } from "@/lib/api";
+import { getTours, deleteTour, getTourById, createTour, updateTour, uploadMedia } from "@/lib/api";
 import { toast } from "react-toastify";
 import { Pencil, Trash2, Plus, Search } from "lucide-react";
 import TourModal from "@/components/modals/TourModal";
@@ -31,9 +31,9 @@ export type TourFormData = {
   notes: ServiceSection[];
   images?: string[]; // ✅ optional
   isActive: boolean;
-   viewsCount?: number;
-   soldCount?: number;
-   rating?: { average: number; count: number }
+  viewsCount?: number;
+  soldCount?: number;
+  rating?: { average: number; count: number }
 };
 
 type Tour = TourFormData & {
@@ -68,12 +68,25 @@ export default function TourPage() {
     }
   };
 
-  const handleSubmitTour = async (data: TourFormData) => {
+  const handleSubmitTour = async (
+    data: TourFormData,
+    existingImages: string[],
+    newImages: File[]
+  ) => {
     try {
+      let uploadedImages: string[] = [];
+
+      if (newImages.length > 0) {
+        const uploadForm = new FormData();
+        newImages.forEach((file) => uploadForm.append("files", file));
+        const res = await uploadMedia(uploadForm);
+        console.log("Upload response:", res.data);
+        uploadedImages = res.data as string[];
+      }
       const payload = {
         ...data,
-        description: data.description || "", // đảm bảo luôn là chuỗi
-        images: data.images || [], // đảm bảo không undefined
+        images: [...existingImages, ...uploadedImages],
+        description: data.description || "",
       };
 
       if (editData && editData._id) {
@@ -84,7 +97,6 @@ export default function TourPage() {
         toast.success("Tạo tour thành công!");
       }
 
-
       fetchTours();
       setIsModalOpen(false);
     } catch (error: any) {
@@ -92,6 +104,8 @@ export default function TourPage() {
       toast.error(error?.response?.data?.message || "Lỗi khi lưu tour");
     }
   };
+
+
 
 
   const handleEdit = (tour: TourFormData) => {
