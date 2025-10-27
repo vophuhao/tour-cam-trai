@@ -43,3 +43,12 @@ export interface Product {
   warnings?: string[];
   isActive: boolean;
 }
+
+export interface ProductDetail extends Product {
+  rating: {
+    average: number;
+    count: number;
+  };
+  count : number;
+  
+}

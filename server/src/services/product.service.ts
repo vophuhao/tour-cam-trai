@@ -24,6 +24,11 @@ type CreateProductInput = {
   }[]; // ✅ Thêm phần chi tiết dạng phân cấp   
   guide?: string[]; // ✅ Hướng dẫn sử dụng từng bước
   warnings?: string[]; // ✅ Lưu ý từng bước
+   rating?: {
+    average: number;
+    count: number;
+  };
+  count ?: number;
 
 };
 
@@ -50,7 +55,7 @@ type UpdateProductInput = {
     title: string;
     items: { label: string }[];
   }[];
-
+ 
   guide?: string[];
   warnings?: string[];
 };
@@ -58,6 +63,8 @@ type UpdateProductInput = {
 // Tạo product
 export const createProduct = async (data: CreateProductInput): Promise<ProductDocument> => {
   data.slug = data.name.toLowerCase().replace(/ /g, "-");
+  data.rating = { average: 0, count: 0 };
+  data.count = 0;
   return ProductModel.create(data);
 };
 
@@ -104,6 +111,7 @@ export const getProductById = async (id: string): Promise<ProductDocument | null
 // Cập nhật product
 export const updateProduct = async (data: UpdateProductInput): Promise<ProductDocument | null> => {
   const product = await ProductModel.findById(data.id);
+
   if (!product) return null;
 
   if (data.name !== undefined) product.slug = data.name.toLowerCase().replace(/ /g, "-");
@@ -119,6 +127,7 @@ export const updateProduct = async (data: UpdateProductInput): Promise<ProductDo
   if (data.details !== undefined) product.details = data.details;
   if (data.guide !== undefined) product.guide = data.guide;
   if (data.warnings !== undefined) product.warnings = data.warnings;
+  if (data.deal !== undefined) product.deal = data.deal;
 
   return product.save();
 };

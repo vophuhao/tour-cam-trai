@@ -177,6 +177,9 @@ export const getProduct = async (page = 1, limit = 10, search?: string):
    Promise<ApiResponse> =>  API.get("/product", {
     params: { page, limit, search }})
 
+export const getProductBySlug = async (slug: string) : Promise<ApiResponse> => 
+  API.get(`/product/slug/${slug}`);
+
 export const getAllProduct = async ():
    Promise<ApiResponse> =>  API.get("/product/all")
 

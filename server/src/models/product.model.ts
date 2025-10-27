@@ -46,6 +46,11 @@ export interface ProductDocument extends mongoose.Document {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  rating ?: {
+    average: number;
+    count: number;
+  };
+  count: number;
 
   decreaseStock(quantity: number): Promise<ProductDocument>;
   increaseStock(quantity: number): Promise<ProductDocument>;
@@ -103,6 +108,11 @@ const productSchema = new mongoose.Schema<ProductDocument>(
     guide: [{ type: String, trim: true }],
     warnings: [{ type: String, trim: true }],
     isActive: { type: Boolean, default: true },
+    rating: {
+      average: { type: Number, default: 0 },
+      count: { type: Number, default: 0 },
+    },
+    count: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
