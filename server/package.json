@@ -20,6 +20,9 @@
     "seed:dev": "ts-node-dev -r tsconfig-paths/register src/seeds/seedDatabase.ts",
     "seed:posts": "ts-node -r tsconfig-paths/register src/seeds/addMorePosts.ts"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
