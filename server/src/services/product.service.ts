@@ -5,10 +5,31 @@ type CreateProductInput = {
   slug?: string;
   description?: string;
   price: number;
-  stock: number;
+  deal ? : number;
+  stock?: number;
   images?: string[];
   category: string;
   isActive?: boolean;
+  specifications?: { label: string; value: string }[];
+  variants?: {
+    size: string;
+    expandedSize: string;
+    foldedSize: string;
+    loadCapacity: string;
+    weight: string;
+  }[]; // ✅ Thêm phần biến thể 
+  details?: {
+    title: string;
+    items: { label: string }[];
+  }[]; // ✅ Thêm phần chi tiết dạng phân cấp   
+  guide?: string[]; // ✅ Hướng dẫn sử dụng từng bước
+  warnings?: string[]; // ✅ Lưu ý từng bước
+   rating?: {
+    average: number;
+    count: number;
+  };
+  count ?: number;
+
 };
 
 type UpdateProductInput = {
@@ -17,15 +38,33 @@ type UpdateProductInput = {
   name?: string;
   description?: string;
   price?: number;
+  deal ? : number;
   stock?: number;
   images?: string[];
   category?: string;
   isActive?: boolean;
+  specifications?: { label: string; value: string }[];
+  variants?: {
+    size: string;
+    expandedSize: string;
+    foldedSize: string;
+    loadCapacity: string;
+    weight: string;
+  }[];
+  details?: {
+    title: string;
+    items: { label: string }[];
+  }[];
+ 
+  guide?: string[];
+  warnings?: string[];
 };
 
 // Tạo product
 export const createProduct = async (data: CreateProductInput): Promise<ProductDocument> => {
   data.slug = data.name.toLowerCase().replace(/ /g, "-");
+  data.rating = { average: 0, count: 0 };
+  data.count = 0;
   return ProductModel.create(data);
 };
 
@@ -83,6 +122,12 @@ export const updateProduct = async (data: UpdateProductInput): Promise<ProductDo
   if (data.images !== undefined) product.images = data.images;
   if (data.category !== undefined) product.category = data.category as any;
   if (data.isActive !== undefined) product.isActive = data.isActive;
+  if (data.specifications !== undefined) product.specifications = data.specifications;
+  if (data.variants !== undefined) product.variants = data.variants;
+  if (data.details !== undefined) product.details = data.details;
+  if (data.guide !== undefined) product.guide = data.guide;
+  if (data.warnings !== undefined) product.warnings = data.warnings;
+  if (data.deal !== undefined) product.deal = data.deal;
 
   return product.save();
 };

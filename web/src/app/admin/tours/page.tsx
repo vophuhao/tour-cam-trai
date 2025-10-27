@@ -209,7 +209,7 @@ export default function TourPage() {
                         : "bg-red-50 text-red-700 border border-red-200"
                         }`}
                     >
-                      {tour.isActive ? "Hoạt Động" : "Không Hoạt Động"}
+                      {tour.isActive ? "Active" : "Inactive"}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-gray-600">{formatDate(tour.createdAt)}</td>

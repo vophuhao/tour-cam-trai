@@ -12,15 +12,21 @@ import { get } from "http";
  * @route POST /products
  */
 export const createProductHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-  const { name, description, price, stock, images, category, isActive } = req.body;
+  const { name, description, price, deal, stock, images, category, isActive , specifications, variants, details, guide, warnings } = req.body;
   const result = await ProductService.createProduct({
     name,
     description, 
     price,
+    deal,
     stock,
     images,
     category,
     isActive,
+    specifications,
+    variants,
+    details,
+    guide,
+    warnings,
   });
   return ResponseUtil.success(res, result, "Tạo product thành công");
 });
@@ -57,27 +63,29 @@ export const getProductByIdHandler = catchErrors(async (req: AuthenticatedReques
   const result = await ProductService.getProductById(id);
   return ResponseUtil.success(res, result);
 });
-
-/**
- * Update a product
- * @route PUT /products/:id
- */
 export const updateProductHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
   const { id } = getProductByIdSchema.parse(req.params);
-  const { name, description, price, stock, images, category, isActive } = req.body;
+  const { name, description, price, deal, stock, images, category, isActive, specifications, variants, details, guide, warnings } = req.body;
   const result = await ProductService.updateProduct({
     id,
     name,
     description,
     price,
+    deal,
     stock,
     images,
     category,
     isActive,
+    specifications,
+    variants,
+    details,
+    guide,
+    warnings,
   });
 
   return ResponseUtil.success(res, result);
 });
+
 
 /**
  * Delete a product
