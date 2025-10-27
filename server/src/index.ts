@@ -9,6 +9,11 @@ import authRoutes from "./routes/auth.route";
 import userRoutes from "./routes/user.route";
 import sessionRoutes from "./routes/session.route";
 import { APP_ORIGIN, NODE_ENV, PORT } from "./constants/env";
+import categoryRoutes from "./routes/category.route";
+import requireAdmin from "./middleware/requireAdmin";
+import productRoutes from "./routes/product.route";
+import mediaRoutes from "./routes/media.route";
+import tourRoutes from "./routes/tour.route";
 
 const app = express();
 
@@ -37,6 +42,13 @@ app.use("/auth", authRoutes);
 app.use("/user", authenticate, userRoutes);
 app.use("/sessions", authenticate, sessionRoutes);
 
+app.use("/category",authenticate,requireAdmin,categoryRoutes)
+app.use("/product",authenticate,requireAdmin,productRoutes)
+app.use("/tour",authenticate,requireAdmin,tourRoutes)
+
+
+
+app.use("/media",authenticate,requireAdmin,mediaRoutes)
 // error handler
 app.use(errorHandler);
 
