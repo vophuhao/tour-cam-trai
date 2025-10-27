@@ -1,6 +1,12 @@
 
 import API from "../config/apiClient";
-
+import {
+  Product,
+  ProductSpecification,
+  ProductVariant,
+  ProductDetailSection,
+  Category,
+} from "@/types/product";
 // Kiểu response chung (nếu backend trả JSON chuẩn { data, message, ... })
 export interface UserResponse<T = any> {
   role: string | null;
@@ -125,28 +131,47 @@ export const deleteCategory = async (id: string) : Promise<ApiResponse> =>
 
 // ================== product API ==================
 
-export const createProduct = async( data: {  
-  name: string;
-  description?: string;
-  price: number;
-  deal: number;
-  images : string[]
-  stock: number;
-  category: string;
-  isActive: boolean; }) 
-: Promise<ApiResponse> => API.post("/product/create", data);
-
-
-export const updateProduct = async( id: string, data: {  
+export const createProduct = async (data: {
   name: string;
   description?: string;
   price: number;
   deal?: number;
-  images : string[]
   stock: number;
+  images: string[];
   category: string;
-  isActive: boolean; }) 
-: Promise<ApiResponse> => API.post(`/product/update/${id}`, data);
+
+  // ✅ Thêm các phần mới
+  specifications?: ProductSpecification[];
+  variants?: ProductVariant[];
+  details?: ProductDetailSection[];
+  guide?: string[];
+  warnings?: string[];
+
+  isActive: boolean;
+}): Promise<ApiResponse> => API.post("/product/create", data);
+
+
+export const updateProduct = async (
+  id: string,
+  data: {
+    name: string;
+    description?: string;
+    price: number;
+    deal?: number;
+    stock: number;
+    images: string[];
+    category: string;
+
+    // ✅ Thêm các phần mới
+    specifications?: ProductSpecification[];
+    variants?: ProductVariant[];
+    details?: ProductDetailSection[];
+    guide?: string[];
+    warnings?: string[];
+
+    isActive: boolean;
+  }
+): Promise<ApiResponse> => API.post(`/product/update/${id}`, data);
 
 export const getProduct = async (page = 1, limit = 10, search?: string):
    Promise<ApiResponse> =>  API.get("/product", {

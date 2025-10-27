@@ -5,10 +5,26 @@ type CreateProductInput = {
   slug?: string;
   description?: string;
   price: number;
-  stock: number;
+  deal ? : number;
+  stock?: number;
   images?: string[];
   category: string;
   isActive?: boolean;
+  specifications?: { label: string; value: string }[];
+  variants?: {
+    size: string;
+    expandedSize: string;
+    foldedSize: string;
+    loadCapacity: string;
+    weight: string;
+  }[]; // ✅ Thêm phần biến thể 
+  details?: {
+    title: string;
+    items: { label: string }[];
+  }[]; // ✅ Thêm phần chi tiết dạng phân cấp   
+  guide?: string[]; // ✅ Hướng dẫn sử dụng từng bước
+  warnings?: string[]; // ✅ Lưu ý từng bước
+
 };
 
 type UpdateProductInput = {
@@ -17,10 +33,26 @@ type UpdateProductInput = {
   name?: string;
   description?: string;
   price?: number;
+  deal ? : number;
   stock?: number;
   images?: string[];
   category?: string;
   isActive?: boolean;
+  specifications?: { label: string; value: string }[];
+  variants?: {
+    size: string;
+    expandedSize: string;
+    foldedSize: string;
+    loadCapacity: string;
+    weight: string;
+  }[];
+  details?: {
+    title: string;
+    items: { label: string }[];
+  }[];
+
+  guide?: string[];
+  warnings?: string[];
 };
 
 // Tạo product
@@ -72,7 +104,6 @@ export const getProductById = async (id: string): Promise<ProductDocument | null
 // Cập nhật product
 export const updateProduct = async (data: UpdateProductInput): Promise<ProductDocument | null> => {
   const product = await ProductModel.findById(data.id);
-
   if (!product) return null;
 
   if (data.name !== undefined) product.slug = data.name.toLowerCase().replace(/ /g, "-");
@@ -83,6 +114,11 @@ export const updateProduct = async (data: UpdateProductInput): Promise<ProductDo
   if (data.images !== undefined) product.images = data.images;
   if (data.category !== undefined) product.category = data.category as any;
   if (data.isActive !== undefined) product.isActive = data.isActive;
+  if (data.specifications !== undefined) product.specifications = data.specifications;
+  if (data.variants !== undefined) product.variants = data.variants;
+  if (data.details !== undefined) product.details = data.details;
+  if (data.guide !== undefined) product.guide = data.guide;
+  if (data.warnings !== undefined) product.warnings = data.warnings;
 
   return product.save();
 };
