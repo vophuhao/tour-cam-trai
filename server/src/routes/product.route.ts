@@ -7,6 +7,7 @@ import {
   getProductHandler,
   getProductBySlugHandler
 } from "@/controllers/product.controller";
+import requireAdmin from "@/middleware/requireAdmin";
 import { Router } from "express";
 
 const productRoutes = Router();
@@ -14,9 +15,9 @@ const productRoutes = Router();
 // prefix: /products
 productRoutes.get("/", getProductsPaginatedHandler);
 productRoutes.get("/all", getProductHandler);
-productRoutes.post("/create", createProductHandler);
-productRoutes.post("/update/:id", updateProductHandler);
-productRoutes.post("/delete/:id", deleteProductHandler);
+productRoutes.post("/create", requireAdmin, createProductHandler);
+productRoutes.post("/update/:id", requireAdmin, updateProductHandler);
+productRoutes.post("/delete/:id", requireAdmin, deleteProductHandler);
 productRoutes.get("/get/:id", getProductByIdHandler);
 productRoutes.get("/slug/:slug", getProductBySlugHandler);
 

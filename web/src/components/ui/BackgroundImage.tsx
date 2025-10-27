@@ -1,13 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import landingImg_1 from "@/assets/images/landingImg_1.png"; // dùng alias @ thay vì ../../
+import bg1 from "@/assets/images/bg1.jpg"
 
 const BackgroundImage = () => {
   return (
     <div className="absolute inset-0 -z-10">
       <Image
-        src={landingImg_1}
+        src={bg1}
         alt="Landing background"
         fill
         priority

@@ -128,65 +128,82 @@ export default function ProductDetailPage() {
                     </div>
 
                     {/* Specifications & Details */}
+
                     <div className="space-y-4">
-                        {/* Combined table: specifications + variants */}
+                        {/* Single combined table: specifications + variants (variants as columns) */}
                         <div className="bg-white rounded-xl shadow p-5 overflow-x-auto">
                             <h4 className="font-semibold mb-4">Thông số & Biến thể</h4>
 
-                            <table className="w-full text-sm text-gray-700 table-fixed">
+                            {/*
+      Table layout:
+      - First column: label
+      - Next N columns: one per variant (if any)
+      - For non-variant specs we render a row with the value spanning variant columns
+    */}
+
+                            <table className="w-full text-sm text-gray-700">
+                                <colgroup>
+                                    <col className="w-1/3" />
+                                    {product.variants && product.variants.length > 0 ? (
+                                        product.variants.map((_, i) => <col key={i} />)
+                                    ) : (
+                                        <col />
+                                    )}
+                                </colgroup>
+
                                 <tbody>
-                                    {/* render simple specifications first */}
+                                    {/* Render basic specifications as label + value (value spans variant columns) */}
                                     {product.specifications?.map((s, i) => (
-                                        <tr key={`spec-${i}`} className="border-b last:border-b-0">
-                                            <th className="w-1/3 text-left py-3 pr-4 font-medium text-gray-600 align-top">{s.label}</th>
-                                            <td className="py-3">{s.value}</td>
+                                        <tr key={`spec-${i}`} className="border-t last:border-b-0">
+                                            <th className="text-left py-3 pr-4 font-medium text-gray-600 align-top">{s.label}</th>
+                                            <td className="py-3 text-gray-700" colSpan={product.variants && product.variants.length > 0 ? product.variants.length : 1}>
+                                                {s.value}
+                                            </td>
                                         </tr>
                                     ))}
 
-                                    {/* render variants as grouped rows */}
+                                    {/* If there are variants, render a header row for variant names */}
                                     {product.variants && product.variants.length > 0 && (
                                         <>
-                                            {/* separator */}
-                                            <tr><td colSpan={2} className="py-3" /></tr>
+                                            <tr className="h-3"><td colSpan={1 + product.variants.length} /></tr>
 
-                                            {product.variants.map((v, vi) => (
-                                                <React.Fragment key={`variant-${vi}`}>
-                                                    <tr className="bg-gray-50">
-                                                        <th colSpan={2} className="text-left py-2 px-3 font-medium">
-                                                            Biến thể — {v.size || `#${vi + 1}`}
-                                                        </th>
+                                            <tr className="bg-gray-50">
+                                                <th className="text-left py-2 px-3 font-medium">Biến thể</th>
+                                                {product.variants.map((v, vi) => (
+                                                    <th key={`vh-${vi}`} className="text-left py-2 px-3 font-medium text-gray-700">
+                                                        {v.size || `#${vi + 1}`}
+                                                    </th>
+                                                ))}
+                                            </tr>
+
+                                            {/* Rows for common variant attributes (expandedSize, foldedSize, loadCapacity, weight) */}
+                                            {["expandedSize", "foldedSize", "loadCapacity", "weight"].map((attr) => {
+                                                // human-friendly labels
+                                                const labelMap: Record<string, string> = {
+                                                    expandedSize: "Kích thước (mở rộng)",
+                                                    foldedSize: "Kích thước (gấp)",
+                                                    loadCapacity: "Tải trọng tối đa",
+                                                    weight: "Trọng lượng",
+                                                };
+                                                // check if at least one variant has this attribute
+                                                const hasAny = product.variants!.some((vv: any) => !!vv[attr as keyof typeof vv]);
+                                                if (!hasAny) return null;
+
+                                                return (
+                                                    <tr key={attr} className="border-t">
+                                                        <th className="py-3 pr-4 text-left text-gray-600 align-top">{labelMap[attr]}</th>
+                                                        {product.variants!.map((vv: any, idx: number) => (
+                                                            <td key={idx} className="py-3 text-gray-700">
+                                                                {vv[attr as keyof typeof vv] ?? "—"}
+                                                            </td>
+                                                        ))}
                                                     </tr>
+                                                );
+                                            })}
 
-                                                    {v.expandedSize && (
-                                                        <tr>
-                                                            <th className="py-3 pr-4 text-left text-gray-600">Kích thước (mở rộng)</th>
-                                                            <td className="py-3">{v.expandedSize}</td>
-                                                        </tr>
-                                                    )}
-                                                    {v.foldedSize && (
-                                                        <tr>
-                                                            <th className="py-3 pr-4 text-left text-gray-600">Kích thước (gấp)</th>
-                                                            <td className="py-3">{v.foldedSize}</td>
-                                                        </tr>
-                                                    )}
-                                                    {v.loadCapacity && (
-                                                        <tr>
-                                                            <th className="py-3 pr-4 text-left text-gray-600">Tải trọng tối đa</th>
-                                                            <td className="py-3">{v.loadCapacity}</td>
-                                                        </tr>
-                                                    )}
-                                                    {v.weight && (
-                                                        <tr>
-                                                            <th className="py-3 pr-4 text-left text-gray-600">Trọng lượng</th>
-                                                            <td className="py-3">{v.weight}</td>
-                                                        </tr>
-                                                    )}
-                                                </React.Fragment>
-                                            ))}
-
+                                            {/* If variants have other custom fields, you can add more rows similarly */}
                                         </>
                                     )}
-
                                 </tbody>
                             </table>
                         </div>
@@ -210,6 +227,7 @@ export default function ProductDetailPage() {
                             </div>
                         )}
                     </div>
+
 
                     {/* Guide & Warnings */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
@@ -247,7 +265,7 @@ export default function ProductDetailPage() {
                                 {product.deal ? (
                                     <div className="text-xl line-through text-gray-400">{product.price.toLocaleString()}đ</div>
                                 ) : null}
-                                
+
                             </div>
 
                             <div className="mt-3 flex items-center gap-3 text-sm text-gray-600">

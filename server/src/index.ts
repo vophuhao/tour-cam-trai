@@ -42,9 +42,9 @@ app.use("/auth", authRoutes);
 app.use("/user", authenticate, userRoutes);
 app.use("/sessions", authenticate, sessionRoutes);
 
-app.use("/category", authenticate, requireAdmin, categoryRoutes);
-app.use("/product", authenticate, requireAdmin, productRoutes);
-app.use("/tour", authenticate, requireAdmin, tourRoutes);
+app.use("/category", authenticate, categoryRoutes);
+app.use("/product", authenticate, productRoutes);
+app.use("/tour", authenticate, tourRoutes);
 
 app.use("/media", authenticate, requireAdmin, mediaRoutes);
 // error handler

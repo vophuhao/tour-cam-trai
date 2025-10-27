@@ -58,7 +58,7 @@ const GoogleLoginButton: React.FC = () => {
       className="text-foreground border-border flex w-full items-center justify-center space-x-3 rounded-2xl border bg-white/70 px-4 py-4 font-bold transition-all duration-300 hover:bg-white dark:bg-white/10 dark:hover:bg-white/40"
     >
       <GoogleIcon />
-      <span>Đăng nhập bằng Google</span>
+      <span className="text-black dark:text-white">Đăng nhập bằng Google</span>
     </button>
   );
 };
