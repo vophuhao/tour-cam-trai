@@ -3,7 +3,7 @@ import type { Response } from "express";
 import type { AuthenticatedRequest } from "@/types";
 import catchErrors from "@/utils/catchErrors";
 import { ResponseUtil } from "@/utils/response";
-import  CategoryService  from "../services/category.service";;
+import  CategoryService  from "../services/category.service";
 import { getCategoryByIdSchema } from "@/validators/category.validator";
 
 /**

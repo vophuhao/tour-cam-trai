@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import { Request, Response } from "express";
 import { BAD_REQUEST } from "../constants/http";
 import catchErrors from "../utils/catchErrors";
