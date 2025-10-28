@@ -9,6 +9,7 @@ import {
 } from "@/types/product";
 // Kiểu response chung (nếu backend trả JSON chuẩn { data, message, ... })
 import { ApiResponse, UserResponse, PaginatedResponse } from "@/types/api";
+import { Tour } from "@/types/tour";
 
 // ================== AUTH API ==================
 export const register = async (data: {
@@ -181,7 +182,7 @@ export const getTours = async (
   page = 1,
   limit = 10,
   search?: string
-): Promise<PaginatedResponse> =>
+): Promise<PaginatedResponse<Tour>> =>
   API.get("/tour", { params: { page, limit, search } });
 
 // 🟢 Lấy tất cả tour (không phân trang)

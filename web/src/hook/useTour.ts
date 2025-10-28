@@ -40,7 +40,7 @@ export const useTours = (
   page = 1,
   limit = 10,
   search = ""
-): UseQueryResult<PaginatedResponse<Tour[]>, Error> =>
+): UseQueryResult<PaginatedResponse<Tour>, Error> =>
   useQuery({
     queryKey: TOUR_QUERY_KEYS.list(page),
     queryFn: async () => getTours(page, limit, search),

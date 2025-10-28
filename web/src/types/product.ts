@@ -44,11 +44,28 @@ export interface Product {
   isActive: boolean;
 }
 
+export interface NewProduct {
+  _id: string;
+  name: string;
+  description?: string;
+  price: number;
+  deal: number;
+  stock: number;
+  images: string[];
+  category: { _id: string };
+  specifications?: ProductSpecification[];
+  variants?: ProductVariant[];
+  details?: ProductDetailSection[];
+  guide?: string[];
+  warnings?: string[];
+  isActive: boolean;
+}
 export interface ProductDetail extends Product {
+  slug?: string;
   rating: {
     average: number;
     count: number;
   };
-  count : number;
+  count: number;
   
 }

@@ -5,7 +5,10 @@ export interface ApiResponse<T = any> {
   data?: T;
 }
 
-export type PaginatedResponse<T = any> = ApiResponse<{
+export interface PaginatedResponse<T = any>{
+  success: boolean;
+  message: string;
+  timestamp: string;
   data: T[];
   pagination: {
     page: number;
@@ -15,7 +18,7 @@ export type PaginatedResponse<T = any> = ApiResponse<{
     hasNext: boolean;
     hasPrev: boolean;
   };
-}>;
+}
 
 export interface UserResponse<T = any> {
   role: string | null;

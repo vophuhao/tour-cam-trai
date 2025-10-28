@@ -47,8 +47,8 @@ export default function CategoryPage() {
     try {
       const res = await getCategories(page, limit, search);
       if (res.success) {
-        setCategories(res.data.data);
-        setTotal(res.data.total);
+        setCategories(res.data);
+        setTotal(res.pagination.total);
       } else toast.error(res.message);
     } catch (err: any) {
       toast.error(err.message || "Lỗi lấy danh sách categories");

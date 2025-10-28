@@ -15,7 +15,9 @@ import {
  * @desc Tạo tour mới
  */
 export const createTourHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
+
   const data = createTourSchema.parse(req.body);
+
   const tour = await TourService.createTour(data);
   return ResponseUtil.success(res, tour, "Tạo tour thành công");
 });

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getTours, deleteTour, getTourById, createTour, updateTour, uploadMedia } from "@/lib/api";
 import { toast } from "react-toastify";
 import { Pencil, Trash2, Plus, Search } from "lucide-react";
+import { uploadMedia } from "@/lib/api";
 import TourModal from "@/components/modals/TourModal";
-import { useTours } from "@/hook/useTour";
+
+import { useTours, useTourActions } from "@/hook/useTour";
 
 /* ================== TYPES ================== */
 type Activity = { timeFrom?: string; timeTo?: string; description: string };
@@ -17,7 +18,7 @@ export type TourFormData = {
   code?: string;
   name: string;
   slug?: string;
-  description?: string; // ✅ cho phép undefined
+  description?: string;
   durationDays: number;
   durationNights: number;
   stayType: string;
@@ -30,11 +31,11 @@ export type TourFormData = {
   servicesIncluded: ServiceSection[];
   servicesExcluded: ServiceSection[];
   notes: ServiceSection[];
-  images?: string[]; // ✅ optional
+  images?: string[];
   isActive: boolean;
   viewsCount?: number;
   soldCount?: number;
-  rating?: { average: number; count: number }
+  rating?: { average: number; count: number };
 };
 
 type Tour = TourFormData & {
@@ -43,30 +44,26 @@ type Tour = TourFormData & {
   updatedAt: string;
 };
 
-
 export default function TourPage() {
   const [search, setSearch] = useState("");
-  const [tours, setTours] = useState<Tour[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [page, setPage] = useState(1);
-  const [limit] = useState(10);
-  const [total, setTotal] = useState(0);
+  const [editData, setEditData] = useState<Partial<Tour> | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<Partial<Tour> | null>(null);
-  const { data, isLoading, error } = useTours(1, 10);
-  useEffect(() => {
-    if (data && (data as any).data) {
-      const raw = (data as any).data;
-      // Normalize possible nested arrays (Tour[][]) to Tour[]
-      const normalizedTours = Array.isArray(raw) ? raw.flat() : [];
-      setTours(normalizedTours as Tour[]);
-      setTotal((data as any).pagination?.total ?? 0);
-    }
-  }, [data]);
 
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+
+  // ✅ Dùng React Query hooks
+  const { data, isLoading } = useTours(page, limit, search);
+  const { createTour, updateTour, deleteTour } = useTourActions();
+
+  const tours = data?.data || [];
+  const total = data?.pagination?.total || 0;
+
+  /* ================== 🟢 Handle Submit ================== */
   const handleSubmitTour = async (
-    data: TourFormData,
+    formData: TourFormData,
     existingImages: string[],
     newImages: File[]
   ) => {
@@ -77,52 +74,43 @@ export default function TourPage() {
         const uploadForm = new FormData();
         newImages.forEach((file) => uploadForm.append("files", file));
         const res = await uploadMedia(uploadForm);
-        console.log("Upload response:", res.data);
         uploadedImages = res.data as string[];
       }
+
       const payload = {
-        ...data,
-        images: [...existingImages, ...uploadedImages],
-        description: data.description || "",
+        ...formData,
+        images: [...(existingImages || []), ...uploadedImages],
+        description: formData.description || "",
       };
 
       if (editData && editData._id) {
-        await updateTour(editData._id, payload);
+        updateTour({ id: editData._id, data: payload });
         toast.success("Cập nhật tour thành công!");
       } else {
-        await createTour(payload);
+        createTour(payload as any); // vì createTour cần omit _id
         toast.success("Tạo tour thành công!");
       }
+
       setIsModalOpen(false);
+      setEditData(null);
     } catch (error: any) {
-      console.error(error);
       toast.error(error?.response?.data?.message || "Lỗi khi lưu tour");
     }
   };
 
-
-
-
-  const handleEdit = (tour: TourFormData) => {
-    setEditData(tour);
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      const res = await deleteTour(id);
-      if (res.success) {
+  /* ================== 🟠 Handle Delete ================== */
+  const handleDelete = (id: string) => {
+    deleteTour(id, {
+      onSuccess: () => {
         toast.success("Xóa tour thành công 🎉");
-
-      } else {
-        toast.error(res.message || "Xóa thất bại ❌");
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Lỗi khi xóa tour");
-    }
+      },
+      onError: (err: any) => {
+        toast.error(err.message || "Lỗi khi xóa tour");
+      },
+    });
   };
 
-
+  /* ================== 🧭 Helper ================== */
   const formatDate = (isoDate: string) => {
     const date = new Date(isoDate);
     return `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1)
@@ -157,7 +145,7 @@ export default function TourPage() {
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-[#3B6E5F]  hover:to-[#4A7A57] text-white px-5 py-2 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5"
+          className="flex items-center gap-2 bg-[#3B6E5F] hover:bg-[#4A7A57] text-white px-5 py-2 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5"
         >
           <Plus className="w-5 h-5" /> Tạo Tour
         </button>
@@ -182,38 +170,40 @@ export default function TourPage() {
             {filtered.length > 0 ? (
               filtered.map((tour, idx) => (
                 <tr
-                  key={tour._id}
+                  key={tour._id }
                   className={`transition-all duration-200 ${idx % 2 === 0 ? "bg-[#E6F0E9]" : "bg-[#F4FAF4]"}`}
                 >
                   <td className="px-6 py-4 font-medium text-gray-900">{tour.name}</td>
                   <td className="px-6 py-4 text-gray-600">{tour.code}</td>
-                  <td className="px-6 py-4 text-gray-600">
-                    {tour.soldCount}
-                  </td>
+                  <td className="px-6 py-4 text-gray-600">{tour.soldCount}</td>
                   <td className="px-6 py-4 text-gray-600">
                     {tour.rating?.average ? `${tour.rating.average} (${tour.rating.count})` : "Chưa có đánh giá"}
                   </td>
                   <td className="px-6 py-4">
                     <span
-                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${tour.isActive
-                        ? "bg-green-50 text-green-700 border border-green-200"
-                        : "bg-red-50 text-red-700 border border-red-200"
-                        }`}
+                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
+                        tour.isActive
+                          ? "bg-green-50 text-green-700 border border-green-200"
+                          : "bg-red-50 text-red-700 border border-red-200"
+                      }`}
                     >
                       {tour.isActive ? "Active" : "Inactive"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-gray-600">{formatDate(tour.createdAt)}</td>
+                  <td className="px-6 py-4 text-gray-600">{formatDate(tour.createdAt as any)}</td>
                   <td className="px-6 py-4 text-right space-x-4">
                     <button
-                      onClick={() => handleEdit(tour)}
+                      onClick={() => { 
+                        setEditData(tour);
+                        setIsModalOpen(true);
+                      }}
                       className="text-blue-500 hover:text-blue-700 transition-colors"
                     >
                       <Pencil className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => {
-                        setConfirmDeleteId(tour._id);
+                        setConfirmDeleteId(tour._id as string);
                         setIsConfirmOpen(true);
                       }}
                       className="text-red-500 hover:text-red-700 transition-colors"
@@ -226,7 +216,7 @@ export default function TourPage() {
             ) : (
               <tr>
                 <td colSpan={7} className="px-6 py-10 text-center text-gray-500 text-lg">
-                  Không tìm thấy tour nào.
+                  {isLoading ? "Đang tải dữ liệu..." : "Không tìm thấy tour nào."}
                 </td>
               </tr>
             )}

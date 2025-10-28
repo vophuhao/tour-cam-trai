@@ -4,6 +4,7 @@ import type { CreateTourInput, UpdateTourInput } from "@/validators/tour.validat
 class TourService {
   /** Tạo tour mới */
   static async createTour(data: CreateTourInput) {
+    data.slug = data.name.toLowerCase().replace(/ /g, "-");
     return await TourModel.create(data);
   }
 
@@ -40,6 +41,7 @@ static async getToursPaginated(page: number, limit: number, search?: string) {
 
   /** Cập nhật tour */
   static async updateTour(id: string, data: UpdateTourInput) {
+    data.slug = data.name!.toLowerCase().replace(/ /g, "-");
     return await TourModel.findByIdAndUpdate(id, data, {
       new: true,
       runValidators: true,

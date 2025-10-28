@@ -15,13 +15,14 @@ import {
   updateProduct,
   deleteProduct,
 } from "@/lib/api";
-import { ApiResponse } from "@/lib/api";
+import { ApiResponse, PaginatedResponse } from "@/types/api";
 import {
   Product,
   ProductSpecification,
   ProductVariant,
-  ProductDetailSection,
-  Category,
+  ProductDetail,
+  NewProduct,
+
 } from "@/types/product";
 
 /* ===========================
@@ -41,7 +42,7 @@ export const useProducts = (
   page = 1,
   limit = 10,
   search = ""
-): UseQueryResult<ApiResponse<Product[]>, Error> =>
+): UseQueryResult<PaginatedResponse<Product>, Error> =>
   useQuery({
     queryKey: PRODUCT_QUERY_KEYS.list(page),
     queryFn: async () => getProduct(page, limit, search),
@@ -52,7 +53,7 @@ export const useProducts = (
 /* ===========================
  * 🟢 Lấy tất cả sản phẩm (không phân trang)
  * =========================== */
-export const useAllProducts = (): UseQueryResult<ApiResponse<Product[]>, Error> =>
+export const useAllProducts = (): UseQueryResult<ApiResponse<ProductDetail[]>, Error> =>
   useQuery({
     queryKey: PRODUCT_QUERY_KEYS.all,
     queryFn: async () => getAllProduct(),
@@ -79,7 +80,7 @@ export const useProductBySlug = (
 export const useCreateProduct = (): UseMutationResult<
   ApiResponse<any>,
   Error,
-  Omit<Product, "_id" | "createdAt" | "updatedAt">
+  Omit<NewProduct, "_id" | "createdAt" | "updatedAt">
 > => {
   const queryClient = useQueryClient();
 
