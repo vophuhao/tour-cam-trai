@@ -5,6 +5,7 @@ import { getTours, deleteTour, getTourById, createTour, updateTour, uploadMedia 
 import { toast } from "react-toastify";
 import { Pencil, Trash2, Plus, Search } from "lucide-react";
 import TourModal from "@/components/modals/TourModal";
+import { useTours } from "@/hook/useTour";
 
 /* ================== TYPES ================== */
 type Activity = { timeFrom?: string; timeTo?: string; description: string };
@@ -42,7 +43,7 @@ type Tour = TourFormData & {
   updatedAt: string;
 };
 
-/* ================== MAIN COMPONENT ================== */
+
 export default function TourPage() {
   const [search, setSearch] = useState("");
   const [tours, setTours] = useState<Tour[]>([]);
@@ -53,20 +54,16 @@ export default function TourPage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Tour> | null>(null);
-
-
-  /* ================== API ================== */
-  const fetchTours = async () => {
-    try {
-      const res = await getTours(page, limit, search);
-      if (res.success) {
-        setTours(res.data.data);
-        setTotal(res.data.total);
-      } else toast.error(res.message);
-    } catch (err: any) {
-      toast.error(err.message || "Lỗi lấy danh sách tour");
+  const { data, isLoading, error } = useTours(1, 10);
+  useEffect(() => {
+    if (data && (data as any).data) {
+      const raw = (data as any).data;
+      // Normalize possible nested arrays (Tour[][]) to Tour[]
+      const normalizedTours = Array.isArray(raw) ? raw.flat() : [];
+      setTours(normalizedTours as Tour[]);
+      setTotal((data as any).pagination?.total ?? 0);
     }
-  };
+  }, [data]);
 
   const handleSubmitTour = async (
     data: TourFormData,
@@ -96,8 +93,6 @@ export default function TourPage() {
         await createTour(payload);
         toast.success("Tạo tour thành công!");
       }
-
-      fetchTours();
       setIsModalOpen(false);
     } catch (error: any) {
       console.error(error);
@@ -118,7 +113,7 @@ export default function TourPage() {
       const res = await deleteTour(id);
       if (res.success) {
         toast.success("Xóa tour thành công 🎉");
-        fetchTours();
+
       } else {
         toast.error(res.message || "Xóa thất bại ❌");
       }
@@ -127,11 +122,7 @@ export default function TourPage() {
     }
   };
 
-  useEffect(() => {
-    fetchTours();
-  }, [page, search]);
 
-  /* ================== RENDER ================== */
   const formatDate = (isoDate: string) => {
     const date = new Date(isoDate);
     return `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1)

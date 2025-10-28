@@ -34,6 +34,8 @@ tourRoutes.patch("/:id/activate", activateTourHandler);
 // Hủy kích hoạt tour
 tourRoutes.patch("/:id/deactivate", deactivateTourHandler);
 
+
+
 tourRoutes.get("/slug/:slug", getTourBySlugHandler);
 
 export default tourRoutes;

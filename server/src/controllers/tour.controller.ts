@@ -30,8 +30,20 @@ export const getToursPaginatedHandler = catchErrors(async (req: AuthenticatedReq
   const search = (req.query.search as string) || undefined;
 
   const result = await TourService.getToursPaginated(page, limit, search);
-  return ResponseUtil.success(res, result, "Lấy danh sách tour thành công");
+
+  // ✅ Tách rõ mảng data và thông tin phân trang
+  return ResponseUtil.paginated(
+    res,
+    result.data, // mảng tour
+    {
+      ...result.pagination,
+      hasNext: page < result.pagination.totalPages,
+      hasPrev: page > 1,
+    },
+    "Lấy danh sách tour thành công"
+  );
 });
+
 
 /**
  * @route GET /tours/:id

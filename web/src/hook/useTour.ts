@@ -19,61 +19,10 @@ import {
   deactivateTour,
   getTourBySlug,
 } from "@/lib/api";
-import { ApiResponse } from "@/lib/api";
+import { ApiResponse, PaginatedResponse } from "@/types/api";
 
+import { Tour } from "@/types/tour";
 
-export interface Tour {
-  _id: string;
-  code?: string;
-  name: string;
-  slug?: string;
-  description: string;
-  durationDays: number;
-  durationNights: number;
-  stayType: string;
-  transportation: string;
-  departurePoint: string;
-  departureFrequency?: string;
-  targetAudience?: string;
-
-  itinerary: {
-    day: number;
-    title: string;
-    activities: {
-      timeFrom?: string;
-      timeTo?: string;
-      description: string;
-    }[];
-  }[];
-
-  priceOptions: {
-    name: string;
-    price: number;
-    minPeople?: number;
-    maxPeople?: number;
-  }[];
-
-  servicesIncluded: {
-    title: string;
-    details: { value: string }[];
-  }[];
-  servicesExcluded: {
-    title: string;
-    details: { value: string }[];
-  }[];
-  notes: {
-    title: string;
-    details: { value: string }[];
-  }[];
-
-  images: string[];
-  isActive: boolean;
-  rating?: { average: number; count: number };
-  viewsCount?: number;
-  soldCount?: number;
-  createdAt: string;
-  updatedAt: string;
-}
 
 /* ===========================
  * 🗝️ Query keys (cache key)
@@ -91,7 +40,7 @@ export const useTours = (
   page = 1,
   limit = 10,
   search = ""
-): UseQueryResult<ApiResponse<Tour[]>, Error> =>
+): UseQueryResult<PaginatedResponse<Tour[]>, Error> =>
   useQuery({
     queryKey: TOUR_QUERY_KEYS.list(page),
     queryFn: async () => getTours(page, limit, search),

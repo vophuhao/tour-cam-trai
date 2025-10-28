@@ -8,20 +8,7 @@ import {
   Category,
 } from "@/types/product";
 // Kiểu response chung (nếu backend trả JSON chuẩn { data, message, ... })
-export interface UserResponse<T = any> {
-  role: string | null;
-  data: T;
-  message?: string;
-  status?: number;
-}
-// Định nghĩa chung, giống ResponseUtil.success ở backend
-export interface ApiResponse<T = any> {
-  success: boolean;
-  message: string;
-  timestamp: string;
-  data?: T;
-}
-
+import { ApiResponse, UserResponse, PaginatedResponse } from "@/types/api";
 
 // ================== AUTH API ==================
 export const register = async (data: {
@@ -109,7 +96,7 @@ export const analyzeMedia = async (formData: FormData): Promise<ApiResponse> =>
 
 // ================== category API ==================
 export const getCategories = async (page = 1, limit = 10, search?: string):
-   Promise<ApiResponse> =>  API.get("/category", {
+   Promise<PaginatedResponse> =>  API.get("/category", {
     params: { page, limit, search }})
 
 export const getAllCategories = async ():
@@ -174,7 +161,7 @@ export const updateProduct = async (
 ): Promise<ApiResponse> => API.post(`/product/update/${id}`, data);
 
 export const getProduct = async (page = 1, limit = 10, search?: string):
-   Promise<ApiResponse> =>  API.get("/product", {
+   Promise<PaginatedResponse> =>  API.get("/product", {
     params: { page, limit, search }})
 
 export const getProductBySlug = async (slug: string) : Promise<ApiResponse> => 
@@ -194,7 +181,7 @@ export const getTours = async (
   page = 1,
   limit = 10,
   search?: string
-): Promise<ApiResponse> =>
+): Promise<PaginatedResponse> =>
   API.get("/tour", { params: { page, limit, search } });
 
 // 🟢 Lấy tất cả tour (không phân trang)
