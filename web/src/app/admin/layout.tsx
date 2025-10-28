@@ -1,11 +1,13 @@
 "use client";
 import AdminSidebar from "@/components/AdminSidebar"
+import useAuth from "@/hook/useAuth";
 import { useRequireRole } from "@/hook/useRequireRole"
 import { navigate } from "@/lib/navigation";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const role = localStorage.getItem("role")
-  if (role != "admin") {
+  const {user} = useAuth()
+  if (role != "admin" || !user) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
         <h1 className="text-9xl font-extrabold text-gray-300">404</h1>

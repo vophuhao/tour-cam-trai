@@ -1,10 +1,10 @@
 // src/controllers/categoryController.ts
-import type { Response } from "express";
 import type { AuthenticatedRequest } from "@/types";
 import catchErrors from "@/utils/catchErrors";
 import { ResponseUtil } from "@/utils/response";
-import CategoryService from "../services/category.service";
 import { getCategoryByIdSchema } from "@/validators/category.validator";
+import type { Response } from "express";
+import CategoryService from "../services/category.service";
 
 /**
  * Create a new category
@@ -35,7 +35,7 @@ export const getCategoriesPaginatedHandler = catchErrors(
 );
 
 export const getCategoriesHandler = catchErrors(
-  async (req: AuthenticatedRequest, res: Response) => {
+  async (_req: AuthenticatedRequest, res: Response) => {
     const result = await CategoryService.getCategory();
 
     return ResponseUtil.success(res, result, "Lấy danh sách categories thành công");
