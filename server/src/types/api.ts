@@ -1,5 +1,5 @@
-import type { Request } from 'express';
-import type mongoose from 'mongoose';
+import type { Request } from "express";
+import type mongoose from "mongoose";
 
 // Base API Response Types
 export interface ApiResponse<T = unknown> {
@@ -38,7 +38,7 @@ export interface PaginationQuery {
   page?: string;
   limit?: string;
   sort?: string;
-  order?: 'asc' | 'desc';
+  order?: "asc" | "desc";
 }
 
 // Auth Types
@@ -76,7 +76,7 @@ export interface UserProfile {
   bio?: string;
   avatarUrl?: string;
   verified: boolean;
-  provider: 'local' | 'google' | 'google+local';
+  provider: "local" | "google" | "google+local";
   followersCount: number;
   followingCount: number;
   createdAt: Date;
@@ -94,7 +94,7 @@ export interface UpdateUserData {
 export interface EmailVerificationData {
   email: string;
   code: string;
-  type: 'email_verification' | 'password_reset';
+  type: "email_verification" | "password_reset";
   expiresAt: Date;
 }
 
@@ -108,7 +108,7 @@ export interface GoogleUserData {
 
 // Environment Types
 export interface EnvironmentConfig {
-  NODE_ENV: 'development' | 'production' | 'test';
+  NODE_ENV: "development" | "production" | "test";
   PORT: number;
   MONGO_URI: string;
   JWT_SECRET: string;

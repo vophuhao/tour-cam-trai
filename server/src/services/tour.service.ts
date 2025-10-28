@@ -7,31 +7,30 @@ class TourService {
     return await TourModel.create(data);
   }
 
-/** Lấy danh sách tour có phân trang + tìm kiếm */
-static async getToursPaginated(page: number, limit: number, search?: string) {
-  const query: Record<string, any> = {};
+  /** Lấy danh sách tour có phân trang + tìm kiếm */
+  static async getToursPaginated(page: number, limit: number, search?: string) {
+    const query: Record<string, any> = {};
 
-  if (search) {
-    query.name = { $regex: search, $options: "i" };
+    if (search) {
+      query.name = { $regex: search, $options: "i" };
+    }
+
+    const total = await TourModel.countDocuments(query);
+    const tours = await TourModel.find(query)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .sort({ createdAt: -1 });
+
+    return {
+      data: tours,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
-
-  const total = await TourModel.countDocuments(query);
-  const tours = await TourModel.find(query)
-    .skip((page - 1) * limit)
-    .limit(limit)
-    .sort({ createdAt: -1 });
-
-  return {
-    data: tours,
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    },
-  };
-}
-
 
   /** Lấy tour theo ID */
   static async getTourById(id: string) {
@@ -64,7 +63,6 @@ static async getToursPaginated(page: number, limit: number, search?: string) {
   static async getTourBySlug(slug: string) {
     return await TourModel.findOne({ slug });
   }
-
 }
 
 export default TourService;

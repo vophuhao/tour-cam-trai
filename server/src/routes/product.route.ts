@@ -5,7 +5,7 @@ import {
   deleteProductHandler,
   getProductByIdHandler,
   getProductHandler,
-  getProductBySlugHandler
+  getProductBySlugHandler,
 } from "@/controllers/product.controller";
 import requireAdmin from "@/middleware/requireAdmin";
 import { Router } from "express";

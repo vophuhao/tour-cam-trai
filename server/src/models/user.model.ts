@@ -6,7 +6,7 @@ export interface UserDocument extends mongoose.Document {
   password: string;
   createdAt: Date;
   updatedAt: Date;
-  role : "admin" | "user"
+  role: "admin" | "user";
   username: string;
   avatarUrl?: string;
   phoneNumber?: string;
@@ -38,8 +38,8 @@ const userSchema = new mongoose.Schema<UserDocument>(
       maxlength: 30,
       match: /^[\p{L}\p{N}._\s]+$/u,
     },
-    role:{
-      type : String,
+    role: {
+      type: String,
       enum: ["admin", "user"],
       default: "user",
     },
@@ -65,7 +65,6 @@ const userSchema = new mongoose.Schema<UserDocument>(
     },
 
     // Social counts
-
   },
   { timestamps: true }
 );

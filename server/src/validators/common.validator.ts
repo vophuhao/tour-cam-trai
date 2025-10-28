@@ -34,14 +34,14 @@ export const paginationSchema = z.object({
     .string()
     .optional()
     .default("1")
-    .transform(val => parseInt(val, 10))
-    .refine(val => val > 0, "Page must be greater than 0"),
+    .transform((val) => parseInt(val, 10))
+    .refine((val) => val > 0, "Page must be greater than 0"),
   limit: z
     .string()
     .optional()
     .default("10")
-    .transform(val => parseInt(val, 10))
-    .refine(val => val > 0 && val <= 100, "Limit must be between 1 and 100"),
+    .transform((val) => parseInt(val, 10))
+    .refine((val) => val > 0 && val <= 100, "Limit must be between 1 and 100"),
   sort: z.string().optional().default("createdAt"),
   order: z.enum(["asc", "desc"]).optional().default("desc"),
 });

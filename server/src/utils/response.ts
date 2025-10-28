@@ -1,5 +1,5 @@
-import type { ApiResponse, PaginatedResponse } from '@/types';
-import type { Response } from 'express';
+import type { ApiResponse, PaginatedResponse } from "@/types";
+import type { Response } from "express";
 
 /**
  * Utility class for creating consistent API responses
@@ -11,7 +11,7 @@ export class ResponseUtil {
   static success<T>(
     res: Response,
     data?: T,
-    message = 'Success',
+    message = "Success",
     statusCode = 200
   ): Response<ApiResponse<T>> {
     const response: ApiResponse<T> = {
@@ -29,7 +29,7 @@ export class ResponseUtil {
    */
   static error(
     res: Response,
-    message = 'Internal Server Error',
+    message = "Internal Server Error",
     statusCode = 500,
     errors?: string[]
   ): Response<ApiResponse<never>> {
@@ -57,7 +57,7 @@ export class ResponseUtil {
       hasNext: boolean;
       hasPrev: boolean;
     },
-    message = 'Success',
+    message = "Success",
     statusCode = 200
   ): Response<PaginatedResponse<T>> {
     const response: PaginatedResponse<T> = {
@@ -77,7 +77,7 @@ export class ResponseUtil {
   static created<T>(
     res: Response,
     data?: T,
-    message = 'Resource created successfully'
+    message = "Resource created successfully"
   ): Response<ApiResponse<T>> {
     return this.success(res, data, message, 201);
   }
@@ -94,7 +94,7 @@ export class ResponseUtil {
    */
   static badRequest(
     res: Response,
-    message = 'Bad Request',
+    message = "Bad Request",
     errors?: string[]
   ): Response<ApiResponse<never>> {
     return this.error(res, message, 400, errors);
@@ -103,30 +103,21 @@ export class ResponseUtil {
   /**
    * Send unauthorized response
    */
-  static unauthorized(
-    res: Response,
-    message = 'Unauthorized'
-  ): Response<ApiResponse<never>> {
+  static unauthorized(res: Response, message = "Unauthorized"): Response<ApiResponse<never>> {
     return this.error(res, message, 401);
   }
 
   /**
    * Send forbidden response
    */
-  static forbidden(
-    res: Response,
-    message = 'Forbidden'
-  ): Response<ApiResponse<never>> {
+  static forbidden(res: Response, message = "Forbidden"): Response<ApiResponse<never>> {
     return this.error(res, message, 403);
   }
 
   /**
    * Send not found response
    */
-  static notFound(
-    res: Response,
-    message = 'Resource not found'
-  ): Response<ApiResponse<never>> {
+  static notFound(res: Response, message = "Resource not found"): Response<ApiResponse<never>> {
     return this.error(res, message, 404);
   }
 
@@ -135,7 +126,7 @@ export class ResponseUtil {
    */
   static conflict(
     res: Response,
-    message = 'Conflict',
+    message = "Conflict",
     errors?: string[]
   ): Response<ApiResponse<never>> {
     return this.error(res, message, 409, errors);
@@ -146,7 +137,7 @@ export class ResponseUtil {
    */
   static unprocessableEntity(
     res: Response,
-    message = 'Validation failed',
+    message = "Validation failed",
     errors?: string[]
   ): Response<ApiResponse<never>> {
     return this.error(res, message, 422, errors);

@@ -46,7 +46,7 @@ export interface ProductDocument extends mongoose.Document {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
-  rating ?: {
+  rating?: {
     average: number;
     count: number;
   };

@@ -24,14 +24,16 @@ export const createTourHandler = catchErrors(async (req: AuthenticatedRequest, r
  * @route GET /tours
  * @desc Lấy danh sách tour (phân trang + tìm kiếm)
  */
-export const getToursPaginatedHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-  const page = parseInt(req.query.page as string) || 1;
-  const limit = parseInt(req.query.limit as string) || 10;
-  const search = (req.query.search as string) || undefined;
+export const getToursPaginatedHandler = catchErrors(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = (req.query.search as string) || undefined;
 
-  const result = await TourService.getToursPaginated(page, limit, search);
-  return ResponseUtil.success(res, result, "Lấy danh sách tour thành công");
-});
+    const result = await TourService.getToursPaginated(page, limit, search);
+    return ResponseUtil.success(res, result, "Lấy danh sách tour thành công");
+  }
+);
 
 /**
  * @route GET /tours/:id
@@ -39,7 +41,7 @@ export const getToursPaginatedHandler = catchErrors(async (req: AuthenticatedReq
  */
 export const getTourByIdHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
   const { id } = getTourByIdSchema.parse(req.params);
-  console.log(id)
+  console.log(id);
   const tour = await TourService.getTourById(id);
 
   if (!tour) return ResponseUtil.notFound(res, "Không tìm thấy tour");
@@ -91,20 +93,24 @@ export const activateTourHandler = catchErrors(async (req: AuthenticatedRequest,
  * @route PATCH /tours/:id/deactivate
  * @desc Hủy kích hoạt tour
  */
-export const deactivateTourHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = getTourByIdSchema.parse(req.params);
-  const tour = await TourService.deactivateTour(id);
+export const deactivateTourHandler = catchErrors(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { id } = getTourByIdSchema.parse(req.params);
+    const tour = await TourService.deactivateTour(id);
 
-  if (!tour) return ResponseUtil.notFound(res, "Không tìm thấy tour để hủy kích hoạt");
+    if (!tour) return ResponseUtil.notFound(res, "Không tìm thấy tour để hủy kích hoạt");
 
-  return ResponseUtil.success(res, tour, "Hủy kích hoạt tour thành công");
-});
+    return ResponseUtil.success(res, tour, "Hủy kích hoạt tour thành công");
+  }
+);
 
-export const getTourBySlugHandler = catchErrors(async (req: AuthenticatedRequest, res: Response) => {
-  const { slug } = getTourBySlugSchema.parse(req.params);
-  const tour = await TourService.getTourBySlug(slug); 
+export const getTourBySlugHandler = catchErrors(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { slug } = getTourBySlugSchema.parse(req.params);
+    const tour = await TourService.getTourBySlug(slug);
 
-  if (!tour) return ResponseUtil.notFound(res, "Không tìm thấy tour");
+    if (!tour) return ResponseUtil.notFound(res, "Không tìm thấy tour");
 
-  return ResponseUtil.success(res, tour, "Lấy thông tin tour thành công");
-});
+    return ResponseUtil.success(res, tour, "Lấy thông tin tour thành công");
+  }
+);

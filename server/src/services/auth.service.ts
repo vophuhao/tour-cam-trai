@@ -53,12 +53,10 @@ export const sendEmailVerification = async (email: string) => {
   return verificationCode;
 };
 
-
 export const createAccount = async (data: CreateAccountParams) => {
   const existingUser = await UserModel.exists({ email: data.email });
   appAssert(!existingUser, CONFLICT, "Email already in use");
 
- 
   const user = await UserModel.create({
     email: data.email,
     username: data.username,
@@ -94,7 +92,7 @@ export const loginUser = async ({ email, password, userAgent }: LoginParams) => 
   );
 
   const userId = user._id;
-  const role=user.role
+  const role = user.role;
   const session = await SessionModel.create({
     userId,
     userAgent,
@@ -171,12 +169,11 @@ export const loginWithGoogle = async ({
 
   return {
     user: user.omitPassword(),
-    role: user.role,       // ✅ trả role ra đây
+    role: user.role, // ✅ trả role ra đây
     accessToken,
     refreshToken,
   };
 };
-
 
 export const verifyEmail = async (code: string) => {
   const validCode = await VerificationCodeModel.findOne({

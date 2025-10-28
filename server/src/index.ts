@@ -35,19 +35,18 @@ app.get("/", (_, res) => {
   });
 });
 
-// auth routes
+// public routes
 app.use("/auth", authRoutes);
 
 // protected routes
 app.use("/user", authenticate, userRoutes);
 app.use("/sessions", authenticate, sessionRoutes);
-
 app.use("/category", authenticate, categoryRoutes);
 app.use("/product", authenticate, productRoutes);
 app.use("/tour", authenticate, tourRoutes);
-
 app.use("/media", authenticate, requireAdmin, mediaRoutes);
-// error handler
+
+// error handler middleware
 app.use(errorHandler);
 
 app.listen(PORT, async () => {

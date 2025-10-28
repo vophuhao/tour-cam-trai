@@ -2,7 +2,7 @@ import CategoryModel, { CategoryDocument } from "../models/category.model";
 
 type CreateCategoryInput = {
   name: string;
-  isActive: boolean
+  isActive: boolean;
 };
 
 type UpdateCategoryInput = {
@@ -47,7 +47,9 @@ export const getCategory = async (): Promise<CategoryDocument[]> => {
 };
 
 // Cập nhật category
-export const updateCategory = async (data: UpdateCategoryInput): Promise<CategoryDocument | null> => {
+export const updateCategory = async (
+  data: UpdateCategoryInput
+): Promise<CategoryDocument | null> => {
   const category = await CategoryModel.findById(data.id);
   if (!category) return null;
 
@@ -61,7 +63,7 @@ export const updateCategory = async (data: UpdateCategoryInput): Promise<Categor
 export const deleteCategory = async (id: string): Promise<boolean> => {
   const category = await CategoryModel.findById(id);
   if (!category) return false;
-  await category.deleteOne()
+  await category.deleteOne();
   return true;
 };
 

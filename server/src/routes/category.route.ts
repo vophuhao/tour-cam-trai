@@ -1,8 +1,10 @@
-import { getCategoriesPaginatedHandler , createCategoryHandler,
-    updateCategoryHandler,
-    deleteCategoryHandler,
-    getCategoryByIdHandler,
-    getCategoriesHandler
+import {
+  getCategoriesPaginatedHandler,
+  createCategoryHandler,
+  updateCategoryHandler,
+  deleteCategoryHandler,
+  getCategoryByIdHandler,
+  getCategoriesHandler,
 } from "@/controllers/category.controller";
 import { Router } from "express";
 import requireAdmin from "@/middleware/requireAdmin";

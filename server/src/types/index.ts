@@ -1,12 +1,12 @@
 // Re-export all types for easier imports
-export * from './api';
+export * from "./api";
 
 // Type guards
-export const isString = (value: unknown): value is string => typeof value === 'string';
-export const isNumber = (value: unknown): value is number => typeof value === 'number';
-export const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
-export const isObject = (value: unknown): value is object => 
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+export const isString = (value: unknown): value is string => typeof value === "string";
+export const isNumber = (value: unknown): value is number => typeof value === "number";
+export const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
+export const isObject = (value: unknown): value is object =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
 export const isArray = <T>(value: unknown): value is T[] => Array.isArray(value);
 
 // Async utility types
@@ -25,7 +25,7 @@ export interface ServiceResult<T = unknown> {
 }
 
 // HTTP Status codes type
-export type HttpStatusCode = 
+export type HttpStatusCode =
   | 200 // OK
   | 201 // Created
   | 204 // No Content

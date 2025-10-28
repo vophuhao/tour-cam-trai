@@ -9,7 +9,7 @@ import { ResponseUtil } from "@/utils/response";
  * Handle Zod validation errors
  */
 const handleZodError = (res: Response, error: z.ZodError) => {
-  const errors = error.issues.map(err => `${err.path.join(".")}: ${err.message}`);
+  const errors = error.issues.map((err) => `${err.path.join(".")}: ${err.message}`);
   return ResponseUtil.unprocessableEntity(res, "Validation failed", errors);
 };
 

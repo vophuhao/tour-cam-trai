@@ -5,7 +5,7 @@ type CreateProductInput = {
   slug?: string;
   description?: string;
   price: number;
-  deal ? : number;
+  deal?: number;
   stock?: number;
   images?: string[];
   category: string;
@@ -17,19 +17,18 @@ type CreateProductInput = {
     foldedSize: string;
     loadCapacity: string;
     weight: string;
-  }[]; // ✅ Thêm phần biến thể 
+  }[]; // ✅ Thêm phần biến thể
   details?: {
     title: string;
     items: { label: string }[];
-  }[]; // ✅ Thêm phần chi tiết dạng phân cấp   
+  }[]; // ✅ Thêm phần chi tiết dạng phân cấp
   guide?: string[]; // ✅ Hướng dẫn sử dụng từng bước
   warnings?: string[]; // ✅ Lưu ý từng bước
-   rating?: {
+  rating?: {
     average: number;
     count: number;
   };
-  count ?: number;
-
+  count?: number;
 };
 
 type UpdateProductInput = {
@@ -38,7 +37,7 @@ type UpdateProductInput = {
   name?: string;
   description?: string;
   price?: number;
-  deal ? : number;
+  deal?: number;
   stock?: number;
   images?: string[];
   category?: string;
@@ -55,7 +54,7 @@ type UpdateProductInput = {
     title: string;
     items: { label: string }[];
   }[];
- 
+
   guide?: string[];
   warnings?: string[];
 };

@@ -1,4 +1,4 @@
-import transporter from '@/config/mailer';
+import transporter from "@/config/mailer";
 
 type Params = {
   to: string;

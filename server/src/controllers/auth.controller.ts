@@ -79,11 +79,11 @@ export const loginHandler = catchErrors(async (req, res) => {
     ...req.body,
     userAgent: req.headers["user-agent"] || undefined,
   });
-  const { role,accessToken, refreshToken } = await loginUser(request);
+  const { role, accessToken, refreshToken } = await loginUser(request);
 
   // set cookies and send response
   setAuthCookies({ res, accessToken, refreshToken });
-  return ResponseUtil.success(res,{role, accessToken }, "Login successful");
+  return ResponseUtil.success(res, { role, accessToken }, "Login successful");
 });
 
 export const logoutHandler = catchErrors(async (req, res) => {
