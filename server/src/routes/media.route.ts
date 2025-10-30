@@ -1,9 +1,12 @@
+import { MediaController } from "@/controllers";
+import { upload } from "@/middleware";
 import { Router } from "express";
-import { saveMediaHandler } from "../controllers/media.controller";
-import upload from "../middleware/upload";
 
 const mediaRoutes = Router();
 
-mediaRoutes.post("/save", upload.array("files", 10), saveMediaHandler);
+const mediaController = new MediaController();
+
+// prefix: /media
+mediaRoutes.post("/save", upload.array("files", 10), mediaController.saveMediaHandler);
 
 export default mediaRoutes;

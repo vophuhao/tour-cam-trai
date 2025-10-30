@@ -1,85 +1,75 @@
 // src/controllers/categoryController.ts
-import type { AuthenticatedRequest } from "@/types";
-import catchErrors from "@/utils/catchErrors";
-import { ResponseUtil } from "@/utils/response";
+import { catchErrors } from "@/errors";
+import type CategoryService from "@/services/category.service";
+import { ResponseUtil } from "@/utils";
 import { getCategoryByIdSchema } from "@/validators/category.validator";
-import type { Response } from "express";
-import CategoryService from "../services/category.service";
 
-/**
- * Create a new category
- * @route POST /categories
- */
-export const createCategoryHandler = catchErrors(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const { name, isActive } = req.body; // destructure cho rõ ràng
-    const result = await CategoryService.createCategory({ name, isActive });
+export default class CategoryController {
+  constructor(private readonly categoryService: CategoryService) {}
+
+  /**
+   * Create a new category
+   * @route POST /categories
+   */
+  createCategory = catchErrors(async (req, res) => {
+    const { name, isActive } = req.body;
+    const result = await this.categoryService.createCategory({ name, isActive });
     return ResponseUtil.success(res, result, "Tạo category thành công");
-  }
-);
+  });
 
-/**
- * Get all categories
- * @route GET /categories
- */
-export const getCategoriesPaginatedHandler = catchErrors(
-  async (req: AuthenticatedRequest, res: Response) => {
+  /**
+   * Get all categories
+   * @route GET /categories
+   */
+  getCategoriesPaginated = catchErrors(async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = (req.query.search as string) || undefined;
 
-    const result = await CategoryService.getCategoriesPaginated(page, limit, search);
+    const result = await this.categoryService.getCategoriesPaginated(page, limit, search);
 
     return ResponseUtil.success(res, result, "Lấy danh sách categories phân trang thành công");
-  }
-);
+  });
 
-export const getCategoriesHandler = catchErrors(
-  async (_req: AuthenticatedRequest, res: Response) => {
-    const result = await CategoryService.getCategory();
+  getCategories = catchErrors(async (_req, res) => {
+    const result = await this.categoryService.getCategory();
 
     return ResponseUtil.success(res, result, "Lấy danh sách categories thành công");
-  }
-);
+  });
 
-/**
- * Get category by ID
- * @route GET /categories/:id
- */
-export const getCategoryByIdHandler = catchErrors(
-  async (req: AuthenticatedRequest, res: Response) => {
+  /**
+   * Get category by ID
+   * @route GET /categories/:id
+   */
+  getCategoryById = catchErrors(async (req, res) => {
     const { id } = getCategoryByIdSchema.parse(req.params);
-    const result = await CategoryService.getCategoryById(id);
+    const result = await this.categoryService.getCategoryById(id);
     return ResponseUtil.success(res, result);
-  }
-);
+  });
 
-/**
- * Update a category
- * @route PUT /categories/:id
- */
-export const updateCategoryHandler = catchErrors(
-  async (req: AuthenticatedRequest, res: Response) => {
+  /**
+   * Update a category
+   * @route PUT /categories/:id
+   */
+  updateCategory = catchErrors(async (req, res) => {
     const { id } = getCategoryByIdSchema.parse(req.params);
     const { name, isActive } = req.body;
-    const result = await CategoryService.updateCategory({
+    const result = await this.categoryService.updateCategory({
       id,
       name,
       isActive,
     });
 
     return ResponseUtil.success(res, result);
-  }
-);
+  });
 
-/**
- * Delete a category
- * @route DELETE /categories/:id
- */
-export const deleteCategoryHandler = catchErrors(
-  async (req: AuthenticatedRequest, res: Response) => {
+  /**
+   * Delete a category
+   * @route DELETE /categories/:id
+   */
+  deleteCategory = catchErrors(async (req, res) => {
     const { id } = getCategoryByIdSchema.parse(req.params);
-    await CategoryService.deleteCategory(id);
+    await this.categoryService.deleteCategory(id);
     return ResponseUtil.success(res, { message: "Category deleted successfully" });
-  }
-);
+  });
+}

@@ -1,4 +1,4 @@
-import { oneHourFromNow } from "@/utils/date";
+import { oneWeekFromNow } from "@/utils";
 import mongoose from "mongoose";
 
 export interface SessionDocument extends mongoose.Document {
@@ -23,9 +23,10 @@ const sessionSchema = new mongoose.Schema<SessionDocument>({
   expiresAt: {
     type: Date,
     required: true,
-    default: oneHourFromNow,
+    default: oneWeekFromNow,
   },
 });
 
 const SessionModel = mongoose.model<SessionDocument>("Session", sessionSchema);
+
 export default SessionModel;

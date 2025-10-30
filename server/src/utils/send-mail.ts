@@ -1,4 +1,4 @@
-import transporter from "@/config/mailer";
+import { transporter } from "@/config";
 
 type Params = {
   to: string;
@@ -10,7 +10,7 @@ type Params = {
 export const sendMail = async ({ to, subject, text, html }: Params) => {
   try {
     const info = await transporter.sendMail({
-      from: `"My App" <${process.env.EMAIL_USER}>`,
+      from: "My App",
       to,
       subject,
       text,
@@ -29,12 +29,3 @@ export const sendMail = async ({ to, subject, text, html }: Params) => {
     };
   }
 };
-
-// export const sendMail = async ({ to, subject, text, html }: Params) =>
-//   await resend.emails.send({
-//     from: getFromEmail(),
-//     to: getToEmail(to),
-//     subject,
-//     text,
-//     html,
-//   });

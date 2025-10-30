@@ -1,24 +1,21 @@
-import {
-  getProductsPaginatedHandler,
-  createProductHandler,
-  updateProductHandler,
-  deleteProductHandler,
-  getProductByIdHandler,
-  getProductHandler,
-  getProductBySlugHandler,
-} from "@/controllers/product.controller";
-import requireAdmin from "@/middleware/requireAdmin";
+import ProductController from "@/controllers/product.controller";
+import { container, TOKENS } from "@/di";
+import requireAdmin from "@/middleware/require-admin";
+import type ProductService from "@/services/product.service";
 import { Router } from "express";
 
 const productRoutes = Router();
 
+const productService = container.resolve<ProductService>(TOKENS.ProductService);
+const productController = new ProductController(productService);
+
 // prefix: /products
-productRoutes.get("/", getProductsPaginatedHandler);
-productRoutes.get("/all", getProductHandler);
-productRoutes.post("/create", requireAdmin, createProductHandler);
-productRoutes.post("/update/:id", requireAdmin, updateProductHandler);
-productRoutes.post("/delete/:id", requireAdmin, deleteProductHandler);
-productRoutes.get("/get/:id", getProductByIdHandler);
-productRoutes.get("/slug/:slug", getProductBySlugHandler);
+productRoutes.get("/", productController.getProductsPaginated);
+productRoutes.get("/all", productController.getProduct);
+productRoutes.post("/create", requireAdmin, productController.createProduct);
+productRoutes.post("/update/:id", requireAdmin, productController.updateProduct);
+productRoutes.post("/delete/:id", requireAdmin, productController.deleteProduct);
+productRoutes.get("/get/:id", productController.getProductById);
+productRoutes.get("/slug/:slug", productController.getProductBySlug);
 
 export default productRoutes;

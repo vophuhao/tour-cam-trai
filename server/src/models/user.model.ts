@@ -1,4 +1,5 @@
-import { compareValue, hashValue } from "@/utils/bcrypt";
+import { DEFAULT_AVATAR, PROVIDERS, ROLES, type Provider, type Role } from "@/constants";
+import { compareValue, hashValue } from "@/utils";
 import mongoose from "mongoose";
 
 export interface UserDocument extends mongoose.Document {
@@ -6,12 +7,12 @@ export interface UserDocument extends mongoose.Document {
   password: string;
   createdAt: Date;
   updatedAt: Date;
-  role: "admin" | "user";
+  role: Role;
   username: string;
   avatarUrl?: string;
   phoneNumber?: string;
   isVerified: boolean;
-  provider: "local" | "google" | "google+local";
+  provider: Provider;
   googleId?: string;
 
   comparePassword(val: string): Promise<boolean>;
@@ -24,15 +25,12 @@ const userSchema = new mongoose.Schema<UserDocument>(
     password: {
       type: String,
       required: function (this: UserDocument) {
-        return this.provider === "local";
+        return this.provider === PROVIDERS.LOCAL;
       },
     },
-
-    // Instagram-like profile fields
     username: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
       minlength: 1,
       maxlength: 30,
@@ -40,12 +38,12 @@ const userSchema = new mongoose.Schema<UserDocument>(
     },
     role: {
       type: String,
-      enum: ["admin", "user"],
-      default: "user",
+      enum: Object.values(ROLES),
+      default: ROLES.USER,
     },
     avatarUrl: {
       type: String,
-      default: "https://i.pinimg.com/736x/41/76/b9/4176b9b864c1947320764e82477c168f.jpg",
+      default: DEFAULT_AVATAR,
     },
     phoneNumber: {
       type: String,
@@ -54,24 +52,18 @@ const userSchema = new mongoose.Schema<UserDocument>(
     isVerified: { type: Boolean, default: false },
     provider: {
       type: String,
-      enum: ["local", "google", "google+local"],
-      default: "local",
+      enum: Object.values(PROVIDERS),
+      default: PROVIDERS.LOCAL,
     },
     googleId: {
       type: String,
       required: false,
       unique: true,
-      sparse: true,
+      sparse: true, // Cho phép nhiều giá trị null khi sử dụng unique: true
     },
-
-    // Social counts
   },
   { timestamps: true }
 );
-
-// Index để tối ưu query
-// userSchema.index({ email: 1 });
-// userSchema.index({ googleId: 1 });
 
 userSchema.pre("save", async function (next) {
   // Tự động tạo username từ email nếu chưa có username
@@ -98,4 +90,5 @@ userSchema.methods.omitPassword = function () {
 };
 
 const UserModel = mongoose.model<UserDocument>("User", userSchema);
+
 export default UserModel;

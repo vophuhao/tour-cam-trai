@@ -1,6 +1,6 @@
-import { NODE_ENV } from "@/constants/env";
-import { CookieOptions, Response } from "express";
-import { fifteenMinutesFromNow, thirtyDaysFromNow } from "./date";
+import { NODE_ENV } from "@/constants";
+import type { CookieOptions, Response } from "express";
+import { fifteenMinutesFromNow, oneWeekFromNow } from "./date";
 
 export const REFRESH_PATH = "/auth/refresh";
 
@@ -17,7 +17,7 @@ export const getAccessTokenCookieOptions = (): CookieOptions => ({
 
 export const getRefreshTokenCookieOptions = (): CookieOptions => ({
   ...defaults,
-  expires: thirtyDaysFromNow(),
+  expires: oneWeekFromNow(),
   path: REFRESH_PATH,
 });
 

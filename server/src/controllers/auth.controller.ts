@@ -1,139 +1,175 @@
-import { BAD_REQUEST, OK, UNAUTHORIZED } from "@/constants/http";
+import { catchErrors, ErrorFactory } from "@/errors";
+import AuthService from "@/services/auth.service";
 import {
-  createAccount,
-  loginUser,
-  loginWithGoogle,
-  logoutUser,
-  refreshUserAccessToken,
-  resetPassword,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  verifyEmail,
-} from "@/services/auth.service";
-import appAssert from "@/utils/appAssert";
-
-import catchErrors from "@/utils/catchErrors";
-import {
+  appAssert,
   clearAuthCookies,
   getAccessTokenCookieOptions,
   getRefreshTokenCookieOptions,
+  ResponseUtil,
   setAuthCookies,
-} from "@/utils/cookies";
-import { verifyToken } from "@/utils/jwt";
-import { ResponseUtil } from "@/utils/response";
-import {
-  emailSchema,
-  loginSchema,
-  registerSchema,
-  resetPasswordSchema,
-  verificationCodeSchema,
-} from "./auth.schemas";
+  verifyToken,
+} from "@/utils";
+import { emailSchema, loginSchema, registerSchema } from "@/validators";
 
-export const sendEmailVerificationHandler = catchErrors(async (req, res) => {
-  const email = emailSchema.parse(req.body.email);
+export default class AuthController {
+  constructor(private readonly authService: AuthService) {}
 
-  await sendEmailVerification(email);
+  /**
+   * Send email verification
+   * @route POST /email/verification
+   */
+  sendEmailVerificationHandler = catchErrors(async (req, res) => {
+    const email = emailSchema.parse(req.body.email);
 
-  return ResponseUtil.success(res, undefined, "Verification email sent");
-});
+    await this.authService.sendEmailVerification(email);
 
-export const registerHandler = catchErrors(async (req, res) => {
-  const request = registerSchema.parse({
-    ...req.body,
-    userAgent: req.headers["user-agent"] || undefined,
+    return ResponseUtil.success(res, undefined, "Verification email sent");
   });
 
-  const result = await createAccount(request);
+  /**
+   * Register a new user
+   * @route POST /register
+   */
+  registerHandler = catchErrors(async (req, res) => {
+    const request = registerSchema.parse({
+      ...req.body,
+      userAgent: req.headers["user-agent"] || undefined,
+    });
 
-  return ResponseUtil.created(res, result);
-});
+    const result = await this.authService.createAccount(request);
 
-export const googleLoginHandler = catchErrors(async (req, res) => {
-  const { email, name, picture, googleId } = req.body;
-
-  // Validate required fields
-  appAssert(email, BAD_REQUEST, "Missing email");
-  appAssert(googleId, BAD_REQUEST, "Missing Google ID");
-
-  const userAgentRaw = req.headers["user-agent"];
-  const userAgent = Array.isArray(userAgentRaw)
-    ? userAgentRaw.join(" ")
-    : userAgentRaw || "unknown";
-
-  const { user, accessToken, refreshToken } = await loginWithGoogle({
-    email,
-    username: name || "Google User",
-    avatarUrl: picture,
-    googleId, // Thêm googleId để identify user
-    userAgent,
+    return ResponseUtil.created(res, result.user, result.message);
   });
 
-  return setAuthCookies({ res, accessToken, refreshToken }).status(200).json({
-    user,
-    message: "Google login successful",
+  /**
+   * Login with Google
+   * @route POST /login/google
+   */
+  googleLoginHandler = catchErrors(async (req, res) => {
+    const { email, name, picture, googleId } = req.body;
+
+    // Validate required fields
+    appAssert(email, ErrorFactory.requiredField("email"));
+    appAssert(googleId, ErrorFactory.requiredField("Google ID"));
+
+    const userAgentRaw = req.headers["user-agent"];
+    const userAgent = Array.isArray(userAgentRaw)
+      ? userAgentRaw.join(" ")
+      : userAgentRaw || "unknown";
+
+    const { user, accessToken, refreshToken } = await this.authService.loginWithGoogle({
+      email,
+      username: name || "Google User",
+      avatarUrl: picture,
+      googleId, // Thêm googleId để identify user
+      userAgent,
+    });
+
+    return ResponseUtil.success(
+      setAuthCookies({ res, accessToken, refreshToken }),
+      user,
+      "Google login successful"
+    );
   });
-});
 
-export const loginHandler = catchErrors(async (req, res) => {
-  const request = loginSchema.parse({
-    ...req.body,
-    userAgent: req.headers["user-agent"] || undefined,
+  /**
+   * Login user
+   * @route POST /login
+   */
+  loginHandler = catchErrors(async (req, res) => {
+    const request = loginSchema.parse({
+      ...req.body,
+      userAgent: req.headers["user-agent"] || undefined,
+    });
+
+    const { user, accessToken, refreshToken } = await this.authService.loginUser(request);
+
+    return ResponseUtil.success(
+      setAuthCookies({ res, accessToken, refreshToken }),
+      user,
+      "Login successful"
+    );
   });
-  const { role, accessToken, refreshToken } = await loginUser(request);
 
-  // set cookies and send response
-  setAuthCookies({ res, accessToken, refreshToken });
-  return ResponseUtil.success(res, { role, accessToken }, "Login successful");
-});
+  /**
+   * Logout user
+   * @route POST /logout
+   */
+  logoutHandler = catchErrors(async (req, res) => {
+    const accessToken = req.cookies.accessToken as string | undefined;
+    const { payload } = verifyToken(accessToken || "");
 
-export const logoutHandler = catchErrors(async (req, res) => {
-  const accessToken = req.cookies.accessToken as string | undefined;
-  const { payload } = verifyToken(accessToken || "");
+    if (payload) {
+      // remove session from db
+      await this.authService.logoutUser(payload.sessionId as string);
+    }
 
-  if (payload) {
-    // remove session from db
-    await logoutUser(payload.sessionId as string);
-  }
+    // clear cookies
+    return ResponseUtil.success(clearAuthCookies(res), undefined, "Logout successful");
+  });
 
-  // clear cookies
-  return clearAuthCookies(res).status(OK).json({ message: "Logout successful" });
-});
+  /**
+   * Refresh access token
+   * @route GET /refresh
+   */
+  refreshHandler = catchErrors(async (req, res) => {
+    const refreshToken = req.cookies.refreshToken as string | undefined;
+    appAssert(refreshToken, ErrorFactory.invalidToken("Missing refresh token"));
 
-export const refreshHandler = catchErrors(async (req, res) => {
-  const refreshToken = req.cookies.refreshToken as string | undefined;
-  appAssert(refreshToken, UNAUTHORIZED, "Missing refresh token");
+    const { accessToken, newRefreshToken } =
+      await this.authService.refreshUserAccessToken(refreshToken);
 
-  const { accessToken, newRefreshToken } = await refreshUserAccessToken(refreshToken);
-  if (newRefreshToken) {
-    res.cookie("refreshToken", newRefreshToken, getRefreshTokenCookieOptions());
-  }
+    if (newRefreshToken) {
+      res.cookie("refreshToken", newRefreshToken, getRefreshTokenCookieOptions());
+    }
 
-  return res
-    .status(OK)
-    .cookie("accessToken", accessToken, getAccessTokenCookieOptions())
-    .json({ message: "Access token refreshed" });
-});
+    return ResponseUtil.success(
+      res.cookie("accessToken", accessToken, getAccessTokenCookieOptions()),
+      undefined,
+      "Access token refreshed"
+    );
+  });
 
-export const verifyEmailHandler = catchErrors(async (req, res) => {
-  const verificationCode = verificationCodeSchema.parse(req.params.code);
+  /**
+   * Verify email
+   * @route POST /email/verify
+   */
+  verifyEmailHandler = catchErrors(async (req, res) => {
+    const { email, code } = req.body;
 
-  await verifyEmail(verificationCode);
+    appAssert(email, ErrorFactory.requiredField("email"));
+    appAssert(code, ErrorFactory.requiredField("Verification code"));
 
-  return res.status(OK).json({ message: "Email was successfully verified" });
-});
+    const result = await this.authService.verifyEmail(email, code);
 
-export const sendPasswordResetHandler = catchErrors(async (req, res) => {
-  const email = emailSchema.parse(req.body.email);
+    return ResponseUtil.success(res, result.user, "Email was successfully verified");
+  });
 
-  await sendPasswordResetEmail(email);
+  /**
+   * Send password reset email
+   * @route POST /password/forgot
+   */
+  sendPasswordResetHandler = catchErrors(async (req, res) => {
+    const email = emailSchema.parse(req.body.email);
 
-  return res.status(OK).json({ message: "Password reset email sent" });
-});
+    const { message, emailId } = await this.authService.sendPasswordResetEmail(email);
 
-export const resetPasswordHandler = catchErrors(async (req, res) => {
-  const request = resetPasswordSchema.parse(req.body);
+    return ResponseUtil.success(res, { emailId }, message);
+  });
 
-  await resetPassword(request);
+  /**
+   * Reset password
+   * @route POST /password/reset
+   */
+  resetPasswordHandler = catchErrors(async (req, res) => {
+    const { email, code, password } = req.body;
 
-  return clearAuthCookies(res).status(OK).json({ message: "Password was reset successfully" });
-});
+    appAssert(email, ErrorFactory.requiredField("email"));
+    appAssert(code, ErrorFactory.requiredField("Verification code"));
+    appAssert(password, ErrorFactory.requiredField("Password"));
+
+    const { user } = await this.authService.resetPassword({ email, code, password });
+
+    return ResponseUtil.success(res, user, "Password was reset successfully");
+  });
+}

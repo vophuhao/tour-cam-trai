@@ -1,10 +1,5 @@
 import { z } from "zod";
 
-/**
- * Common validation schemas used across the application
- */
-
-// Basic field validators
 export const emailSchema = z
   .string()
   .email("Please provide a valid email address")

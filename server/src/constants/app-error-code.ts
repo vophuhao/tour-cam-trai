@@ -1,13 +1,14 @@
 /**
  * Application error codes for better error tracking and handling
  */
-export const enum AppErrorCode {
+const enum AppErrorCode {
   // Authentication errors
   INVALID_ACCESS_TOKEN = "INVALID_ACCESS_TOKEN",
   INVALID_REFRESH_TOKEN = "INVALID_REFRESH_TOKEN",
   TOKEN_EXPIRED = "TOKEN_EXPIRED",
   EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED",
   INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
+  INVALID_VERIFICATION_CODE = "INVALID_VERIFICATION_CODE",
 
   // Validation errors
   VALIDATION_ERROR = "VALIDATION_ERROR",
@@ -30,9 +31,6 @@ export const enum AppErrorCode {
   INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR",
   DATABASE_ERROR = "DATABASE_ERROR",
   EXTERNAL_SERVICE_ERROR = "EXTERNAL_SERVICE_ERROR",
-
-  USER_NOT_FOUND = "USER_NOT_FOUND",
-  FORBIDDEN = "FORBIDDEN",
 }
 
 export default AppErrorCode;

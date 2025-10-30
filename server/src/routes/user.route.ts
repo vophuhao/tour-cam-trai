@@ -1,9 +1,11 @@
+import { UserController } from "@/controllers";
 import { Router } from "express";
-import { getUserHandler } from "../controllers/user.controller";
 
 const userRoutes = Router();
 
-// prefix: /user
-userRoutes.get("/", getUserHandler);
+const userController = new UserController();
+
+// prefix: /users
+userRoutes.get("/me", userController.getUserHandler);
 
 export default userRoutes;
