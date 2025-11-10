@@ -1,8 +1,5 @@
 import { z } from "zod";
-
-export const emailSchema = z.string().email().min(1).max(255);
-
-const passwordSchema = z.string().min(6).max(255);
+import { emailSchema, passwordSchema } from "./common.validator";
 
 export const loginSchema = z.object({
   email: emailSchema,
@@ -13,7 +10,7 @@ export const loginSchema = z.object({
 export const registerSchema = loginSchema
   .extend({
     username: z.string().min(2).max(100),
-    confirmPassword: passwordSchema,
+    confirmPassword: passwordSchema.optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -26,3 +23,7 @@ export const resetPasswordSchema = z.object({
   password: passwordSchema,
   verificationCode: verificationCodeSchema,
 });
+
+export type CreateAccountParams = z.infer<typeof registerSchema>;
+export type LoginParams = z.infer<typeof loginSchema>;
+export type ResetPasswordParams = z.infer<typeof resetPasswordSchema>;

@@ -1,14 +1,16 @@
-import express, { Router } from "express";
-import {
-  createCommentHandler,
-  getCommentsHandler,
-  deleteCommentHandler,
-} from "@/controllers/comment.controller";
+import CommentController from "@/controllers/comment.controller";
+import { container, TOKENS } from "@/di";
+import type { CommentService } from "@/services";
+import { Router } from "express";
 
 const commentRoutes = Router();
 
-commentRoutes.post("/:entityType/:entityId", createCommentHandler);
-commentRoutes.get("/:entityType/:entityId", getCommentsHandler);
-commentRoutes.delete("/:id", deleteCommentHandler);
+const commentService = container.resolve<CommentService>(TOKENS.CommentService);
+const commentController = new CommentController(commentService);
+
+// prefix: /comments
+commentRoutes.post("/:entityType/:entityId", commentController.createCommentHandler);
+commentRoutes.get("/:entityType/:entityId", commentController.getCommentsHandler);
+commentRoutes.delete("/:id", commentController.deleteCommentHandler);
 
 export default commentRoutes;

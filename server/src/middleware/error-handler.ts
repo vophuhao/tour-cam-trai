@@ -1,32 +1,37 @@
+import { AppErrorCode, INTERNAL_SERVER_ERROR, NODE_ENV, UNPROCESSABLE_CONTENT } from "@/constants";
+import { AppError } from "@/errors";
+import { clearAuthCookies, REFRESH_PATH, ResponseUtil } from "@/utils";
 import type { ErrorRequestHandler, Response } from "express";
 import { z } from "zod";
-
-import { AppError } from "@/utils/AppError";
-import { REFRESH_PATH, clearAuthCookies } from "@/utils/cookies";
-import { ResponseUtil } from "@/utils/response";
 
 /**
  * Handle Zod validation errors
  */
 const handleZodError = (res: Response, error: z.ZodError) => {
-  const errors = error.issues.map(err => `${err.path.join(".")}: ${err.message}`);
-  return ResponseUtil.unprocessableEntity(res, "Validation failed", errors);
+  const errors = error.issues.map((err) => `${err.path.join(".")}: ${err.message}`);
+
+  return ResponseUtil.error(
+    res,
+    "Validation failed",
+    UNPROCESSABLE_CONTENT,
+    AppErrorCode.VALIDATION_ERROR,
+    errors
+  );
 };
 
 /**
  * Handle custom AppError instances
  */
 const handleAppError = (res: Response, error: AppError) => {
-  const response = {
-    success: false,
-    message: error.message,
-    code: error.code,
-    timestamp: new Date().toISOString(),
-    ...(error.details && { details: error.details }),
-    ...(process.env.NODE_ENV === "development" && { stack: error.stack }),
-  };
-
-  return res.status(error.statusCode).json(response);
+  return ResponseUtil.error(
+    res,
+    error.message,
+    error.statusCode,
+    error.code,
+    undefined,
+    error.details
+    //NODE_ENV === "development" ? error.stack : undefined
+  );
 };
 
 /**
@@ -35,16 +40,16 @@ const handleAppError = (res: Response, error: AppError) => {
  */
 const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   // Log errors in development for debugging
-  if (process.env.NODE_ENV === "development") {
+  if (NODE_ENV === "development") {
     console.error(`❌ Error on ${req.method} ${req.path}:`, error);
   }
 
   // Log operational errors in production for monitoring
-  if (process.env.NODE_ENV === "production" && error instanceof AppError && !error.isOperational) {
+  if (NODE_ENV === "production" && error instanceof AppError && !error.isOperational) {
     console.error("Non-operational error:", error);
   }
 
-  // Clear auth cookies on refresh token errors
+  // Clear auth cookies on refresh token request errors
   if (req.path === REFRESH_PATH) {
     clearAuthCookies(res);
   }
@@ -59,7 +64,7 @@ const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   }
 
   // Handle unexpected errors
-  return ResponseUtil.error(res, "Internal server error", 500);
+  return ResponseUtil.error(res, "Internal server error", INTERNAL_SERVER_ERROR);
 };
 
 export default errorHandler;

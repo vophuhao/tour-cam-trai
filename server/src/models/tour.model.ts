@@ -133,7 +133,6 @@ const tourSchema = new mongoose.Schema<TourDocument>(
 
 // Indexes
 tourSchema.index({ name: 1 });
-tourSchema.index({ slug: 1 });
 tourSchema.index({ departurePoint: 1, isActive: 1 });
 
 // Methods
@@ -158,4 +157,5 @@ tourSchema.set("toJSON", { virtuals: true });
 tourSchema.set("toObject", { virtuals: true });
 
 const TourModel = mongoose.model<TourDocument>("Tour", tourSchema);
+
 export default TourModel;

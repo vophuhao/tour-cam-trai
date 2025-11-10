@@ -1,11 +1,12 @@
-import { ResponseUtil } from "@/utils/response";
-import { NOT_FOUND, OK } from "../constants/http";
+import { catchErrors, ErrorFactory } from "@/errors";
+import { ResponseUtil } from "@/utils";
 import UserModel from "../models/user.model";
-import appAssert from "../utils/appAssert";
-import catchErrors from "../utils/catchErrors";
+import appAssert from "../utils/app-assert";
 
-export const getUserHandler = catchErrors(async (req, res) => {
-  const user = await UserModel.findById(req.userId);
-  appAssert(user, NOT_FOUND, "User not found");
-  return ResponseUtil.success(res,user, "Láy thông tin user thành công");
-});
+export default class UserController {
+  getUserHandler = catchErrors(async (req, res) => {
+    const user = await UserModel.findById(req.userId);
+    appAssert(user, ErrorFactory.resourceNotFound("User"));
+    return ResponseUtil.success(res, user, "Lấy thông tin user thành công");
+  });
+}

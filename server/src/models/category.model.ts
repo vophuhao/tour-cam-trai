@@ -23,7 +23,6 @@ const categorySchema = new mongoose.Schema<CategoryDocument>(
       trim: true,
       maxlength: 255,
       unique: true,
-      index: true,
     },
     isActive: {
       type: Boolean,
@@ -32,9 +31,6 @@ const categorySchema = new mongoose.Schema<CategoryDocument>(
   },
   { timestamps: true }
 );
-
-// Indexes để tối ưu truy vấn
-categorySchema.index({ name: 1 });
 
 // Methods
 categorySchema.methods.activate = async function () {
@@ -59,8 +55,5 @@ categorySchema.virtual("products", {
 categorySchema.set("toJSON", { virtuals: true });
 categorySchema.set("toObject", { virtuals: true });
 
-const CategoryModel = mongoose.model<CategoryDocument>(
-  "Category",
-  categorySchema
-);
+const CategoryModel = mongoose.model<CategoryDocument>("Category", categorySchema);
 export default CategoryModel;

@@ -1,40 +1,89 @@
 import ProductModel, { ProductDocument } from "@/models/product.model";
-import type {
-  CreateProductInput,
-  UpdateProductInput,
-} from "@/validators/product.validator";
 
-class ProductService {
-  /** 🟢 Tạo sản phẩm mới */
-  static async createProduct(data: CreateProductInput) {
+export type CreateProductInput = {
+  name: string;
+  slug?: string;
+  description?: string;
+  price: number;
+  deal?: number;
+  stock?: number;
+  images?: string[];
+  category: string;
+  isActive?: boolean;
+  specifications?: { label: string; value: string }[];
+  variants?: {
+    size: string;
+    expandedSize: string;
+    foldedSize: string;
+    loadCapacity: string;
+    weight: string;
+  }[];
+  details?: {
+    title: string;
+    items: { label: string }[];
+  }[];
+  guide?: string[];
+  warnings?: string[];
+  rating?: {
+    average: number;
+    count: number;
+  };
+  count?: number;
+};
+
+export type UpdateProductInput = {
+  id: string;
+  slug?: string;
+  name?: string;
+  description?: string;
+  price?: number;
+  deal?: number;
+  stock?: number;
+  images?: string[];
+  category?: string;
+  isActive?: boolean;
+  specifications?: { label: string; value: string }[];
+  variants?: {
+    size: string;
+    expandedSize: string;
+    foldedSize: string;
+    loadCapacity: string;
+    weight: string;
+  }[];
+  details?: {
+    title: string;
+    items: { label: string }[];
+  }[];
+  guide?: string[];
+  warnings?: string[];
+};
+
+export default class ProductService {
+  // Tạo product
+  async createProduct(data: CreateProductInput): Promise<ProductDocument> {
     data.slug = data.name.toLowerCase().replace(/ /g, "-");
-    return await ProductModel.create(data);
+    data.rating = { average: 0, count: 0 };
+    data.count = 0;
+    return ProductModel.create(data);
   }
 
-  /** 🟢 Lấy danh sách sản phẩm có phân trang + tìm kiếm + lọc category */
-  static async getProductsPaginated(
+  // Lấy tất cả product có phân trang + tìm kiếm
+  async getProductsPaginated(
     page: number = 1,
     limit: number = 10,
     search?: string,
     category?: string
-  ) {
-    const query: Record<string, any> = {};
-
-    // 🔍 Tìm kiếm theo text index (name, description)
+  ): Promise<{ data: ProductDocument[]; total: number; page: number; limit: number }> {
+    const query: any = {};
     if (search) {
       query.$text = { $search: search };
     }
-
-    // 🧭 Lọc theo category
     if (category) {
       query.category = category;
     }
 
-    // Đếm tổng số sản phẩm
     const total = await ProductModel.countDocuments(query);
-    const totalPages = Math.ceil(total / limit);
 
-    // Lấy danh sách sản phẩm
     const data = await ProductModel.find(query)
       .populate("category", "name")
       .sort({ createdAt: -1 })
@@ -42,77 +91,51 @@ class ProductService {
       .limit(limit)
       .exec();
 
-    return {
-      data,
-      pagination: {
-        total,
-        totalPages,
-        page,
-        limit,
-      },
-    };
+    return { data, total, page, limit };
   }
 
-  /** 🟢 Lấy tất cả sản phẩm (không phân trang) */
-  static async getProducts(): Promise<ProductDocument[]> {
-    return await ProductModel.find().exec();
+  async getProduct(): Promise<ProductDocument[]> {
+    return ProductModel.find().exec();
   }
 
-  /** 🟢 Lấy sản phẩm theo ID */
-  static async getProductById(id: string): Promise<ProductDocument | null> {
-    return await ProductModel.findById(id)
-      .populate("category", "name")
-      .exec();
+  async getProductBySlug(slug: string): Promise<ProductDocument | null> {
+    return ProductModel.findOne({ slug }).populate("category", "name").exec();
   }
 
-  /** 🟢 Lấy sản phẩm theo slug */
-  static async getProductBySlug(slug: string): Promise<ProductDocument | null> {
-    return await ProductModel.findOne({ slug })
-      .populate("category", "name")
-      .exec();
+  // Lấy product theo id
+  async getProductById(id: string): Promise<ProductDocument | null> {
+    return ProductModel.findById(id).populate("category", "name").exec();
   }
 
-  /** 🟡 Cập nhật sản phẩm */
-  static async updateProduct(id: string, data: UpdateProductInput) {
-    const existing = await ProductModel.findById(id);
-    if (!existing) return null;
+  // Cập nhật product
+  async updateProduct(data: UpdateProductInput): Promise<ProductDocument | null> {
+    const product = await ProductModel.findById(data.id);
 
-    if (data.name) {
-      data.slug = data.name.toLowerCase().replace(/ /g, "-");
-    }
+    if (!product) return null;
 
-    return await ProductModel.findByIdAndUpdate(id, data, {
-      new: true,
-      runValidators: true,
-    });
+    if (data.name !== undefined) product.slug = data.name.toLowerCase().replace(/ /g, "-");
+    if (data.name !== undefined) product.name = data.name;
+    if (data.description !== undefined) product.description = data.description;
+    if (data.price !== undefined) product.price = data.price;
+    if (data.stock !== undefined) product.stock = data.stock;
+    if (data.images !== undefined) product.images = data.images;
+    if (data.category !== undefined) product.category = data.category as any;
+    if (data.isActive !== undefined) product.isActive = data.isActive;
+    if (data.specifications !== undefined) product.specifications = data.specifications;
+    if (data.variants !== undefined) product.variants = data.variants;
+    if (data.details !== undefined) product.details = data.details;
+    if (data.guide !== undefined) product.guide = data.guide;
+    if (data.warnings !== undefined) product.warnings = data.warnings;
+    if (data.deal !== undefined) product.deal = data.deal;
+
+    return product.save();
   }
 
-  /** 🔴 Xóa sản phẩm */
-  static async deleteProduct(id: string): Promise<boolean> {
+  // Xóa product
+  async deleteProduct(id: string): Promise<boolean> {
     const product = await ProductModel.findById(id);
     if (!product) return false;
-
     await product.deleteOne();
     return true;
   }
-
-  /** 🟢 Kích hoạt sản phẩm */
-  static async activateProduct(id: string) {
-    return await ProductModel.findByIdAndUpdate(
-      id,
-      { isActive: true },
-      { new: true }
-    );
-  }
-
-  /** 🔴 Hủy kích hoạt sản phẩm */
-  static async deactivateProduct(id: string) {
-    return await ProductModel.findByIdAndUpdate(
-      id,
-      { isActive: false },
-      { new: true }
-    );
-  }
 }
-
-export default ProductService;
