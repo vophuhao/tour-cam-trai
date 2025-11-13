@@ -11,31 +11,26 @@ export default function CartPage() {
   const { updateCartItem, removeCartItem } = useCartActions();
 
   // zustand actions/selectors
-  const setItems = useCartStore((s: any) => s.setItems);
-  const updateQty = useCartStore((s: any) => s.updateQuantity);
-  const removeFromStore = useCartStore((s: any) => s.removeItem);
-  const storeItemsLength = useCartStore((s: any) => s.items.length);
-
-  const items = data?.data?.items || [];
-
-  // hydrate zustand store with server items ONCE only when store is empty
-  useEffect(() => {
-    if (items && items.length && storeItemsLength === 0) {
-      setItems(items);
-    }
-  }, [items, setItems, storeItemsLength]);
-
-  if (isLoading) return <div className="p-8">Đang tải giỏ hàng...</div>;
-  if (error) return <div className="p-8 text-red-600">Lỗi: {error.message}</div>;
-
+    const setItems = useCartStore((s: any) => s.setItems);
+    const updateQty = useCartStore((s: any) => s.updateQuantity);
+    const removeFromStore = useCartStore((s: any) => s.removeItem);
+  
+    const items = data?.data?.items || [];
+  
+    // hydrate zustand store with server items once
+    useEffect(() => {
+      if (items && items.length) setItems(items);
+    }, [items, setItems]);
+  
+    if (isLoading) return <div className="p-8">Đang tải giỏ hàng...</div>;
+    if (error) return <div className="p-8 text-red-600">Lỗi: {error.message}</div>;
+  
   const handleUpdateQuantity = (productId: string, quantity: number) => {
     // optimistic local update
     updateQty(productId, quantity);
-
-    // sync with backend; rollback by refetching / re-hydrating if needed
+    // sync with backend (ensure a Promise so .catch is available)
     Promise.resolve(updateCartItem({ productId, quantity })).catch(() => {
-      // best option: refetch server cart to restore authoritative state
-      // fallback simple: re-hydrate store from server snapshot (items)
+      // rollback by re-hydrating store from last server snapshot
       setItems(items);
     });
   };
@@ -43,7 +38,6 @@ export default function CartPage() {
   const handleRemoveItem = (productId: string) => {
     // optimistic local remove
     removeFromStore(productId);
-
     // sync with backend
     Promise.resolve(removeCartItem(productId)).catch(() => {
       // rollback
@@ -51,11 +45,12 @@ export default function CartPage() {
     });
   };
 
-  // do NOT pass `items` prop to Cart so Cart uses zustand store (keeps optimistic updates)
+  // cast the imported Cart to any to satisfy JSX prop typing
   const CartAny = Cart as any;
 
   return (
     <CartAny
+      items={items}
       onUpdateQuantity={handleUpdateQuantity}
       onRemoveItem={handleRemoveItem}
     />

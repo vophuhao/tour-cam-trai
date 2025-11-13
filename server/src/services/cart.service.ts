@@ -15,11 +15,12 @@ export type UpdateCartItemInput = {
 
 export default class CartService {
   // ✅ Lấy giỏ hàng người dùng
-  async getCart(userId: string): Promise<CartDocument | null> {
-    return CartModel.findOne({ user: userId })
-      .populate("items.product")
-      .exec();
-  }
+ async getCart(userId: string): Promise<CartDocument | null> {
+  return CartModel.findOne({ user: userId })
+    .populate("items.product", "_id name price deal images") // chỉ lấy các trường này
+    .exec();
+}
+
 
   // ✅ Thêm sản phẩm vào giỏ hàng
   async addToCart(data: AddToCartInput): Promise<CartDocument> {

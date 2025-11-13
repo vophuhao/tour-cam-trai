@@ -7,6 +7,10 @@ export default class TourService {
     return await TourModel.create(data);
   }
 
+  async getAllTours() {
+    return await TourModel.find().sort({ createdAt: -1 });
+  }
+
   /** Lấy danh sách tour có phân trang + tìm kiếm */
   async getToursPaginated(page: number, limit: number, search?: string) {
     const query: Record<string, any> = {};

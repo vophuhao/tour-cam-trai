@@ -34,7 +34,7 @@ API.interceptors.response.use(
         }
       } catch (refreshError) {
         queryClient.clear();
-        navigate("/home", {
+        navigate("/login", {
           state: { redirectUrl: window.location.pathname },
         });
       }

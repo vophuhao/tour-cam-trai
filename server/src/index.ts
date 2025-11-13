@@ -1,3 +1,4 @@
+
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import "dotenv/config";
@@ -12,7 +13,10 @@ import {
   productRoutes,
   tourRoutes,
   userRoutes,
+  orderRoutes,
 } from "./routes";
+import cartRoutes from "./routes/cart.route";
+import addressRoutes from "./routes/address.route";
 
 const app = express();
 
@@ -43,7 +47,9 @@ app.use("/categories", authenticate, categoryRoutes);
 app.use("/products", authenticate, productRoutes);
 app.use("/tours", authenticate, tourRoutes);
 app.use("/media", authenticate, requireAdmin, mediaRoutes);
-
+app.use("/cart", authenticate, cartRoutes);
+app.use("/address", authenticate, addressRoutes)
+app.use("/orders",  orderRoutes);
 // error handler middleware
 app.use(errorHandler);
 

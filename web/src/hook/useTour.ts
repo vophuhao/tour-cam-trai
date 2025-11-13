@@ -18,6 +18,7 @@ import {
   activateTour,
   deactivateTour,
   getTourBySlug,
+  getAllTours,
 } from "@/lib/api";
 import { ApiResponse, PaginatedResponse } from "@/types/api";
 
@@ -46,6 +47,13 @@ export const useTours = (
     queryFn: async () => getTours(page, limit, search),
     placeholderData: (prev) => prev, // thay cho keepPreviousData
     staleTime: 2 * 60 * 1000,
+  });
+
+export const useAllTours = (): UseQueryResult<ApiResponse<Tour[]>, Error> =>
+  useQuery({
+    queryKey: ["tours", "all"],
+    queryFn: async () => getAllTours(),
+    staleTime: 5 * 60 * 1000,
   });
 
 /* ===========================

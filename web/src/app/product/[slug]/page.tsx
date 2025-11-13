@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { useProductBySlug } from "@/hook/useProduct";
+import { useCartActions } from "@/hook/useCart";
 
 import { ProductDetail } from "@/types/product";
 import React from "react";
@@ -13,6 +14,7 @@ import React from "react";
 export default function ProductDetailPage() {
     const { slug } = useParams() as { slug?: string };
     const router = useRouter();
+    const { addToCart } = useCartActions();
 
     const { data, isLoading, error } = useProductBySlug(slug || "");
 
@@ -289,7 +291,20 @@ export default function ProductDetailPage() {
                             )}
 
                             <div className="mt-6 flex flex-col gap-3">
-                                <button className="w-full px-4 py-3 bg-[#2F6B56] hover:bg-[#25523f] text-white rounded-lg font-semibold shadow">Thêm vào giỏ</button>
+                                <button
+                                    onClick={() => {
+                                        if (!product?._id) return;
+                                        addToCart({
+                                            productId: product._id,
+                                            quantity: 1,
+                                        });
+                                    }}
+                                    
+                                    className="w-full px-4 py-3 bg-[#2F6B56] hover:bg-[#25523f] text-white rounded-lg font-semibold shadow disabled:opacity-50"
+                                >
+                                     Thêm vào giỏ
+                                </button>
+
                                 <button className="w-full px-4 py-3 border rounded-lg font-semibold hover:bg-gray-50">Mua ngay</button>
                             </div>
 

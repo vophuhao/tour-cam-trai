@@ -10,6 +10,9 @@ import {
 // Kiểu response chung (nếu backend trả JSON chuẩn { data, message, ... })
 import { ApiResponse, UserResponse, PaginatedResponse } from "@/types/api";
 import { Tour } from "@/types/tour";
+import { AddToCartPayload, UpdateCartPayload } from "@/types/cart";
+import { Address } from "@/types/address";
+
 
 // ================== AUTH API ==================
 export const register = async (data: {
@@ -55,7 +58,7 @@ export const resetPassword = async (params: {
 }): Promise<ApiResponse> => API.post("/auth/password/reset", params);
 
 // ================== USER API ==================
-export const getUser = async (): Promise<ApiResponse> => API.get("/user");
+export const getUser = async (): Promise<ApiResponse> => API.get("/users/me");
 
 export const getSuggestedUsers = async (): Promise<ApiResponse> =>
   API.get("/users/suggestions");
@@ -97,25 +100,25 @@ export const analyzeMedia = async (formData: FormData): Promise<ApiResponse> =>
 
 // ================== category API ==================
 export const getCategories = async (page = 1, limit = 10, search?: string):
-   Promise<PaginatedResponse> =>  API.get("/category", {
+   Promise<PaginatedResponse> =>  API.get("/categories", {
     params: { page, limit, search }})
 
 export const getAllCategories = async ():
-   Promise<ApiResponse> =>  API.get("/category/all")
+   Promise<ApiResponse> =>  API.get("/categories/all")
    
 // Lấy 1 category theo id
 export const getCategoryById = async (id: string) : Promise<ApiResponse> => 
-  API.get(`/category/get/${id}`);
+  API.get(`/categories/get/${id}`);
 export const createCategory = async( data: { name: string; isActive: boolean }) 
-: Promise<ApiResponse> => API.post("/category/create", data);
+: Promise<ApiResponse> => API.post("/categories/create", data);
 // Cập nhật category
 export const updateCategory = async (
   id: string,
   data: { name: string; isActive: boolean }
-) : Promise<ApiResponse> => API.post(`/category/update/${id}`, data);
+) : Promise<ApiResponse> => API.post(`/categories/update/${id}`, data);
 // Xóa category
 export const deleteCategory = async (id: string) : Promise<ApiResponse> => 
-  API.post(`/category/delete/${id}`);
+  API.post(`/categories/delete/${id}`);
 
 // ================== product API ==================
 
@@ -136,7 +139,7 @@ export const createProduct = async (data: {
   warnings?: string[];
 
   isActive: boolean;
-}): Promise<ApiResponse> => API.post("/product/create", data);
+}): Promise<ApiResponse> => API.post("/products/create", data);
 
 
 export const updateProduct = async (
@@ -159,20 +162,20 @@ export const updateProduct = async (
 
     isActive: boolean;
   }
-): Promise<ApiResponse> => API.post(`/product/update/${id}`, data);
+): Promise<ApiResponse> => API.post(`/products/update/${id}`, data);
 
 export const getProduct = async (page = 1, limit = 10, search?: string):
-   Promise<PaginatedResponse> =>  API.get("/product", {
+   Promise<PaginatedResponse> =>  API.get("/products", {
     params: { page, limit, search }})
 
 export const getProductBySlug = async (slug: string) : Promise<ApiResponse> => 
-  API.get(`/product/slug/${slug}`);
+  API.get(`/products/slug/${slug}`);
 
 export const getAllProduct = async ():
-   Promise<ApiResponse> =>  API.get("/product/all")
+   Promise<ApiResponse> =>  API.get("/products/all")
 
 export const deleteProduct = async (id: string) : Promise<ApiResponse> => 
-  API.post(`/product/delete/${id}`)
+  API.post(`/products/delete/${id}`)
 
 
 // ================== TOUR API ==================
@@ -183,15 +186,15 @@ export const getTours = async (
   limit = 10,
   search?: string
 ): Promise<PaginatedResponse<Tour>> =>
-  API.get("/tour", { params: { page, limit, search } });
+  API.get("/tours", { params: { page, limit, search } });
 
 // 🟢 Lấy tất cả tour (không phân trang)
 export const getAllTours = async (): Promise<ApiResponse> =>
-  API.get("/tour/all");
+  API.get("/tours/all");
 
 // 🟢 Lấy tour theo ID
 export const getTourById = async (id: string): Promise<ApiResponse> =>
-  API.get(`/tour/get/${id}`);
+  API.get(`/tours/get/${id}`);
 
 //Lay tour theo slug
 export const getTourBySlug = async (slug: string): Promise<ApiResponse> =>
@@ -242,7 +245,7 @@ export const createTour = async (data: {
 
   images: string[];
   isActive: boolean;
-}): Promise<ApiResponse> => API.post("/tour/create", data);
+}): Promise<ApiResponse> => API.post("/tours/create", data);
 
 // 🟡 Cập nhật tour
 export const updateTour = async (
@@ -291,23 +294,70 @@ export const updateTour = async (
     images: string[];
     isActive: boolean;
   }
-): Promise<ApiResponse> => API.post(`/tour/update/${id}`, data);
+): Promise<ApiResponse> => API.post(`/tours/update/${id}`, data);
 
 // 🔴 Xóa tour
 export const deleteTour = async (id: string): Promise<ApiResponse> =>
-  API.post(`/tour/delete/${id}`);
+  API.post(`/tours/delete/${id}`);
 
 // 🟢 Kích hoạt tour
 export const activateTour = async (id: string): Promise<ApiResponse> =>
-  API.post(`/tour/activate/${id}`);
+  API.post(`/tours/activate/${id}`);
 
 // 🔴 Vô hiệu hóa tour
 export const deactivateTour = async (id: string): Promise<ApiResponse> =>
-  API.post(`/tour/deactivate/${id}`);
+  API.post(`/tours/deactivate/${id}`);
 
 // 🟣 Lấy top tour bán chạy / được xem nhiều
 export const getTopTours = async (
   type: "popular" | "bestseller",
   limit = 5
 ): Promise<ApiResponse> =>
-  API.get(`/tour/top`, { params: { type, limit } });
+  API.get(`/tours/top`, { params: { type, limit } });
+
+export const getCart = async (): Promise<ApiResponse> =>
+  API.get("/cart");
+
+// ➕ Thêm sản phẩm vào giỏ hàng
+export const addToCart = async (payload: AddToCartPayload): Promise<ApiResponse> =>
+  API.post("/cart/add", payload);
+
+// 🔄 Cập nhật số lượng sản phẩm trong giỏ hàng
+export const updateCartItem = async (payload: UpdateCartPayload): Promise<ApiResponse> =>
+  API.put("/cart/update", payload);
+
+// ❌ Xóa 1 sản phẩm khỏi giỏ hàng
+export const removeCartItem = async (productId: string): Promise<ApiResponse> =>
+  API.delete("/cart/remove", { data: { productId } });
+
+// 🗑 Xóa toàn bộ giỏ hàng
+export const clearCart = async (): Promise<ApiResponse<{ message: string }>> =>
+  API.delete("/cart/clear");
+
+/* ============================================
+ * 📬 Lấy danh sách địa chỉ user
+ * ============================================ */
+export const getAddresses = async (): Promise<ApiResponse> =>
+  API.get("/address");
+
+/* ============================================
+ * ➕ Thêm địa chỉ mới
+ * ============================================ */
+export const addAddress = async (payload: Address): Promise<ApiResponse> =>
+  API.post("/address", payload);
+
+/* ============================================
+ * ❌ Xóa địa chỉ theo index
+ * ============================================ */
+export const removeAddress = async (index: number): Promise<ApiResponse> =>
+  API.delete(`/address/${index}`);
+
+/* ============================================
+ * ⭐ Đặt địa chỉ mặc định theo index
+ * ============================================ */
+export const setDefaultAddress = async (index: number): Promise<ApiResponse> =>
+  API.patch(`/address/${index}/default`);
+
+
+export const createOrder = async (payload: any) : Promise<ApiResponse> => 
+   API.post("/orders", payload);

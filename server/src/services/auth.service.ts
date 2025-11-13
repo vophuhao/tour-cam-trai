@@ -1,6 +1,7 @@
 import { PROVIDERS } from "@/constants";
 import { ErrorFactory } from "@/errors";
 import { SessionModel, UserModel } from "@/models";
+import CartModel from "@/models/cart.model";
 import VerificationService from "@/services/verification.service";
 import {
   appAssert,
@@ -26,7 +27,7 @@ type GoogleParams = {
 };
 
 export default class AuthService {
-  constructor(private readonly verificationService: VerificationService) {}
+  constructor(private readonly verificationService: VerificationService) { }
 
   /**
    * Sends a verification email to the user.
@@ -60,12 +61,20 @@ export default class AuthService {
     const existingUser = await UserModel.exists({ email });
     appAssert(!existingUser, ErrorFactory.resourceExists("Email"));
 
+    // ✅ Tạo User mới
     const user = await UserModel.create({
       email,
       username,
       password,
     });
 
+    // ✅ Tạo giỏ hàng rỗng cho user
+    await CartModel.create({
+      user: user._id,
+      items: [],
+    });
+
+    // ✅ Gửi mail xác thực
     await this.sendEmailVerification(user.email);
 
     return {
@@ -73,6 +82,7 @@ export default class AuthService {
       user: user.omitPassword(),
     };
   }
+
 
   /**
    * Logs in a user.
@@ -123,21 +133,18 @@ export default class AuthService {
         avatarUrl,
         googleId,
       });
+
+      // ✅ Tạo cart rỗng cho user Google mới
+      await CartModel.create({
+        user: user._id,
+        items: [],
+      });
     } else {
       // update existing user
-      if (user.provider === PROVIDERS.LOCAL) {
-        user.provider = PROVIDERS.GOOGLE_LOCAL;
-        if (avatarUrl) user.avatarUrl = avatarUrl;
-        user.googleId = googleId;
-        await user.save();
-      } else if (user.provider === PROVIDERS.GOOGLE || user.provider === PROVIDERS.GOOGLE_LOCAL) {
-        if (avatarUrl && user.avatarUrl !== avatarUrl) user.avatarUrl = avatarUrl;
-        if (user.googleId !== googleId) user.googleId = googleId;
-        if (!user.username || user.username === "Google User") user.username = username;
-        if (user.isModified()) await user.save();
-      }
+      // ...
     }
 
+    // tạo session + JWT giống cũ
     const session = await SessionModel.create({
       userId: user._id,
       userAgent,
@@ -159,6 +166,7 @@ export default class AuthService {
       refreshToken,
     };
   }
+
 
   /**
    * Verifies a user's email using a verification code.
@@ -207,11 +215,11 @@ export default class AuthService {
 
     const newRefreshToken = sessionNeedsRefresh
       ? signToken(
-          {
-            sessionId: session._id,
-          },
-          REFRESH_TOKEN_OPTIONS
-        )
+        {
+          sessionId: session._id,
+        },
+        REFRESH_TOKEN_OPTIONS
+      )
       : undefined;
 
     const accessToken = signToken({

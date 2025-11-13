@@ -21,6 +21,11 @@ export default class TourController {
     return ResponseUtil.success(res, tour, "Tạo tour thành công");
   });
 
+  getAllTours = catchErrors(async (req, res) => {
+    const tours = await this.tourService.getAllTours();
+    return ResponseUtil.success(res, tours, "Lấy danh sách tour thành công");
+  });
+
   /**
    * @route GET /tours
    * @desc Lấy danh sách tour (phân trang + tìm kiếm)

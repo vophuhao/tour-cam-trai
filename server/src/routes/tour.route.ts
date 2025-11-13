@@ -33,4 +33,7 @@ tourRoutes.patch(":id/deactivate", tourController.deactivateTour);
 
 tourRoutes.get("/slug/:slug", tourController.getTourBySlug);
 
+tourRoutes.get("/all", tourController.getAllTours);
+
+
 export default tourRoutes;

@@ -1,5 +1,6 @@
 import {
   AuthService,
+  CartService,
   CategoryService,
   CommentService,
   ProductService,
@@ -8,6 +9,8 @@ import {
 } from "@/services";
 import { Container } from "./container";
 import { TOKENS } from "./tokens";
+import AddressService from "@/services/address.service";
+import OrderService from "@/services/order.service";
 
 export const container = new Container();
 
@@ -16,9 +19,10 @@ container.register(TOKENS.TourService, () => new TourService(), { singleton: tru
 container.register(TOKENS.CategoryService, () => new CategoryService(), { singleton: true });
 container.register(TOKENS.ProductService, () => new ProductService(), { singleton: true });
 container.register(TOKENS.CommentService, () => new CommentService(), { singleton: true });
-container.register(TOKENS.VerificationService, () => new VerificationService(), {
-  singleton: true,
-});
+container.register(TOKENS.VerificationService, () => new VerificationService(), { singleton: true,});
+container.register(TOKENS.AddressService, () => new AddressService(), { singleton: true });
+container.register(TOKENS.CartService, () => new CartService(), { singleton: true });
+container.register(TOKENS.OrderService, () => new OrderService(), { singleton: true });
 container.register(
   TOKENS.AuthService,
   () => new AuthService(container.resolve(TOKENS.VerificationService)),

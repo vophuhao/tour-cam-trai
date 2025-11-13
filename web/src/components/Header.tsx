@@ -20,7 +20,7 @@ export default function Header() {
     { name: "Tour", href: "/tour" },
     { name: "Phụ kiện", href: "/accessories" },
     { name: "Giới thiệu", href: "/about" },
-    { name: "Liên hệ", href: "/contact" },
+    { name: "Giỏ hàng", href: "/cart" },
   ];
 
   const handleLogout = async () => {
