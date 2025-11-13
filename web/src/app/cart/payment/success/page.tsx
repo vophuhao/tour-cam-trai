@@ -22,7 +22,7 @@ export default function PaymentSuccessPage() {
           Xem đơn hàng
         </button>
         <button
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/cart")}
           className="px-6 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
         >
           Tiếp tục mua sắm

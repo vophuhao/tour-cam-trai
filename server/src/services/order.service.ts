@@ -49,10 +49,15 @@ export default class OrderService {
       const paymentStatus = "pending";
       let orderStatus = "pending";
 
+      if (data.paymentMethod === "cod") {
+        orderStatus = "processing"; 
+      }
+
       // 💳 Online payment
       if (data.paymentMethod !== "cod") {
         payOSOrderCode = Math.floor(Date.now() / 1000);
-        const amount = Math.round(data.grandTotal);
+        // const amount = Math.round(data.grandTotal);
+        const amount = 2000; // TODO: TESTING ONLY
 
         try {
           const paymentLink = await payos.paymentRequests.create({
@@ -70,7 +75,7 @@ export default class OrderService {
             paymentLink?.data?.checkoutUrl ||
             null;
 
-          orderStatus = "processing"; // online -> processing ngay
+        
         } catch (err: any) {
           await session.abortTransaction();
           session.endSession();
