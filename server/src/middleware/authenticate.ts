@@ -8,7 +8,7 @@ import type mongoose from "mongoose";
 const authenticate: RequestHandler = (req, _res, next) => {
   try {
     const accessToken = req.cookies.accessToken as string | undefined;
-    appAssert(accessToken, ErrorFactory.missingToken());
+    appAssert(accessToken, ErrorFactory.invalidToken("Missing access token"));
 
     const { error, payload } = verifyToken(accessToken);
     appAssert(

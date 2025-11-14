@@ -182,13 +182,28 @@ export default class AuthService {
   }
 
   /**
+   * Verifies a password reset code.
+   */
+  async verifyPasswordResetCode(email: string, code: string) {
+    const user = await UserModel.findOne({ email });
+    appAssert(user, ErrorFactory.resourceNotFound("User"));
+
+    const isValid = await this.verificationService.verifyPasswordResetCode(email, code);
+    appAssert(isValid, ErrorFactory.invalidVerificationCode());
+
+    return {
+      message: "Password reset code verified successfully",
+    };
+  }
+
+  /**
    * Refreshes a user's access token using a refresh token.
    */
   async refreshUserAccessToken(refreshToken: string) {
     const { payload } = verifyToken<RefreshTokenPayload>(refreshToken, {
       secret: REFRESH_TOKEN_OPTIONS.secret,
     });
-    appAssert(payload, ErrorFactory.missingToken("Invalid refresh token"));
+    appAssert(payload, ErrorFactory.invalidToken("Invalid refresh token"));
 
     // validate session is deleted or expired
     const session = await SessionModel.findById(payload.sessionId);
@@ -256,19 +271,7 @@ export default class AuthService {
   /**
    * Resets a user's password using a verification code.
    */
-  async resetPassword({
-    email,
-    code,
-    password,
-  }: {
-    email: string;
-    code: string;
-    password: string;
-  }) {
-    // Verify code from Redis
-    const isValid = await this.verificationService.verifyPasswordResetCode(email, code);
-    appAssert(isValid, ErrorFactory.invalidVerificationCode());
-
+  async resetPassword({ email, password }: { email: string; password: string }) {
     // Update password
     const updatedUser = await UserModel.findOneAndUpdate(
       { email },

@@ -29,10 +29,6 @@ class ErrorFactory {
     return new AppError(UNAUTHORIZED, message, AppErrorCode.TOKEN_EXPIRED);
   }
 
-  static missingToken(message = "Missing access token") {
-    return new AppError(UNAUTHORIZED, message, AppErrorCode.REQUIRED_FIELD_MISSING);
-  }
-
   static emailNotVerified(message = "Please verify your email before proceeding") {
     return new AppError(UNAUTHORIZED, message, AppErrorCode.EMAIL_NOT_VERIFIED);
   }

@@ -146,6 +146,21 @@ export default class AuthController {
   });
 
   /**
+   * Verify password reset code
+   * @route POST /password/verify
+   */
+  verifyPasswordResetCodeHandler = catchErrors(async (req, res) => {
+    const { email, code } = req.body;
+
+    appAssert(email, ErrorFactory.requiredField("email"));
+    appAssert(code, ErrorFactory.requiredField("Verification code"));
+
+    const result = await this.authService.verifyPasswordResetCode(email, code);
+
+    return ResponseUtil.success(res, undefined, result.message);
+  });
+
+  /**
    * Send password reset email
    * @route POST /password/forgot
    */
@@ -162,13 +177,12 @@ export default class AuthController {
    * @route POST /password/reset
    */
   resetPasswordHandler = catchErrors(async (req, res) => {
-    const { email, code, password } = req.body;
+    const { email, password } = req.body;
 
     appAssert(email, ErrorFactory.requiredField("email"));
-    appAssert(code, ErrorFactory.requiredField("Verification code"));
     appAssert(password, ErrorFactory.requiredField("Password"));
 
-    const { user } = await this.authService.resetPassword({ email, code, password });
+    const { user } = await this.authService.resetPassword({ email, password });
 
     return ResponseUtil.success(res, user, "Password was reset successfully");
   });

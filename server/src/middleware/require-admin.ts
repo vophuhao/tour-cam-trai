@@ -9,7 +9,7 @@ import UserModel from "../models/user.model"; // model User của bạn
 const requireAdmin: RequestHandler = async (req, _res, next) => {
   try {
     const accessToken = req.cookies.accessToken as string | undefined;
-    appAssert(accessToken, ErrorFactory.missingToken("Missing access token"));
+    appAssert(accessToken, ErrorFactory.invalidToken("Missing access token"));
 
     const { error, payload } = verifyToken(accessToken);
     appAssert(
