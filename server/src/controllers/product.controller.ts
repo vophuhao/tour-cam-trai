@@ -1,7 +1,13 @@
 import { catchErrors } from "@/errors";
 import type ProductService from "@/services/product.service";
 import { ResponseUtil } from "@/utils";
-import { getProductByIdSchema, getProductBySlugSchema } from "@/validators/product.validator"; // bạn cần tạo file validator tương tự category
+import {
+  createProductSchema,
+  getProductByIdSchema,
+  getProductBySlugSchema,
+  getProductSchema,
+  updateProductSchema,
+} from "@/validators/product.validator"; // bạn cần tạo file validator tương tự category
 
 /**
  * Create a new product
@@ -25,7 +31,8 @@ export default class ProductController {
       details,
       guide,
       warnings,
-    } = req.body;
+    } = createProductSchema.parse(req.body);
+
     const result = await this.productService.createProduct({
       name,
       description,
@@ -41,6 +48,7 @@ export default class ProductController {
       guide,
       warnings,
     });
+
     return ResponseUtil.success(res, result, "Tạo product thành công");
   });
 
@@ -49,20 +57,31 @@ export default class ProductController {
    * @route GET /products
    */
   getProductsPaginated = catchErrors(async (req, res) => {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const search = (req.query.search as string) || undefined;
-    const category = (req.query.category as string) || undefined;
+    const { page, limit, q: query, category } = getProductSchema.parse(req.query);
 
-    const result = await this.productService.getProductsPaginated(page, limit, search, category);
+    const { data, pagination } = await this.productService.getProductsPaginated(
+      page,
+      limit,
+      query,
+      category
+    );
 
-    return ResponseUtil.success(res, result, "Lấy danh sách products phân trang thành công");
+    return ResponseUtil.paginated(
+      res,
+      data,
+      pagination,
+      "Lấy danh sách sản phẩm phân trang thành công"
+    );
   });
 
+  /**
+   * Get all products
+   * @route GET /products/all
+   */
   getProduct = catchErrors(async (_req, res) => {
     const result = await this.productService.getProduct();
 
-    return ResponseUtil.success(res, result, "Lấy danh sách categories thành công");
+    return ResponseUtil.success(res, result, "Lấy danh sách sản phẩm thành công");
   });
 
   /**
@@ -76,8 +95,8 @@ export default class ProductController {
   });
 
   updateProduct = catchErrors(async (req, res) => {
-    const { id } = getProductByIdSchema.parse(req.params);
     const {
+      id,
       name,
       description,
       price,
@@ -91,7 +110,8 @@ export default class ProductController {
       details,
       guide,
       warnings,
-    } = req.body;
+    } = updateProductSchema.parse({ ...req.params, ...req.body });
+
     const result = await this.productService.updateProduct({
       id,
       name,
@@ -109,7 +129,7 @@ export default class ProductController {
       warnings,
     });
 
-    return ResponseUtil.success(res, result);
+    return ResponseUtil.success(res, result, "Cập nhật sản phẩm thành công");
   });
 
   /**
@@ -119,7 +139,7 @@ export default class ProductController {
   deleteProduct = catchErrors(async (req, res) => {
     const { id } = getProductByIdSchema.parse(req.params);
     await this.productService.deleteProduct(id);
-    return ResponseUtil.success(res, { message: "Product deleted successfully" });
+    return ResponseUtil.success(res, undefined, "Product deleted successfully");
   });
 
   getProductBySlug = catchErrors(async (req, res) => {

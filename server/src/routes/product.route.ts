@@ -12,10 +12,10 @@ const productController = new ProductController(productService);
 // prefix: /products
 productRoutes.get("/", productController.getProductsPaginated);
 productRoutes.get("/all", productController.getProduct);
-productRoutes.post("/create", requireAdmin, productController.createProduct);
-productRoutes.post("/update/:id", requireAdmin, productController.updateProduct);
-productRoutes.post("/delete/:id", requireAdmin, productController.deleteProduct);
-productRoutes.get("/get/:id", productController.getProductById);
+productRoutes.post("/", requireAdmin, productController.createProduct);
+productRoutes.put("/:id", requireAdmin, productController.updateProduct);
+productRoutes.delete("/:id", requireAdmin, productController.deleteProduct);
+productRoutes.get("/:id", productController.getProductById);
 productRoutes.get("/slug/:slug", productController.getProductBySlug);
 
 export default productRoutes;

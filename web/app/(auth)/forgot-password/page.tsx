@@ -1,6 +1,6 @@
 'use client';
 
-import OTPModal from '@/components/modals/OTPModal';
+import OTPModal from '@/components/modals/otp-modal';
 import { Button } from '@/components/ui/button';
 import {
   Form,

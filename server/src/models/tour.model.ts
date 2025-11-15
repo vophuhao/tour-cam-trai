@@ -62,7 +62,7 @@ export interface TourDocument extends mongoose.Document {
 
 const tourSchema = new mongoose.Schema<TourDocument>(
   {
-    code: { type: String, trim: true, unique: true, index: true },
+    code: { type: String, trim: true, unique: true, sparse: true },
     name: { type: String, required: true, trim: true },
     slug: { type: String, trim: true, unique: true },
     description: { type: String, default: "" },

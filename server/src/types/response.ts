@@ -25,3 +25,12 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
     hasPrev: boolean;
   };
 }
+
+export type PaginationType = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+};

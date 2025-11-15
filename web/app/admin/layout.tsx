@@ -1,7 +1,8 @@
 'use client';
+
+import AdminSidebar from '@/components/admin-sidebar';
 import { useAuthStore } from '@/store/auth.store';
 import Link from 'next/link';
-import AdminSidebar from '../../components/AdminSidebar';
 
 export default function AdminLayout({
   children,
@@ -34,7 +35,8 @@ export default function AdminLayout({
   return (
     <div className="flex">
       <AdminSidebar />
-      <main className="ml-64 min-h-screen flex-1 bg-gray-50 p-6">
+
+      <main className="ml-45 min-h-screen flex-1 bg-gray-50 p-6">
         {children}
       </main>
     </div>

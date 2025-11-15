@@ -42,16 +42,16 @@ export default function Sidebar() {
   const menuItems: MenuItem[] = [
     { name: 'Dashboard', href: '/admin', icon: Home },
     { name: 'Users', href: '/admin/users', icon: Users },
+    { name: 'Category', href: '/admin/categories', icon: Package },
     { name: 'Products', href: '/admin/products', icon: Package },
-    { name: 'Analytics', href: '/admin/analytics', icon: BarChart },
-    { name: 'Settings', href: '/admin/settings', icon: Settings },
     { name: 'Tours', href: '/admin/tours', icon: Tent },
-    { name: 'Category', href: '/admin/category', icon: Package },
-    { name: 'Đăng xuất', icon: LogOut, action: handleLogout }, // xử lý riêng
+    { name: 'Bookings', href: '/admin/bookings', icon: BarChart },
+    { name: 'Liên hệ', href: '/admin/contact', icon: Settings },
+    { name: 'Đăng xuất', icon: LogOut, action: handleLogout },
   ];
 
   return (
-    <aside className="fixed top-5 left-0 flex h-screen w-64 flex-col shadow-lg">
+    <aside className="fixed top-5 left-0 flex h-screen w-45 flex-col shadow-lg">
       {/* Logo */}
       <div className="flex h-16 items-center justify-center">
         <h1 className="text-xl font-bold">Admin Panel</h1>

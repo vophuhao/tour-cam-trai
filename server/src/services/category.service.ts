@@ -1,9 +1,8 @@
+import { ErrorFactory } from "@/errors";
 import CategoryModel, { CategoryDocument } from "@/models/category.model";
-
-export type CreateCategoryInput = {
-  name: string;
-  isActive: boolean;
-};
+import { PaginationType } from "@/types";
+import { appAssert } from "@/utils";
+import { CreateCategoryInput } from "@/validators";
 
 export type UpdateCategoryInput = {
   id: string;
@@ -12,17 +11,18 @@ export type UpdateCategoryInput = {
 };
 
 export default class CategoryService {
-  // Tạo category
   async createCategory(data: CreateCategoryInput): Promise<CategoryDocument> {
     return CategoryModel.create(data);
   }
 
-  // Lấy tất cả category
   async getCategoriesPaginated(
-    page: number = 1,
-    limit: number = 10,
+    page: number,
+    limit: number,
     search?: string
-  ): Promise<{ data: CategoryDocument[]; total: number; page: number; limit: number }> {
+  ): Promise<{
+    data: CategoryDocument[];
+    pagination: PaginationType;
+  }> {
     const query: any = {};
     if (search) {
       query.name = { $regex: search, $options: "i" }; // tìm theo tên, không phân biệt hoa thường
@@ -36,7 +36,17 @@ export default class CategoryService {
       .limit(limit)
       .exec();
 
-    return { data, total, page, limit };
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1,
+      },
+    };
   }
 
   // Lấy category theo id
@@ -60,10 +70,9 @@ export default class CategoryService {
   }
 
   // Xóa category
-  async deleteCategory(id: string): Promise<boolean> {
+  async deleteCategory(id: string): Promise<void> {
     const category = await CategoryModel.findById(id);
-    if (!category) return false;
+    appAssert(category, ErrorFactory.resourceNotFound("Category"));
     await category.deleteOne();
-    return true;
   }
 }

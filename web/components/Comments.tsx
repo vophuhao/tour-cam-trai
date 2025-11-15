@@ -1,9 +1,10 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
-import { Loader2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
+import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
+import { useState } from 'react';
 
 // Kiểu dữ liệu comment
 export interface Comment {
@@ -18,18 +19,22 @@ export interface Comment {
 
 // Props truyền từ trang cha (ví dụ: tourId hoặc productId)
 interface CommentsProps {
-  entityType: "TOUR" | "PRODUCT";
+  entityType: 'TOUR' | 'PRODUCT';
   entityId: string;
   userId: string; // ID người dùng hiện tại
 }
 
-const Comments: React.FC<CommentsProps> = ({ entityType, entityId, userId }) => {
-  const [content, setContent] = useState("");
+const Comments: React.FC<CommentsProps> = ({
+  entityType,
+  entityId,
+  userId,
+}) => {
+  const [content, setContent] = useState('');
   const queryClient = useQueryClient();
 
   // 📥 Fetch danh sách comment
   const { data: comments, isLoading } = useQuery<Comment[]>({
-    queryKey: ["comments", entityType, entityId],
+    queryKey: ['comments', entityType, entityId],
     queryFn: async () => {
       const res = await axios.get(`/api/comments/${entityType}/${entityId}`);
       return res.data.data; // backend trả về dạng { data: [...] }
@@ -45,8 +50,10 @@ const Comments: React.FC<CommentsProps> = ({ entityType, entityId, userId }) => 
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["comments", entityType, entityId] });
-      setContent("");
+      queryClient.invalidateQueries({
+        queryKey: ['comments', entityType, entityId],
+      });
+      setContent('');
     },
   });
 
@@ -57,26 +64,26 @@ const Comments: React.FC<CommentsProps> = ({ entityType, entityId, userId }) => 
   };
 
   return (
-    <div className="w-full mt-8 bg-white dark:bg-gray-900 p-4 rounded-2xl shadow-sm">
-      <h3 className="text-lg font-semibold mb-4">Bình luận</h3>
+    <div className="mt-8 w-full rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-900">
+      <h3 className="mb-4 text-lg font-semibold">Bình luận</h3>
 
       {/* Danh sách comment */}
       {isLoading ? (
         <p>Đang tải bình luận...</p>
       ) : comments && comments.length > 0 ? (
         <div className="space-y-4">
-          {comments.map((c) => (
+          {comments.map(c => (
             <div key={c._id} className="flex gap-3 border-b pb-2">
-              <img
-                src={c.user.avatar || "/assets/default-avatar.png"}
+              <Image
+                src={c.user.avatar || '/assets/default-avatar.png'}
                 alt={c.user.name}
-                className="w-10 h-10 rounded-full object-cover"
+                className="h-10 w-10 rounded-full object-cover"
               />
               <div>
                 <p className="font-medium">{c.user.name}</p>
                 <p className="text-gray-700 dark:text-gray-300">{c.content}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {new Date(c.createdAt).toLocaleString("vi-VN")}
+                <p className="mt-1 text-xs text-gray-500">
+                  {new Date(c.createdAt).toLocaleString('vi-VN')}
                 </p>
               </div>
             </div>
@@ -91,16 +98,16 @@ const Comments: React.FC<CommentsProps> = ({ entityType, entityId, userId }) => 
         <input
           type="text"
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={e => setContent(e.target.value)}
           placeholder="Nhập bình luận của bạn..."
-          className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm focus:ring focus:ring-blue-300 outline-none bg-transparent"
+          className="flex-1 rounded-lg border border-gray-300 bg-transparent p-2 text-sm outline-none focus:ring focus:ring-blue-300 dark:border-gray-700"
         />
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 disabled:opacity-70"
+          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-70"
         >
-          {mutation.isPending && <Loader2 className="animate-spin w-4 h-4" />}
+          {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
           Gửi
         </button>
       </form>

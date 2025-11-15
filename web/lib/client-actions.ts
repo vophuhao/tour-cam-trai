@@ -60,48 +60,51 @@ export const searchUsers = async (
     `/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
   );
 
-export const uploadMedia = async (formData: FormData): Promise<ApiResponse> =>
-  apiClient.post('/media/save', formData, {
+export async function uploadMedia(formData: FormData): Promise<ApiResponse> {
+  return apiClient.post('/media/save', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-
-export const analyzeMedia = async (formData: FormData): Promise<ApiResponse> =>
-  apiClient.post('/media/analyze', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+}
 
 // ================== category API ==================
-export const getCategories = async (
+export async function getCategories(
   page = 1,
   limit = 10,
   search?: string,
-): Promise<ApiResponse> =>
-  apiClient.get('/categories', {
+): Promise<PaginatedResponse<Category>> {
+  return apiClient.get('/categories', {
     params: { page, limit, search },
   });
+}
 
-export const getAllCategories = async (): Promise<ApiResponse> =>
-  apiClient.get('/categories/all');
+export async function getAllCategories(): Promise<ApiResponse<Category[]>> {
+  return apiClient.get('/categories/all');
+}
 
-// Lấy 1 category theo id
-export const getCategoryById = async (id: string): Promise<ApiResponse> =>
-  apiClient.get(`/categories/get/${id}`);
-export const createCategory = async (data: {
+export async function getCategoryById(id: string): Promise<ApiResponse> {
+  return apiClient.get(`/categories/${id}`);
+}
+
+export async function createCategory(data: {
   name: string;
   isActive: boolean;
-}): Promise<ApiResponse> => apiClient.post('/categories/create', data);
-// Cập nhật category
-export const updateCategory = async (
+}): Promise<ApiResponse> {
+  return apiClient.post('/categories', data);
+}
+
+export async function updateCategory(
   id: string,
   data: { name: string; isActive: boolean },
-): Promise<ApiResponse> => apiClient.post(`/categories/update/${id}`, data);
-// Xóa category
-export const deleteCategory = async (id: string): Promise<ApiResponse> =>
-  apiClient.post(`/categories/delete/${id}`);
+): Promise<ApiResponse> {
+  return apiClient.put(`/categories/${id}`, data);
+}
+
+export async function deleteCategory(id: string): Promise<ApiResponse> {
+  return apiClient.delete(`/categories/${id}`);
+}
 
 // ================== product API ==================
-
-export const createProduct = async (data: {
+export async function createProduct(data: {
   name: string;
   description?: string;
   price: number;
@@ -109,18 +112,17 @@ export const createProduct = async (data: {
   stock: number;
   images: string[];
   category: string;
-
-  // ✅ Thêm các phần mới
   specifications?: ProductSpecification[];
   variants?: ProductVariant[];
   details?: ProductDetailSection[];
   guide?: string[];
   warnings?: string[];
-
   isActive: boolean;
-}): Promise<ApiResponse> => apiClient.post('/products/create', data);
+}): Promise<ApiResponse> {
+  return apiClient.post('/products', data);
+}
 
-export const updateProduct = async (
+export async function updateProduct(
   id: string,
   data: {
     name: string;
@@ -130,60 +132,61 @@ export const updateProduct = async (
     stock: number;
     images: string[];
     category: string;
-
-    // ✅ Thêm các phần mới
     specifications?: ProductSpecification[];
     variants?: ProductVariant[];
     details?: ProductDetailSection[];
     guide?: string[];
     warnings?: string[];
-
     isActive: boolean;
   },
-): Promise<ApiResponse> => apiClient.post(`/products/update/${id}`, data);
+): Promise<ApiResponse> {
+  return apiClient.put(`/products/${id}`, data);
+}
 
-export const getProduct = async (
+export async function getProduct(
   page = 1,
   limit = 10,
   search?: string,
-): Promise<ApiResponse> =>
-  apiClient.get('/products', {
+): Promise<ApiResponse<Product[]>> {
+  return apiClient.get('/products', {
     params: { page, limit, search },
   });
+}
 
-export const getProductBySlug = async (slug: string): Promise<ApiResponse> =>
-  apiClient.get(`/products/slug/${slug}`);
+export async function getProductBySlug(slug: string): Promise<ApiResponse> {
+  return apiClient.get(`/products/slug/${slug}`);
+}
 
-export const getAllProduct = async (): Promise<ApiResponse> =>
-  apiClient.get('/products/all');
+export async function getAllProduct(): Promise<ApiResponse<Product[]>> {
+  return apiClient.get('/products/all');
+}
 
-export const deleteProduct = async (id: string): Promise<ApiResponse> =>
-  apiClient.post(`/products/delete/${id}`);
+export async function deleteProduct(id: string): Promise<ApiResponse> {
+  return apiClient.delete(`/products/${id}`);
+}
 
 // ================== TOUR API ==================
-
-// 🟢 Lấy danh sách tour (phân trang + tìm kiếm)
-export const getTours = async (
+export async function getTours(
   page = 1,
   limit = 10,
   search?: string,
-): Promise<ApiResponse> =>
-  apiClient.get('/tours', { params: { page, limit, search } });
+): Promise<PaginatedResponse<Tour>> {
+  return apiClient.get('/tours', { params: { page, limit, search } });
+}
 
-// 🟢 Lấy tất cả tour (không phân trang)
-export const getAllTours = async (): Promise<ApiResponse> =>
-  apiClient.get('/tours/all');
+export async function getAllTours(): Promise<ApiResponse<Tour[]>> {
+  return apiClient.get('/tours/all');
+}
 
-// 🟢 Lấy tour theo ID
-export const getTourById = async (id: string): Promise<ApiResponse> =>
-  apiClient.get(`/tours/get/${id}`);
+export async function getTourById(id: string): Promise<ApiResponse<Tour>> {
+  return apiClient.get(`/tours/${id}`);
+}
 
-//Lay tour theo slug
-export const getTourBySlug = async (slug: string): Promise<ApiResponse> =>
-  apiClient.get(`/tours/slug/${slug}`);
+export async function getTourBySlug(slug: string): Promise<ApiResponse<Tour>> {
+  return apiClient.get(`/tours/slug/${slug}`);
+}
 
-// 🟢 Tạo mới tour
-export const createTour = async (data: {
+export async function createTour(data: {
   code?: string;
   name: string;
   description: string;
@@ -227,10 +230,11 @@ export const createTour = async (data: {
 
   images: string[];
   isActive: boolean;
-}): Promise<ApiResponse> => apiClient.post('/tours/create', data);
+}): Promise<ApiResponse<Tour>> {
+  return apiClient.post('/tours', data);
+}
 
-// 🟡 Cập nhật tour
-export const updateTour = async (
+export async function updateTour(
   id: string,
   data: {
     name: string;
@@ -276,23 +280,18 @@ export const updateTour = async (
     images: string[];
     isActive: boolean;
   },
-): Promise<ApiResponse> => apiClient.post(`/tours/update/${id}`, data);
+): Promise<ApiResponse<Tour>> {
+  return apiClient.put(`/tours/${id}`, data);
+}
 
-// 🔴 Xóa tour
-export const deleteTour = async (id: string): Promise<ApiResponse> =>
-  apiClient.post(`/tours/delete/${id}`);
+export async function deleteTour(id: string): Promise<ApiResponse> {
+  return apiClient.delete(`/tours/${id}`);
+}
 
-// 🟢 Kích hoạt tour
-export const activateTour = async (id: string): Promise<ApiResponse> =>
-  apiClient.post(`/tours/activate/${id}`);
+export async function activateTour(id: string): Promise<ApiResponse> {
+  return apiClient.patch(`/tours/activate/${id}`);
+}
 
-// 🔴 Vô hiệu hóa tour
-export const deactivateTour = async (id: string): Promise<ApiResponse> =>
-  apiClient.post(`/tours/deactivate/${id}`);
-
-// 🟣 Lấy top tour bán chạy / được xem nhiều
-export const getTopTours = async (
-  type: 'popular' | 'bestseller',
-  limit = 5,
-): Promise<ApiResponse> =>
-  apiClient.get(`/tours/top`, { params: { type, limit } });
+export async function deactivateTour(id: string): Promise<ApiResponse> {
+  return apiClient.patch(`/tours/deactivate/${id}`);
+}

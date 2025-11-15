@@ -4,6 +4,7 @@ import type { CreateTourInput, UpdateTourInput } from "@/validators/tour.validat
 export default class TourService {
   /** Tạo tour mới */
   async createTour(data: CreateTourInput) {
+    data.slug = data.name.toLowerCase().replace(/ /g, "-");
     return await TourModel.create(data);
   }
 
@@ -28,8 +29,15 @@ export default class TourService {
         limit,
         total,
         totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1,
       },
     };
+  }
+
+  /** Lấy tất cả tour (không phân trang) */
+  async getAllTours() {
+    return await TourModel.find().sort({ createdAt: -1 });
   }
 
   /** Lấy tour theo ID */

@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosResponse } from 'axios';
+import { redirect } from 'next/navigation';
 import { UNAUTHORIZED } from './constants';
 
 // cấu hình chung cho axios
@@ -32,7 +33,13 @@ apiClient.interceptors.response.use(
           return TokenRefreshClient(originalRequest);
         }
       } catch (refreshError) {
-        window.location.href = '/sign-in';
+        console.log('Refresh token failed: ', refreshError);
+        if (typeof window !== 'undefined') {
+          window.location.href = '/sign-in';
+        } else {
+          redirect('/sign-in');
+        }
+
         return Promise.reject(refreshError);
       }
     }

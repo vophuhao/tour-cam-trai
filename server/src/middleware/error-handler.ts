@@ -10,9 +10,10 @@ import { z } from "zod";
 const handleZodError = (res: Response, error: z.ZodError) => {
   const errors = error.issues.map((err) => `${err.path.join(".")}: ${err.message}`);
 
+  const formattedErrors = errors.map((e) => e.replace(/^.*?:\s*/, ""));
   return ResponseUtil.error(
     res,
-    "Validation failed",
+    formattedErrors.join(", "),
     UNPROCESSABLE_CONTENT,
     AppErrorCode.VALIDATION_ERROR,
     errors

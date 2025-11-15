@@ -23,7 +23,6 @@ export const usernameSchema = z
 
 export const mongoIdSchema = z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid ID format");
 
-// Pagination schemas
 export const paginationSchema = z.object({
   page: z
     .string()
@@ -49,25 +48,6 @@ export const imageUrlsSchema = z
   .min(1, "At least one image is required")
   .max(10, "Maximum 10 images allowed");
 
-// Common text fields
-export const nameSchema = z
-  .string()
-  .min(1, "Name is required")
-  .max(100, "Name must be less than 100 characters")
-  .trim();
-
-export const bioSchema = z
-  .string()
-  .max(500, "Bio must be less than 500 characters")
-  .trim()
-  .optional();
-
-export const contentSchema = z
-  .string()
-  .min(1, "Content is required")
-  .max(2000, "Content must be less than 2000 characters")
-  .trim();
-
 // Date schemas
 export const dateRangeSchema = z.object({
   startDate: z.string().datetime().optional(),
@@ -80,7 +60,8 @@ export const searchSchema = z.object({
     .string()
     .min(1, "Search query is required")
     .max(100, "Search query must be less than 100 characters")
-    .trim(),
+    .trim()
+    .optional(),
   ...paginationSchema.shape,
 });
 

@@ -1,4 +1,4 @@
-import { FormType } from '@/components/AuthForm';
+import { FormType } from '@/components/auth-form';
 import z from 'zod';
 
 export const authFormSchema = (formType: FormType) => {
@@ -26,7 +26,7 @@ export const authFormSchema = (formType: FormType) => {
           : z.string().optional(),
     })
     .refine(
-      (data) => {
+      data => {
         if (formType === 'sign-up') {
           return data.password === data.confirmPassword;
         }
@@ -55,7 +55,7 @@ export const resetPasswordFormSchema = z
       ),
     confirmPassword: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự'),
   })
-  .refine((data) => data.password === data.confirmPassword, {
+  .refine(data => data.password === data.confirmPassword, {
     message: 'Mật khẩu không khớp',
     path: ['confirmPassword'],
   });
