@@ -146,3 +146,20 @@ declare interface Tour {
   createdAt?: string;
   updatedAt?: string;
 }
+
+
+declare interface PaginatedResponse<T = unknown>{
+  success: boolean;
+  message: string;
+  timestamp: string;
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
