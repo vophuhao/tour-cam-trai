@@ -1,14 +1,18 @@
-import { ResponseUtil } from "@/utils";
 import { catchErrors } from "@/errors";
 import OrderService from "@/services/order.service";
+import { ResponseUtil } from "@/utils";
 
 export default class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
+  getAllOrders = catchErrors(async (req, res) => {
+    const orders = await this.orderService.getAllOrders();
+    return ResponseUtil.success(res, orders, "Lấy danh sách đơn hàng thành công");
+  });
+
   createOrder = catchErrors(async (req, res) => {
     const result = await this.orderService.createOrder(req.body, req.userId.toString());
 
-    
     if (!result.success) {
       console.error("❌ Đặt hàng lỗi:", result.message);
       return ResponseUtil.error(res, result.code, result.message);

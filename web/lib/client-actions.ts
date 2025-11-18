@@ -295,3 +295,8 @@ export async function activateTour(id: string): Promise<ApiResponse> {
 export async function deactivateTour(id: string): Promise<ApiResponse> {
   return apiClient.patch(`/tours/deactivate/${id}`);
 }
+
+// ================== ORDER API ==================
+export async function getAllOrders(): Promise<ApiResponse<Order[]>> {
+  return apiClient.get('/orders');
+}
