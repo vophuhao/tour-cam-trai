@@ -6,6 +6,9 @@ export const TOKENS = {
   VerificationService: Symbol("VerificationService"),
   CommentService: Symbol("CommentService"),
   UserService: Symbol("UserService"),
+  AddressService: Symbol("AddressService"),
+  OrderService: Symbol("OrderService"),
+  CartService: Symbol("CartService"),
 } as const;
 
 export type TokenMap = typeof TOKENS;

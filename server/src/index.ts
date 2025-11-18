@@ -6,13 +6,16 @@ import { connectRedis, connectToDatabase } from "./config";
 import { APP_ORIGIN, NODE_ENV, OK, PORT } from "./constants";
 import { authenticate, errorHandler, requireAdmin } from "./middleware";
 import {
+  addressRoutes,
   authRoutes,
   categoryRoutes,
   mediaRoutes,
+  orderRoutes,
   productRoutes,
   tourRoutes,
   userRoutes,
 } from "./routes";
+import cartRoutes from "./routes/cart.route";
 
 const app = express();
 
@@ -43,6 +46,10 @@ app.use("/categories", categoryRoutes);
 app.use("/products", authenticate, productRoutes);
 app.use("/tours", tourRoutes);
 app.use("/media", authenticate, requireAdmin, mediaRoutes);
+app.use("/cart", authenticate, cartRoutes);
+app.use("/address", authenticate, addressRoutes)
+app.use("/orders",  orderRoutes);
+
 
 // error handler middleware
 app.use(errorHandler);
