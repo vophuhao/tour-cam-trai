@@ -6,7 +6,7 @@ import { connectRedis, connectToDatabase } from "./config";
 import { APP_ORIGIN, NODE_ENV, OK, PORT } from "./constants";
 import { authenticate, errorHandler, requireAdmin } from "./middleware";
 import http from "http";
-import { initSocket } from "./config/socket";
+
 import {
   addressRoutes,
   authRoutes,
@@ -18,7 +18,7 @@ import {
   userRoutes,
 } from "./routes";
 import cartRoutes from "./routes/cart.route";
-import supportRoutes from "./routes/support.route";
+
 
 const app = express();
 
@@ -58,7 +58,7 @@ app.use("/orders", orderRoutes);
 app.use(errorHandler);
 
 const server = http.createServer(app);
-initSocket(server);
+
 
 server.listen(PORT, async () => {
   console.log(`Server listening on port ${PORT} in ${NODE_ENV} environment`);

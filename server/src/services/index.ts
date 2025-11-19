@@ -17,4 +17,3 @@ export { default as OrderService } from "@/services/order.service";
 
 export { default as CartService } from "@/services/cart.service";
 
-export { default as SupportService } from "@/services/support.service";
