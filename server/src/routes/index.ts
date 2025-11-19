@@ -1,3 +1,5 @@
+import e from "express";
+
 export { default as authRoutes } from "./auth.route";
 
 export { default as userRoutes } from "./user.route";
@@ -15,3 +17,7 @@ export { default as mediaRoutes } from "./media.route";
 export { default as addressRoutes } from "./address.route";
 
 export { default as orderRoutes } from "./order.route";
+
+export { default as cartRoutes } from "./cart.route";
+
+export { default as supportRoutes } from "./support.route";

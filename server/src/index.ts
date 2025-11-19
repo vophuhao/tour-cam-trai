@@ -5,6 +5,8 @@ import express from "express";
 import { connectRedis, connectToDatabase } from "./config";
 import { APP_ORIGIN, NODE_ENV, OK, PORT } from "./constants";
 import { authenticate, errorHandler, requireAdmin } from "./middleware";
+import http from "http";
+import { initSocket } from "./config/socket";
 import {
   addressRoutes,
   authRoutes,
@@ -16,6 +18,7 @@ import {
   userRoutes,
 } from "./routes";
 import cartRoutes from "./routes/cart.route";
+import supportRoutes from "./routes/support.route";
 
 const app = express();
 
@@ -48,13 +51,16 @@ app.use("/tours", authenticate, tourRoutes);
 app.use("/media", authenticate, requireAdmin, mediaRoutes);
 app.use("/cart", authenticate, cartRoutes);
 app.use("/address", authenticate, addressRoutes)
-app.use("/orders",  orderRoutes);
+app.use("/orders", orderRoutes);
 
 
 // error handler middleware
 app.use(errorHandler);
 
-app.listen(PORT, async () => {
+const server = http.createServer(app);
+initSocket(server);
+
+server.listen(PORT, async () => {
   console.log(`Server listening on port ${PORT} in ${NODE_ENV} environment`);
   await connectToDatabase();
   await connectRedis();

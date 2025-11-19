@@ -17,3 +17,5 @@ export { default as AddressController } from "./address.controller";
 export { default as OrderController } from "./order.controller";
 
 export { default as CartController } from "./cart.controller";
+
+export { default as SupportController } from "./support.controller";

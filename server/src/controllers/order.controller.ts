@@ -22,4 +22,9 @@ export default class OrderController {
     const result = await this.orderService.handlePayOSWebhook(req.body);
     return res.status(200).json(result);
   });
+
+  getOrdersByUser = catchErrors(async (req, res) => {
+    const orders = await this.orderService.getOrdersByUser(req.userId.toString());
+    return ResponseUtil.success(res, orders, "Lấy danh sách đơn hàng thành công");
+  });
 }

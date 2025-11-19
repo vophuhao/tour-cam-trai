@@ -14,4 +14,6 @@ router.post("/", authenticate,orderController.createOrder);
 // Webhook PayOS
 router.post("/payos/webhook", orderController.payOSWebhook);
 
+router.get("/", authenticate, orderController.getOrdersByUser);
+
 export default router;

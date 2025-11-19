@@ -40,10 +40,7 @@ export interface OrderDocument extends Document {
 
 const orderItemSchema = new Schema<OrderItem>({
   product: { type: Schema.Types.ObjectId, ref: "Product", required: true },
-  name: { type: String, required: true },
-  price: { type: Number, required: true },
   quantity: { type: Number, required: true },
-  image: String,
 });
 
 const orderAddressSchema = new Schema<OrderAddress>({

@@ -235,5 +235,12 @@ export default class OrderService {
     }
   }
 
+  async getOrdersByUser(userId: string) {
+    const orders = await OrderModel.find({ user: userId })
+      .populate("items.product")
+      .sort({ createdAt: -1 });
+    return orders;
+  }
+
   
 }

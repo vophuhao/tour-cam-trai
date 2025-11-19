@@ -22,6 +22,7 @@ container.register(TOKENS.CommentService, () => new CommentService(), { singleto
 container.register(TOKENS.AddressService, () => new AddressService(), { singleton: true });
 container.register(TOKENS.OrderService, () => new OrderService(), { singleton: true });
 container.register(TOKENS.CartService, () => new CartService(), { singleton: true });
+
 container.register(TOKENS.VerificationService, () => new VerificationService(), {
   singleton: true,
 });

@@ -124,6 +124,29 @@ export const getAllProduct = async ():
 export const deleteProduct = async (id: string) : Promise<ApiResponse> => 
   API.post(`/products/delete/${id}`)
 
+export const searchProductsFuzzy = async (
+  query: string,
+  page = 1,
+  limit = 10
+): Promise<PaginatedResponse> =>
+  API.get("/products/search", { params: { key: query, page, limit } });
+
+export const getProductsByCategoryName = async (
+  name: string,
+  page = 1,
+  limit = 10
+): Promise<PaginatedResponse> =>
+  API.get(`/products/category/${name}`, { params: { page, limit } });
+
+
+export const getProductsByPriceRange = async (
+  minPrice: number,
+  maxPrice: number,
+  category?: string,
+  page = 1,
+  limit = 10
+): Promise<PaginatedResponse> =>
+  API.get("/products/price-range", { params: { minPrice, maxPrice, category, page, limit } });
 
 // ================== TOUR API ==================
 
@@ -308,3 +331,36 @@ export const setDefaultAddress = async (index: number): Promise<ApiResponse> =>
 
 export const createOrder = async (payload: any) : Promise<ApiResponse> => 
    API.post("/orders", payload);
+
+  // export async function getOrdersByUser(): Promise<ApiResponse> {
+  //   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
+  //     cache: "force-cache",
+  //     next: { revalidate: 60 }, // cache 60 giây trên server
+  //     credentials: "include",   // tương tự withCredentials
+  //   });
+
+  //   return res.json();
+  // }
+
+export const getOrdersByUser = async (): Promise<ApiResponse> => 
+  API.get("/orders");
+
+
+// ================== SUPPORT API ==================
+
+export const createConversation = async (): Promise<ApiResponse> =>
+  API.post("/support/createConversation");
+
+export const sendMessage = async (
+  conversationId: string,
+  senderId: string,     // userId hoặc "admin"  
+  content: string
+): Promise<ApiResponse> =>
+  API.post("/support/sendMessage", { conversationId, senderId, content });
+
+export const getMessages = async (
+  conversationId: string,
+  limit = 50, 
+  skip = 0
+): Promise<ApiResponse> =>
+  API.get("/support/messages", { params: { conversationId, limit, skip } });

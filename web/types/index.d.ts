@@ -82,6 +82,7 @@ declare interface Product {
 }
 
 declare interface ProductDetail extends Product {
+  slug: string;
   rating: {
     average: number;
     count: number;

@@ -17,5 +17,7 @@ productRoutes.post("/update/:id", requireAdmin, productController.updateProduct)
 productRoutes.post("/delete/:id", requireAdmin, productController.deleteProduct);
 productRoutes.get("/get/:id", productController.getProductById);
 productRoutes.get("/slug/:slug", productController.getProductBySlug);
-
+productRoutes.get("/search", productController.searchProductsFuzzy);
+productRoutes.get("/category/:name", productController.getProductsByCategoryName);
+productRoutes.get("/price-range", productController.getProductsByPriceRange);
 export default productRoutes;
