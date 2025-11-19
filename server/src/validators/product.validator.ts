@@ -7,34 +7,116 @@ import { mongoIdSchema, paginationSchema } from "./common.validator";
 
 // Create Product
 export const createProductSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Product name is required")
-    .max(255, "Product name must be less than 255 characters")
-    .trim(),
-  description: z.string().max(1000, "Description too long").optional(),
-  price: z.number().min(0, "Price must be greater than or equal to 0"),
-  stock: z.number().min(0, "Stock must be greater than or equal to 0").default(0),
-  images: z.array(z.string().url("Image must be a valid URL")).optional(),
-  category: mongoIdSchema, // liên kết Category
-  isActive: z.boolean().optional().default(true),
+  name: z.string().min(1, "Tên sản phẩm không được để trống"),
+  slug: z.string().optional(),
+  description: z.string().optional(),
+  price: z.number().min(0, "Giá phải >= 0"),
+  deal: z.number().min(0).optional(),
+  stock: z.number().min(0).optional(),
+  images: z.array(z.string().url("URL hình ảnh không hợp lệ")).optional(),
+  category: mongoIdSchema,
+  isActive: z.boolean().optional(),
+
+  specifications: z
+    .array(
+      z.object({
+        label: z.string().min(1),
+        value: z.string().min(1),
+      })
+    )
+    .optional(),
+
+  variants: z
+    .array(
+      z.object({
+        size: z.string(),
+        expandedSize: z.string(),
+        foldedSize: z.string(),
+        loadCapacity: z.string(),
+        weight: z.string(),
+      })
+    )
+    .optional(),
+
+  details: z
+    .array(
+      z.object({
+        title: z.string().min(1),
+        items: z.array(
+          z.object({
+            label: z.string().min(1),
+          })
+        ),
+      })
+    )
+    .optional(),
+
+  guide: z.array(z.string()).optional(),
+
+  warnings: z.array(z.string()).optional(),
+
+  rating: z
+    .object({
+      average: z.number().min(0).max(5),
+      count: z.number().min(0),
+    })
+    .optional(),
+
+  count: z.number().min(0).optional(),
 });
 
 // Update Product
 export const updateProductSchema = z.object({
-  id: mongoIdSchema, // product id cần update
-  name: z
-    .string()
-    .min(1, "Product name is required")
-    .max(255, "Product name must be less than 255 characters")
-    .trim()
-    .optional(),
-  description: z.string().max(1000).optional(),
+  id: mongoIdSchema,
+
+  slug: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
   price: z.number().min(0).optional(),
+  deal: z.number().min(0).optional(),
   stock: z.number().min(0).optional(),
-  images: z.array(z.string().url()).optional(),
+
+  images: z.array(z.string().url("URL hình ảnh không hợp lệ")).optional(),
+
   category: mongoIdSchema.optional(),
   isActive: z.boolean().optional(),
+
+  specifications: z
+    .array(
+      z.object({
+        label: z.string().min(1),
+        value: z.string().min(1),
+      })
+    )
+    .optional(),
+
+  variants: z
+    .array(
+      z.object({
+        size: z.string(),
+        expandedSize: z.string(),
+        foldedSize: z.string(),
+        loadCapacity: z.string(),
+        weight: z.string(),
+      })
+    )
+    .optional(),
+
+  details: z
+    .array(
+      z.object({
+        title: z.string().min(1),
+        items: z.array(
+          z.object({
+            label: z.string().min(1),
+          })
+        ),
+      })
+    )
+    .optional(),
+
+  guide: z.array(z.string()).optional(),
+  warnings: z.array(z.string()).optional(),
 });
 
 // Get Product by ID
@@ -52,8 +134,8 @@ export const deleteProductSchema = z.object({
 });
 
 // Get Products (with pagination + optional filters)
-export const getProductsSchema = paginationSchema.extend({
-  search: z.string().optional(),
+export const getProductSchema = paginationSchema.extend({
+  q: z.string().trim().optional(),
   category: mongoIdSchema.optional(),
 });
 
@@ -62,4 +144,4 @@ export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type GetProductByIdInput = z.infer<typeof getProductByIdSchema>;
 export type DeleteProductInput = z.infer<typeof deleteProductSchema>;
-export type GetProductsInput = z.infer<typeof getProductsSchema>;
+export type GetProductsInput = z.infer<typeof getProductSchema>;

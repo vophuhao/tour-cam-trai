@@ -9,11 +9,12 @@ const categoryRoutes = Router();
 const categoryService = container.resolve<CategoryService>(TOKENS.CategoryService);
 const categoryController = new CategoryController(categoryService);
 
-// prefix: /sessions
+// prefix: /categories
 categoryRoutes.get("/", categoryController.getCategoriesPaginated);
+categoryRoutes.post("/", requireAdmin, categoryController.createCategory);
 categoryRoutes.get("/all", categoryController.getCategories);
-categoryRoutes.post("/create", requireAdmin, categoryController.createCategory);
-categoryRoutes.post("/update/:id", requireAdmin, categoryController.updateCategory);
-categoryRoutes.post("/delete/:id", requireAdmin, categoryController.deleteCategory);
-categoryRoutes.get("/get/:id", categoryController.getCategoryById);
+categoryRoutes.get("/:id", categoryController.getCategoryById);
+categoryRoutes.put("/:id", requireAdmin, categoryController.updateCategory);
+categoryRoutes.delete("/:id", requireAdmin, categoryController.deleteCategory);
+
 export default categoryRoutes;

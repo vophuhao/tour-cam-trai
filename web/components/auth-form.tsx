@@ -12,7 +12,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import z from 'zod';
-import OTPModal from './modals/OTPModal';
+import OTPModal from './modals/otp-modal';
 import { Button } from './ui/button';
 import {
   Form,

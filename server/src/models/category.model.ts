@@ -56,4 +56,5 @@ categorySchema.set("toJSON", { virtuals: true });
 categorySchema.set("toObject", { virtuals: true });
 
 const CategoryModel = mongoose.model<CategoryDocument>("Category", categorySchema);
+
 export default CategoryModel;

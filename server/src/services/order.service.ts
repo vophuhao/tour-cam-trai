@@ -1,12 +1,7 @@
-import mongoose from "mongoose";
+import { CLIENT_URL, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY, PAYOS_CLIENT_ID } from "@/constants";
 import { OrderModel } from "@/models/order.model";
 import ProductModel from "@/models/product.model";
-import {
-  CLIENT_URL,
-  PAYOS_API_KEY,
-  PAYOS_CHECKSUM_KEY,
-  PAYOS_CLIENT_ID,
-} from "@/constants";
+import mongoose from "mongoose";
 
 const { PayOS } = require("@payos/node");
 
@@ -22,7 +17,6 @@ export default class OrderService {
     const session = await mongoose.startSession();
     session.startTransaction();
 
-
     try {
       // 🔍 Kiểm tra tồn kho và giữ hàng
       for (const item of data.items) {
@@ -32,7 +26,7 @@ export default class OrderService {
           { $inc: { stock: -item.quantity } },
           { session }
         );
-       
+
         if (result.matchedCount === 0) {
           await session.abortTransaction();
           session.endSession();
@@ -50,7 +44,7 @@ export default class OrderService {
       let orderStatus = "pending";
 
       if (data.paymentMethod === "cod") {
-        orderStatus = "processing"; 
+        orderStatus = "processing";
       }
 
       // 💳 Online payment
@@ -74,8 +68,6 @@ export default class OrderService {
             paymentLink?.redirectUrl ||
             paymentLink?.data?.checkoutUrl ||
             null;
-
-        
         } catch (err: any) {
           await session.abortTransaction();
           session.endSession();
@@ -100,7 +92,7 @@ export default class OrderService {
             tax: data.tax,
             shippingFee: data.shippingFee,
             grandTotal: data.grandTotal,
-            promoCode: data.promoCode,        
+            promoCode: data.promoCode,
             orderNote: data.orderNote,
             payOSOrderCode,
             payOSCheckoutUrl,
@@ -235,12 +227,15 @@ export default class OrderService {
     }
   }
 
-  async getOrdersByUser(userId: string) {
+async getAllOrders() {
+    return await OrderModel.find()
+      .populate("user", "name email")
+      .populate("items.product", "name images")
+      .sort({ createdAt: -1 });
+  }
+async getOrdersByUser(userId: string) {
     const orders = await OrderModel.find({ user: userId })
       .populate("items.product")
       .sort({ createdAt: -1 });
     return orders;
   }
-
-  
-}

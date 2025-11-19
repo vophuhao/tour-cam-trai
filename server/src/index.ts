@@ -45,9 +45,9 @@ app.use("/auth", authRoutes);
 
 // protected routes
 app.use("/users", authenticate, userRoutes);
-app.use("/categories", authenticate, categoryRoutes);
+app.use("/categories", categoryRoutes);
 app.use("/products", authenticate, productRoutes);
-app.use("/tours", authenticate, tourRoutes);
+app.use("/tours", tourRoutes);
 app.use("/media", authenticate, requireAdmin, mediaRoutes);
 app.use("/cart", authenticate, cartRoutes);
 app.use("/address", authenticate, addressRoutes)

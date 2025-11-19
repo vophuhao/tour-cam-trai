@@ -40,6 +40,8 @@ declare interface Category {
   _id: string;
   name: string;
   isActive?: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 declare interface ProductVariant {
@@ -148,8 +150,7 @@ declare interface Tour {
   updatedAt?: string;
 }
 
-
-declare interface PaginatedResponse<T = unknown>{
+declare interface PaginatedResponse<T = unknown> {
   success: boolean;
   message: string;
   timestamp: string;
@@ -164,3 +165,47 @@ declare interface PaginatedResponse<T = unknown>{
   };
 }
 
+declare interface OrderItem {
+  product: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
+}
+
+declare interface OrderAddress {
+  fullName: string;
+  phone: string;
+  addressLine: string;
+  province: string;
+  district?: string;
+}
+
+declare interface Order {
+  _id: string;
+  user: string | { name: string; email: string };
+  Code?: string;
+  items: OrderItem[];
+  shippingAddress: OrderAddress;
+  paymentMethod: 'cod' | 'card';
+  shippingMethod: 'standard' | 'express';
+  itemsTotal: number;
+  shippingFee: number;
+  tax: number;
+  discount: number;
+  grandTotal: number;
+  promoCode?: string;
+  orderNote?: string;
+  paymentStatus: 'pending' | 'paid' | 'failed';
+  orderStatus:
+    | 'pending'
+    | 'processing'
+    | 'confirmed'
+    | 'shipping'
+    | 'completed'
+    | 'cancelled';
+  payOSOrderCode?: number;
+  payOSCheckoutUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}

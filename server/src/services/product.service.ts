@@ -1,63 +1,9 @@
+import { ErrorFactory } from "@/errors";
 import ProductModel, { ProductDocument } from "@/models/product.model";
+import { PaginationType } from "@/types";
+import { appAssert } from "@/utils";
+import { CreateProductInput, UpdateProductInput } from "@/validators";
 import mongoose from "mongoose";
-
-export type CreateProductInput = {
-  name: string;
-  slug?: string;
-  description?: string;
-  price: number;
-  deal?: number;
-  stock?: number;
-  images?: string[];
-  category: string;
-  isActive?: boolean;
-  specifications?: { label: string; value: string }[];
-  variants?: {
-    size: string;
-    expandedSize: string;
-    foldedSize: string;
-    loadCapacity: string;
-    weight: string;
-  }[];
-  details?: {
-    title: string;
-    items: { label: string }[];
-  }[];
-  guide?: string[];
-  warnings?: string[];
-  rating?: {
-    average: number;
-    count: number;
-  };
-  count?: number;
-};
-
-export type UpdateProductInput = {
-  id: string;
-  slug?: string;
-  name?: string;
-  description?: string;
-  price?: number;
-  deal?: number;
-  stock?: number;
-  images?: string[];
-  category?: string;
-  isActive?: boolean;
-  specifications?: { label: string; value: string }[];
-  variants?: {
-    size: string;
-    expandedSize: string;
-    foldedSize: string;
-    loadCapacity: string;
-    weight: string;
-  }[];
-  details?: {
-    title: string;
-    items: { label: string }[];
-  }[];
-  guide?: string[];
-  warnings?: string[];
-};
 
 export default class ProductService {
   // Tạo product
@@ -74,7 +20,10 @@ export default class ProductService {
     limit: number = 10,
     search?: string,
     category?: string
-  ): Promise<{ data: ProductDocument[]; total: number; page: number; limit: number }> {
+  ): Promise<{
+    data: ProductDocument[];
+    pagination: PaginationType;
+  }> {
     const query: any = {};
     if (search) {
       query.$text = { $search: search };
@@ -92,7 +41,17 @@ export default class ProductService {
       .limit(limit)
       .exec();
 
-    return { data, total, page, limit };
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1,
+      },
+    };
   }
 
   async getProduct(): Promise<ProductDocument[]> {
@@ -133,11 +92,10 @@ export default class ProductService {
   }
 
   // Xóa product
-  async deleteProduct(id: string): Promise<boolean> {
+  async deleteProduct(id: string): Promise<void> {
     const product = await ProductModel.findById(id);
-    if (!product) return false;
+    appAssert(product, ErrorFactory.resourceNotFound("Product"));
     await product.deleteOne();
-    return true;
   }
 
    async getProductsByCategoryName(

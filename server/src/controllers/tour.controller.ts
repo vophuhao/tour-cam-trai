@@ -30,8 +30,17 @@ export default class TourController {
     const limit = parseInt(req.query.limit as string) || 10;
     const search = (req.query.search as string) || undefined;
 
-    const result = await this.tourService.getToursPaginated(page, limit, search);
-    return ResponseUtil.success(res, result, "Lấy danh sách tour thành công");
+    const { data, pagination } = await this.tourService.getToursPaginated(page, limit, search);
+    return ResponseUtil.paginated(res, data, pagination, "Lấy danh sách tour thành công");
+  });
+
+  /**
+   * @route GET /tours/all
+   * @desc Lấy tất cả tour (không phân trang)
+   */
+  getAllTours = catchErrors(async (_req, res) => {
+    const tours = await this.tourService.getAllTours();
+    return ResponseUtil.success(res, tours, "Lấy danh sách tour thành công");
   });
 
   /**
@@ -71,7 +80,7 @@ export default class TourController {
 
     appAssert(tour, ErrorFactory.resourceNotFound("Tour"));
 
-    return ResponseUtil.success(res, null, "Xóa tour thành công");
+    return ResponseUtil.success(res, undefined, "Xóa tour thành công");
   });
 
   /**
