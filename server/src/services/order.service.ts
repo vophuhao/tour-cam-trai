@@ -78,11 +78,12 @@ export default class OrderService {
           };
         }
       }
-
+      const orderCode = generateOrderCode();
       const [order] = await OrderModel.create(
         [
           {
             user: userId,
+            code: orderCode,
             items: data.items,
             shippingAddress: data.shippingAddress,
             paymentMethod: data.paymentMethod,
@@ -229,8 +230,7 @@ export default class OrderService {
 
   async getAllOrders() {
     return await OrderModel.find()
-      .populate("user", "name email")
-      .populate("items.product", "name images")
+      .populate("user", "username email")
       .sort({ createdAt: -1 });
   }
   async getOrdersByUser(userId: string) {
@@ -239,4 +239,83 @@ export default class OrderService {
       .sort({ createdAt: -1 });
     return orders;
   }
+
+
+  async updateStatusOrder(orderId: string) {
+    const order = await OrderModel.findById(orderId);
+    if (!order) {
+      return { success: false, message: "Đơn hàng không tồn tại" };
+    }
+
+    type OrderStatus =
+      | "pending"
+      | "processing"
+      | "confirmed"
+      | "shipping"
+      | "completed"
+      | "cancelled";
+
+    const nextStatusMap: Record<OrderStatus, OrderStatus | null> = {
+      pending: "processing",
+      processing: "confirmed",
+      confirmed: "shipping",
+      shipping: "completed",
+      completed: null,
+      cancelled: null,
+    };
+
+    const current = order.orderStatus as OrderStatus;
+    const next = nextStatusMap[current];
+
+    if (!next) {
+      return {
+        success: false,
+        message: `Không thể cập nhật trạng thái từ "${current}".`,
+      };
+    }
+
+    order.orderStatus = next;
+    await order.save();
+
+    return {
+      success: true,
+      message: `Cập nhật trạng thái đơn hàng thành "${next}" thành công.`,
+      order,
+    };
+  }
+
+  async getOrderById(orderId: string) {
+    const order = await OrderModel.findById(orderId)
+    return order;
+  }
+  
+  async cancelOrder(orderId: string) {
+    const order = await OrderModel.findById(orderId);
+    if (!order) {
+      return { success: false, message: "Đơn hàng không tồn tại" };
+    }
+    if (order.orderStatus === "cancelled") {
+      return { success: false, message: "Đơn hàng đã bị hủy" };
+    }
+
+    order.orderStatus = "cancelled";
+    await order.save();
+
+    return { success: true, message: "Hủy đơn hàng thành công", order };
+  }
+
+}
+
+function generateOrderCode(): string {
+  const now = new Date();
+
+  // Lấy ngày/tháng/năm dạng ddMMyy
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0'); // Tháng 0-based
+  const year = String(now.getFullYear()).slice(-2);
+
+  // Sinh 3 số ngẫu nhiên để tránh trùng
+  const random = Math.floor(Math.random() * 900) + 100; // 100 - 999
+
+  return `HD${day}${month}${year}${random}`;
 }

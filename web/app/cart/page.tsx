@@ -26,6 +26,7 @@ export default function CartPage() {
     }, [items, setItems]);
   
     if (isLoading) return <div className="p-8">Đang tải giỏ hàng...</div>;
+
     if (error) return <div className="p-8 text-red-600">Lỗi: {error.message}</div>;
   
   const handleUpdateQuantity = (productId: string, quantity: number) => {

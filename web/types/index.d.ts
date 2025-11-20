@@ -168,9 +168,10 @@ declare interface PaginatedResponse<T = unknown> {
 declare interface OrderItem {
   product: string;
   name: string;
-  price: number;
+  totalPrice: number;
   quantity: number;
   image?: string;
+  _id?: string;
 }
 
 declare interface OrderAddress {
@@ -183,10 +184,11 @@ declare interface OrderAddress {
 
 declare interface Order {
   _id: string;
-  user: string | { name: string; email: string };
-  Code?: string;
+  user: string | { username: string; email: string };
+  code?: string;
   items: OrderItem[];
   shippingAddress: OrderAddress;
+  product : Product;
   paymentMethod: 'cod' | 'card';
   shippingMethod: 'standard' | 'express';
   itemsTotal: number;

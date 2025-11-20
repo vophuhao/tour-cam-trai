@@ -3,7 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface OrderItem {
   product: mongoose.Types.ObjectId;
   name: string;
-  price: number;
+  totalPrice: number;
   quantity: number;
   image?: string;
 }
@@ -18,7 +18,7 @@ export interface OrderAddress {
 
 export interface OrderDocument extends Document {
   user: mongoose.Types.ObjectId;
-  Code?: string;
+  code?: string;
   items: OrderItem[];
   shippingAddress: OrderAddress;
   paymentMethod: "cod" | "card";
@@ -41,6 +41,9 @@ export interface OrderDocument extends Document {
 const orderItemSchema = new Schema<OrderItem>({
   product: { type: Schema.Types.ObjectId, ref: "Product", required: true },
   quantity: { type: Number, required: true },
+  name: { type: String, required: true },
+  totalPrice: { type: Number, required: true },
+  image: { type: String },
 });
 
 const orderAddressSchema = new Schema<OrderAddress>({
@@ -54,7 +57,7 @@ const orderAddressSchema = new Schema<OrderAddress>({
 const orderSchema = new Schema<OrderDocument>(
   {
     user: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    Code: { type: String},
+  code: { type: String},
     items: { type: [orderItemSchema], required: true },
     shippingAddress: { type: orderAddressSchema, required: true },
 

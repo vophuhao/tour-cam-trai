@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cart.store";
+import { Trash } from "lucide-react";
 
 
 const formatCurrency = (value: number) =>
@@ -41,11 +42,17 @@ export default function Cart({ items: propsItems, onUpdateQuantity, onRemoveItem
     const selected = selectedIds.length;
     selectAllRef.current.indeterminate = selected > 0 && selected < total;
   }, [selectedIds, items.length]);
+  const getFinalPrice = (product: CartItem["product"]) =>
+    product.deal ?? product.price;
 
-  const total = items.reduce((s: number, it) => s + it.quantity * it.product.price, 0);
+  const total = items.reduce((s, it) => s + it.quantity * getFinalPrice(it.product), 0);
   const selectedItems = items.filter((it) => selectedIds.includes(it.product._id));
-  const selectedTotal = selectedItems.reduce((s: number, it) => s + it.quantity * it.product.price, 0);
-  const selectedQuantity = selectedItems.reduce((s: number, it) => s + it.quantity, 0);
+  const selectedTotal = selectedItems.reduce(
+    (s, it) => s + it.quantity * getFinalPrice(it.product),
+    0
+  );
+  const selectedQuantity = selectedItems.reduce((s, it) => s + it.quantity, 0);
+
 
   const handleCheckout = () => {
     router.push("/cart/payment");
@@ -68,6 +75,7 @@ export default function Cart({ items: propsItems, onUpdateQuantity, onRemoveItem
       removeItem(id);
     }
   };
+
 
   return (
     <div className="max-w-4xl mx-auto mt-10 p-6 bg-white rounded-3xl shadow-lg">
@@ -119,8 +127,20 @@ export default function Cart({ items: propsItems, onUpdateQuantity, onRemoveItem
                 </div>
 
                 <div className="text-right">
-                  <div className="text-gray-700 font-medium">{formatCurrency(it.product.price)}</div>
-                  <div className="text-xs text-gray-400">/ cái</div>
+                  {it.product.deal ? (
+                    <>
+                      <div className="text-red-500 line-through text-xs ">
+                        Giá gốc :{formatCurrency(it.product.price)}
+                      </div>
+                      <div className="text-green-600 font-semibold">
+                        Chỉ còn :{formatCurrency(it.product.deal)}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-gray-700 font-medium">
+                      Giá gốc :{formatCurrency(it.product.price)}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -143,19 +163,13 @@ export default function Cart({ items: propsItems, onUpdateQuantity, onRemoveItem
                   </button>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <div className="text-sm font-semibold">{formatCurrency(it.product.price * it.quantity)}</div>
+                <div className="flex items-center gap-4 ">
                   <button
                     aria-label={`Xóa ${it.product.name}`}
                     onClick={() => handleRemove(it.product._id)}
-                    className="p-2 rounded-md hover:bg-red-50 text-red-500"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                      <path d="M3 6h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                      <path d="M8 6l1 14h6l1-14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      <path d="M10 11v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                      <path d="M14 11v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                    </svg>
+                    className="p-2 rounded-md hover:bg-red-50 text-red-500  transition"
+                  >                 
+                    <Trash className="w-5 h-5 cursor-pointer" />                 
                   </button>
                 </div>
               </div>
@@ -166,19 +180,22 @@ export default function Cart({ items: propsItems, onUpdateQuantity, onRemoveItem
 
       <div className="mt-6 bg-gray-50 p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4">
         <div>
-          <div className="text-sm text-gray-500">Tổng đã chọn ({selectedQuantity} sản phẩm)</div>
-          <div className="text-2xl font-bold">{formatCurrency(selectedTotal)}</div>
-          <div className="text-xs text-gray-400 mt-1">Tổng giỏ: {formatCurrency(total)}</div>
+          <div className="text-sm text-gray-500">
+            Tổng đã chọn ({selectedQuantity} sản phẩm)
+          </div>        
+          <div className="text-sm text-green-600 mt-1">
+            Tổng giỏ  {formatCurrency(selectedTotal)}
+           
+          </div>
         </div>
 
         <button
           onClick={handleCheckout}
           disabled={selectedQuantity === 0}
-          className={`w-full md:w-auto flex items-center justify-center gap-3 px-6 py-3 rounded-xl shadow-lg transition ${
-            selectedQuantity === 0
-              ? "bg-gray-300 text-gray-700 cursor-not-allowed"
-              : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
-          }`}
+          className={`w-full md:w-auto flex items-center justify-center gap-3 px-6 py-3 rounded-xl shadow-lg transition ${selectedQuantity === 0
+            ? "bg-gray-300 text-gray-700 cursor-not-allowed"
+            : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
+            }`}
           aria-label="Thanh toán các sản phẩm đã chọn"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="opacity-90">

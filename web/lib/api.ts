@@ -332,19 +332,18 @@ export const setDefaultAddress = async (index: number): Promise<ApiResponse> =>
 export const createOrder = async (payload: any) : Promise<ApiResponse> => 
    API.post("/orders", payload);
 
-  // export async function getOrdersByUser(): Promise<ApiResponse> {
-  //   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
-  //     cache: "force-cache",
-  //     next: { revalidate: 60 }, // cache 60 giây trên server
-  //     credentials: "include",   // tương tự withCredentials
-  //   });
-
-  //   return res.json();
-  // }
-
-export const getOrdersByUser = async (): Promise<ApiResponse> => 
+export const getOrdersByUser = async (): Promise<ApiResponse<Order[]>> => 
   API.get("/orders");
 
+export const updateStatusOrder = async (orderId: string): Promise<ApiResponse> =>
+  API.patch(`/orders/${orderId}/status`);
+
+
+export const getOrderById = async (orderId: string): Promise<ApiResponse<Order>> => 
+  API.get(`/orders/${orderId}`);
+
+export const cancelOrder = async (orderId: string): Promise<ApiResponse> =>
+  API.post(`/orders/${orderId}/cancel`);
 
 // ================== SUPPORT API ==================
 

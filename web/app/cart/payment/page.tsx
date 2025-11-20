@@ -45,7 +45,7 @@ export default function PaymentPage() {
     const [orderNote, setOrderNote] = useState("");
 
     const selectedItems = items.filter((it) => selectedIds.includes(it.product._id));
-    const itemsTotal = selectedItems.reduce((s: number, it) => s + it.product.price * it.quantity, 0);
+    const itemsTotal = selectedItems.reduce((s: number, it) => s + (it.product.deal ?? it.product.price) * it.quantity, 0);
     const shippingFee = shipping === "express" ? 45000 : 25000;
     const promoDiscount = promoApplied ? promoApplied.amount : 0;
     const tax = Math.round((itemsTotal - promoDiscount) * 0.05); // simple 5% VAT example
@@ -91,13 +91,13 @@ export default function PaymentPage() {
 
         try {
             const addr = addresses[selectedAddressIndex!];
-
+            
             const payload = {
                 // ✅ user backend nhận từ token, không cần truyền
                 items: selectedItems.map((it) => ({
                     product: it.product._id,
                     name: it.product.name,
-                    price: it.product.price,
+                    totalPrice: (it.product.deal ?? it.product.price),
                     quantity: it.quantity,
                     image: it.product.images?.[0] || ""
                 })),
@@ -120,9 +120,9 @@ export default function PaymentPage() {
                 promoCode: promoApplied?.code || null,                          
                 orderNote,
             };
-
+          
             const res = await createOrderMutation.mutateAsync(payload);
-            console.log("create order res", res);
+            
             if(res.data ==="OUT_OF_STOCK") {
                 alert("Đặt hàng thất bại: Sản phẩm không còn đủ hàng.");
                 setPlacing(false);
@@ -138,7 +138,7 @@ export default function PaymentPage() {
                 clearSelected();
 
                 setSuccess("Đặt hàng thành công!");
-                // setTimeout(() => router.push("/orders"), 1000);
+                 setTimeout(() => router.push("/order"), 1000);
                 return;
             }
 

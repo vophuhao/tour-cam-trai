@@ -16,4 +16,10 @@ router.post("/payos/webhook", orderController.payOSWebhook);
 
 router.get("/", authenticate, orderController.getOrdersByUser);
 
+router.patch("/:orderId/status", requireAdmin, orderController.updateStatusOrder);
+
+router.get("/:orderId", authenticate, orderController.getOrderById);
+
+router.post("/:orderId/cancel", authenticate, orderController.cancelOrder);
+
 export default router;

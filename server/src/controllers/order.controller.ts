@@ -12,13 +12,11 @@ export default class OrderController {
 
   createOrder = catchErrors(async (req, res) => {
     const result = await this.orderService.createOrder(req.body, req.userId.toString());
-
     if (!result.success) {
       console.error("❌ Đặt hàng lỗi:", result.message);
       return ResponseUtil.error(res, result.code, result.message);
     }
     console.log("✅ Đặt hàng thành công:", result.order);
-    console.log("result.message", result.message);
     return ResponseUtil.success(res, result.order, result.message);
   });
 
@@ -29,5 +27,21 @@ export default class OrderController {
   getOrdersByUser = catchErrors(async (req, res) => {
     const orders = await this.orderService.getOrdersByUser(req.userId.toString());
     return ResponseUtil.success(res, orders, "Lấy danh sách đơn hàng thành công");
+  });
+  updateStatusOrder = catchErrors(async (req, res) => {
+    const { orderId } = req.params;
+    const result = await this.orderService.updateStatusOrder(orderId?.toString() || "");
+  
+    return ResponseUtil.success(res, result.order, result.message);
+  });
+  getOrderById = catchErrors(async (req, res) => {
+    const { orderId } = req.params;
+    const order = await this.orderService.getOrderById(orderId?.toString() || "");
+    return ResponseUtil.success(res, order, "Lấy chi tiết đơn hàng thành công");
+  });
+  cancelOrder = catchErrors(async (req, res) => {
+    const { orderId } = req.params;
+    const result = await this.orderService.cancelOrder(orderId?.toString() || "");
+    return ResponseUtil.success(res, result.order, result.message);
   });
 }
