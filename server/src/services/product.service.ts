@@ -129,7 +129,15 @@ export default class ProductService {
     limit: number = 10
   ): Promise<{ data: ProductDocument[]; total: number; page: number; limit: number }> {
     const q = (key || "").trim();
-    if (!q) return this.getProductsPaginated(page, limit);
+    if (!q) {
+      const paginated = await this.getProductsPaginated(page, limit);
+      return {
+        data: paginated.data,
+        total: paginated.pagination.total,
+        page: paginated.pagination.page,
+        limit: paginated.pagination.limit,
+      };
+    }
 
     // try text search first (if text index exists) to get relevant ids
     let idsFromText: any[] = [];

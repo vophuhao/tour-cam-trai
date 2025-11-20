@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 
 const TABS = [
   { key: "all", label: "Tất cả" },
+  { key: "pending", label: "Chờ thanh toán" },
   { key: "processing", label: "Chờ xác nhận" },
   { key: "confirmed", label: "Đã xác nhận" },
   { key: "shipping", label: "Vận chuyển" },
@@ -24,6 +25,14 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("all");
   const [search, setSearch] = useState<string>("");
+
+  const handlePayment = (payOSCheckoutUrl?: string) => () => {
+    if (!payOSCheckoutUrl) {
+      // no-op if url is missing
+      return;
+    }
+    window.location.assign(payOSCheckoutUrl);
+  };
 
   useEffect(() => {
     async function fetchOrders() {
@@ -51,6 +60,9 @@ export default function OrdersPage() {
       // Lọc theo tab
       if (activeTab !== "all") {
         switch (activeTab) {
+          case "pending":
+            if (o.orderStatus !== "pending") return false;
+            break;
           case "processing":
             if (o.orderStatus !== "processing") return false;
             break;
@@ -87,7 +99,7 @@ export default function OrdersPage() {
       {/* Tabs + Search */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
-          <TabsList className="grid grid-cols-6 w-full">
+          <TabsList className="grid grid-cols-7 w-full">
             {TABS.map((t) => (
               <TabsTrigger key={t.key} value={t.key}>
                 {t.label}
@@ -95,12 +107,12 @@ export default function OrdersPage() {
             ))}
           </TabsList>
         </Tabs>
-        <Input
+        {/* <Input
           placeholder="Tìm kiếm đơn hàng..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="md:w-64"
-        />
+        /> */}
       </div>
      <ScrollArea className="h-[75vh]">
   <div className="flex flex-col space-y-4 p-2">
@@ -129,12 +141,13 @@ export default function OrdersPage() {
               >
                 {(() => {
                   switch (order.orderStatus) {
+                    case "pending": return "Chờ thanh toán";
                     case "processing": return "Chờ xác nhận";
                     case "confirmed": return "Đã xác nhận";
                     case "shipping": return "Đang giao";
                     case "completed": return "Hoàn thành";
                     case "cancelled": return "Đã hủy";
-                    default: return order.orderStatus.toUpperCase();
+                    default: return String(order.orderStatus).toUpperCase();
                   }
                 })()}
               </Badge>
@@ -172,7 +185,18 @@ export default function OrdersPage() {
                 Ngày đặt hàng: {new Date(order.createdAt).toLocaleDateString("vi-VN")}
               </div>
               <Button size="sm" variant="outline" className="bg-green-400" onClick={handleViewDetail(order._id)}>Chi tiết</Button>
-              <Button size="sm" variant="outline" className="bg-green-400">Mua Lại</Button>
+              {
+                order.orderStatus === "completed" && (
+                  <Button size="sm" variant="outline" className="bg-green-400">Mua Lại</Button>
+                )
+              }
+              
+
+              { order.paymentStatus === "pending" && order.paymentMethod === "card" && (
+                <Button onClick={handlePayment(order?.payOSCheckoutUrl)} size="sm" variant="outline" className="bg-green-400">Tiếp tục thanh toán</Button>
+              )
+
+              }
             </div>
           </CardFooter>
         </Card>

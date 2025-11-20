@@ -16,7 +16,7 @@ export default function PaymentSuccessPage() {
 
       <div className="flex gap-3">
         <button
-          onClick={() => router.push("/orders")}
+          onClick={() => router.push("/order")}
           className="px-6 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:opacity-95"
         >
           Xem đơn hàng

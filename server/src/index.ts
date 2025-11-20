@@ -6,7 +6,7 @@ import { connectRedis, connectToDatabase } from "./config";
 import { APP_ORIGIN, NODE_ENV, OK, PORT } from "./constants";
 import { authenticate, errorHandler, requireAdmin } from "./middleware";
 import http from "http";
-
+import cron from "node-cron";
 import {
   addressRoutes,
   authRoutes,
@@ -18,6 +18,7 @@ import {
   userRoutes,
 } from "./routes";
 import cartRoutes from "./routes/cart.route";
+import { OrderService } from "./services";
 
 
 const app = express();
@@ -38,6 +39,14 @@ app.get("/", (_, res) => {
   return res.status(OK).json({
     status: "healthy",
   });
+});
+
+const orderService = new OrderService();
+
+// Chạy mỗi 10 phút
+cron.schedule("*/10 * * * *", async () => {
+  console.log("⏱️ Cron: kiểm tra đơn cần hủy...");
+  await orderService.cancelExpiredOrders();
 });
 
 // public routes

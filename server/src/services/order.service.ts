@@ -192,41 +192,58 @@ export default class OrderService {
   }
 
   /** ⏰ Hủy đơn COD quá hạn (cron job) */
-  async cancelExpiredCODOrders(timeoutMinutes = 15) {
-    const expireTime = new Date(Date.now() - timeoutMinutes * 60 * 1000);
+  async cancelExpiredOrders() {
 
-    const expiredOrders = await OrderModel.find({
-      paymentMethod: "cod",
-      paymentStatus: "pending",
-      orderStatus: "pending",
-      createdAt: { $lt: expireTime },
-    });
+  
+  // 2) HỦY ĐƠN CARD (12 giờ)
+  const CARD_TIMEOUT_HOURS = 12;
 
-    for (const order of expiredOrders) {
-      const session = await mongoose.startSession();
-      session.startTransaction();
+  const cardExpireTime = new Date(Date.now() - CARD_TIMEOUT_HOURS * 60 * 60 * 1000);
 
-      try {
-        for (const item of order.items) {
-          await ProductModel.updateOne(
-            { _id: item.product },
-            { $inc: { stock: item.quantity } },
-            { session }
-          );
-        }
+  const expiredCardOrders = await OrderModel.find({
+    paymentMethod: "card",
+    paymentStatus: "pending",
+    orderStatus: "pending",
+    createdAt: { $lt: cardExpireTime },
+  });
 
-        await OrderModel.deleteOne({ _id: order._id }, { session });
+  for (const order of expiredCardOrders) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-        await session.commitTransaction();
-        session.endSession();
-        console.log(`🗑️ Đã xóa đơn COD quá hạn: ${order._id}`);
-      } catch (err) {
-        await session.abortTransaction();
-        session.endSession();
-        console.error(`❌ Lỗi khi xóa đơn COD ${order._id}:`, err);
+    try {
+      // Hoàn lại stock
+      for (const item of order.items) {
+        await ProductModel.updateOne(
+          { _id: item.product },
+          { $inc: { stock: item.quantity } },
+          { session }
+        );
       }
+
+      // Cập nhật trạng thái đơn → cancel
+      await OrderModel.updateOne(
+        { _id: order._id },
+        {
+          orderStatus: "cancelled",
+          paymentStatus: "failed", // optional
+          cancelledAt: new Date(),
+        },
+        { session }
+      );
+
+      await session.commitTransaction();
+      session.endSession();
+
+      console.log(`⛔ Đã hủy đơn card quá hạn 12h: ${order._id}`);
+    } catch (err) {
+      await session.abortTransaction();
+      session.endSession();
+      console.error(`❌ Lỗi khi hủy đơn card ${order._id}:`, err);
     }
   }
+}
+
 
   async getAllOrders() {
     return await OrderModel.find()
