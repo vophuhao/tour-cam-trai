@@ -10,4 +10,6 @@ export const oneYearFromNow = () => new Date(Date.now() + 365 * 24 * 60 * 60 * 1
 
 export const thirtyDaysFromNow = () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
+export const oneDayFromNow = () => new Date(Date.now() + ONE_DAY_MS);
+
 export const ONE_DAY_MS = 24 * 60 * 60 * 1000;

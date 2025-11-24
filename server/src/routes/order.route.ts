@@ -14,7 +14,7 @@ router.post("/", authenticate, orderController.createOrder);
 // Webhook PayOS
 router.post("/payos/webhook", orderController.payOSWebhook);
 
-router.get("/", authenticate, orderController.getOrdersByUser);
+router.get("/user", authenticate, orderController.getOrdersByUser);
 
 router.patch("/:orderId/status", requireAdmin, orderController.updateStatusOrder);
 

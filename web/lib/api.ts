@@ -333,7 +333,7 @@ export const createOrder = async (payload: any) : Promise<ApiResponse> =>
    API.post("/orders", payload);
 
 export const getOrdersByUser = async (): Promise<ApiResponse<Order[]>> => 
-  API.get("/orders");
+  API.get("/orders/user");
 
 export const updateStatusOrder = async (orderId: string): Promise<ApiResponse> =>
   API.patch(`/orders/${orderId}/status`);

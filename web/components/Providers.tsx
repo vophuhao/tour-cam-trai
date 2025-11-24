@@ -7,6 +7,8 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ThemeProvider } from './theme-provider';
 
+import SocketProvider from '@/provider/socketProvider';
+
 export function Providers({ children }: { children: React.ReactNode }) {
   // Initialize QueryClient only once to preserve React Query cache across re-renders
   const [queryClient] = useState(() => new QueryClient());
@@ -20,8 +22,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!}>
         <QueryClientProvider client={queryClient}>
-          {children}
-          <ToastContainer position="top-right" autoClose={3000} />
+          <SocketProvider>
+            
+            {children}
+            <ToastContainer position="top-right" autoClose={3000} />
+          </SocketProvider>
         </QueryClientProvider>
       </GoogleOAuthProvider>
     </ThemeProvider>

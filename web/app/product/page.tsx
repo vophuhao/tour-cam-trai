@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 
 "use client";
@@ -60,7 +61,7 @@ export default function ProductsPage() {
           perPage
         );
         if (!mounted) return;
-        setProducts(res.data);
+        setProducts(res.data as Product[]);
         setTotal(res.total);
         setPage(1);
       } catch (err) {
@@ -86,7 +87,8 @@ export default function ProductsPage() {
       try {
         const res = await getAllCategories();
         if (res?.success) {
-          setCategories(["all", ...(res.data.map?.((c: any) => c.name) || [])]);
+          const dataArray = Array.isArray((res as any).data) ? (res as any).data : [];
+          setCategories(["all", ...(dataArray.map((c: any) => c.name) || [])]);
         } else {
           setCategories(["all"]);
         }
@@ -115,7 +117,7 @@ export default function ProductsPage() {
 
         if (!mounted) return;
 
-        setProducts(res?.data || []);
+        setProducts((res?.data as Product[]) || []);
         setTotal(res?.total || 0);
       } catch (err) {
         console.error("Load products error", err);

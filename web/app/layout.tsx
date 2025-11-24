@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
 import './globals.css';
 import { Providers } from '@/components/Providers';
+import ChatModal from '@/components/modals/chatModal';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -33,6 +34,7 @@ export default function RootLayout({
         <Providers>{children}</Providers>
 
         <Toaster position="top-center" />
+        <ChatModal />
       </body>
     </html>
   );

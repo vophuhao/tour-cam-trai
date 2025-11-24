@@ -19,6 +19,8 @@ import {
 } from "./routes";
 import cartRoutes from "./routes/cart.route";
 import { OrderService } from "./services";
+import { initializeSocket } from "./socket";
+import supportRouter from "./routes/directMessage.route";
 
 
 const app = express();
@@ -61,13 +63,14 @@ app.use("/media", authenticate, requireAdmin, mediaRoutes);
 app.use("/cart", authenticate, cartRoutes);
 app.use("/address", authenticate, addressRoutes)
 app.use("/orders", orderRoutes);
+app.use("/support", authenticate, supportRouter); // admin support routes
 
 
 // error handler middleware
 app.use(errorHandler);
 
 const server = http.createServer(app);
-
+initializeSocket(server); // Kh?i t?o socket v?i server
 
 server.listen(PORT, async () => {
   console.log(`Server listening on port ${PORT} in ${NODE_ENV} environment`);
