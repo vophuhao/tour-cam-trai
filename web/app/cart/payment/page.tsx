@@ -327,7 +327,7 @@ export default function PaymentPage() {
 
                     <div className="mt-4 space-y-2 text-sm text-gray-700">
                         <div className="flex justify-between"><span>Tạm tính</span><span>{formatCurrency(itemsTotal)}</span></div>
-                        <div className="flex justify-between"><span>Giảm</span><span className="text-green-600">- {formatCurrency(promoDiscount)}</span></div>
+                        <div className="flex justify-between"><span>Giảm</span><span className="text-green-600"> {formatCurrency(promoDiscount)}</span></div>
                         <div className="flex justify-between"><span>Thuế (VAT 5%)</span><span>{formatCurrency(tax)}</span></div>
                         <div className="flex justify-between"><span>Phí vận chuyển</span><span>{formatCurrency(shippingFee)}</span></div>
                         <div className="flex justify-between font-bold text-lg mt-2"><span>Tổng thanh toán</span><span>{formatCurrency(grandTotal)}</span></div>

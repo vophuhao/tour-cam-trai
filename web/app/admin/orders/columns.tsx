@@ -32,16 +32,21 @@ const orderStatusMap = {
   processing: { label: 'Đang xử lý', variant: 'default' as const },
   confirmed: { label: 'Đã xác nhận', variant: 'default' as const },
   shipping: { label: 'Đang giao', variant: 'default' as const },
+  delivered: { label: 'Đã giao', variant: 'default' as const },
   completed: { label: 'Hoàn thành', variant: 'default' as const },
   cancelled: { label: 'Đã hủy', variant: 'destructive' as const },
+  cancel_request: { label: 'Yêu cầu hủy', variant: 'destructive' as const },
 };
+
 const nextStatusMap: Record<Order["orderStatus"], { label: string; next: Order["orderStatus"] } | null> = {
   pending: { label: "Xử lý", next: "processing" },
   processing: { label: "Xác nhận", next: "confirmed" },
   confirmed: { label: "Giao hàng", next: "shipping" },
-  shipping: { label: "Hoàn thành", next: "completed" },
+  shipping: { label: "Đã giao", next: "delivered" },
+  delivered: { label: "Hoàn thành", next: "completed" },
   completed: null,
   cancelled: null,
+  cancel_request: { label: "Xác nhận hủy", next: "cancelled" },
 };
 
 export const columns: ColumnDef<Order>[] = [
@@ -95,11 +100,12 @@ export const columns: ColumnDef<Order>[] = [
     id: 'items',
     header: 'Sản phẩm',
     cell: ({ row }) => {
-      const items = row.original.items;
-      const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+      const items = Array.isArray(row.original.items) ? row.original.items : [];
+      const totalItems = items.reduce((sum, item) => sum + (Number(item?.quantity) || 0), 0);
+
       return (
         <div className="text-sm">
-          {items.length} SP ({totalItems} món)
+          {totalItems} SP 
         </div>
       );
     },
@@ -140,6 +146,11 @@ export const columns: ColumnDef<Order>[] = [
         'paymentStatus',
       ) as keyof typeof paymentStatusMap;
       const statusInfo = paymentStatusMap[status];
+      
+      if (!statusInfo) {
+        return <Badge variant="secondary">N/A</Badge>;
+      }
+      
       return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
     },
   },
@@ -151,7 +162,12 @@ export const columns: ColumnDef<Order>[] = [
     cell: ({ row }) => {
       const status = row.getValue('orderStatus') as keyof typeof orderStatusMap;
       const statusInfo = orderStatusMap[status];
-      return <Badge variant={statusInfo.variant} >{statusInfo.label}</Badge>;
+      
+      if (!statusInfo) {
+        return <Badge variant="secondary">{status || 'N/A'}</Badge>;
+      }
+      
+      return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
     },
   },
   {
@@ -191,26 +207,7 @@ export const columns: ColumnDef<Order>[] = [
               <Eye className="mr-2 h-4 w-4" />
               Xem chi tiết
             </DropdownMenuItem>
-            {(() => {
-              const current = order.orderStatus as Order["orderStatus"];
-              const next = nextStatusMap[current];
-
-              if (!next) return null; // không hiện nếu completed hoặc cancelled
-
-              return (
-                <DropdownMenuItem
-                  onClick={() =>
-                    meta?.onUpdateStatus({
-                      ...order,
-                      orderStatus: next.next,
-                    })
-                  }
-                >
-                  <span className="font-medium">{next.label}</span>
-                </DropdownMenuItem>
-              );
-            })()}
-
+            
           </DropdownMenuContent>
         </DropdownMenu>
       );

@@ -31,11 +31,18 @@ export interface OrderDocument extends Document {
   promoCode?: string;
   orderNote?: string;
   paymentStatus: "pending" | "paid" | "failed";
-  orderStatus: "pending" | "processing" | "confirmed" | "shipping" | "completed" | "cancelled";
+  orderStatus: "pending" | "processing" | "confirmed" | "shipping" | "delivered" |  "completed" | "cancelled" | "cancel_request";
   payOSOrderCode?: number;
   payOSCheckoutUrl?: string;
   createdAt: Date;
   updatedAt: Date;
+  history: [
+      {
+        status: String,
+        date: Date,
+        note?: String,
+      },
+    ],
 }
 
 const orderItemSchema = new Schema<OrderItem>({
@@ -94,9 +101,16 @@ const orderSchema = new Schema<OrderDocument>(
 
     orderStatus: {
       type: String,
-      enum: ["pending", "processing" , "confirmed", "shipping", "completed", "cancelled"],
+      enum: ["pending", "processing" , "confirmed", "shipping", "delivered", "completed", "cancelled", "cancel_request"],
       default: "pending",
     },
+    history: [
+      {
+        status: { type: String, required: true },
+        date: { type: Date, required: true, default: Date.now },
+        note: String,
+      },
+    ],
   },
   { timestamps: true }
 );

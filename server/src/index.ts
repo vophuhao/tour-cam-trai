@@ -21,6 +21,8 @@ import cartRoutes from "./routes/cart.route";
 import { OrderService } from "./services";
 import { initializeSocket } from "./socket";
 import supportRouter from "./routes/directMessage.route";
+import tourBRoute from "./routes/tourB.route";
+import locationRoutes from "./routes/location.route";
 
 
 const app = express();
@@ -64,8 +66,8 @@ app.use("/cart", authenticate, cartRoutes);
 app.use("/address", authenticate, addressRoutes)
 app.use("/orders", orderRoutes);
 app.use("/support", authenticate, supportRouter); // admin support routes
-
-
+app.use("/booking", authenticate, tourBRoute); // user support routes
+app.use("/locations", authenticate, requireAdmin, locationRoutes); // admin support routes
 // error handler middleware
 app.use(errorHandler);
 

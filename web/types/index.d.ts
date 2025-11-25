@@ -204,10 +204,21 @@ declare interface Order {
     | 'processing'
     | 'confirmed'
     | 'shipping'
+    | 'delivered'
+    | 'cancel_request'
     | 'completed'
     | 'cancelled';
   payOSOrderCode?: number;
   payOSCheckoutUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+
+declare interface Location {
+  _id: string;
+  name: string;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }

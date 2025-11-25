@@ -60,6 +60,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     { name: 'Products', href: '/admin/products', icon: Package },
     { name: 'Tours', href: '/admin/tours', icon: Tent },
     { name: 'Bookings', href: '/admin/bookings', icon: BarChart },
+    { name: 'Locations', href: '/admin/locations', icon: Package },
     {
       name: 'Orders',
       href: '/admin/orders',

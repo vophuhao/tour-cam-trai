@@ -1,3 +1,4 @@
+
 import { catchErrors } from "@/errors";
 import OrderService from "@/services/order.service";
 import { ResponseUtil } from "@/utils";
@@ -42,6 +43,12 @@ export default class OrderController {
   cancelOrder = catchErrors(async (req, res) => {
     const { orderId } = req.params;
     const result = await this.orderService.cancelOrder(orderId?.toString() || "");
+    return ResponseUtil.success(res, result.order, result.message);
+  });
+  updateOrderStatus = catchErrors(async (req, res) => {
+    const { orderId } = req.params;
+    const { status } = req.body;
+    const result = await this.orderService.updateOrderStatus(orderId?.toString() || "", status);
     return ResponseUtil.success(res, result.order, result.message);
   });
 }

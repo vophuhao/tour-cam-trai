@@ -43,10 +43,10 @@ export default function Cart({ items: propsItems, onUpdateQuantity, onRemoveItem
     selectAllRef.current.indeterminate = selected > 0 && selected < total;
   }, [selectedIds, items.length]);
   const getFinalPrice = (product: CartItem["product"]) =>
-    product.deal ?? product.price;
+    product?.deal ?? product?.price;
 
   const total = items.reduce((s, it) => s + it.quantity * getFinalPrice(it.product), 0);
-  const selectedItems = items.filter((it) => selectedIds.includes(it.product._id));
+  const selectedItems = items.filter((it) => selectedIds.includes(it.product?._id));
   const selectedTotal = selectedItems.reduce(
     (s, it) => s + it.quantity * getFinalPrice(it.product),
     0
@@ -75,6 +75,7 @@ export default function Cart({ items: propsItems, onUpdateQuantity, onRemoveItem
       removeItem(id);
     }
   };
+  console.log("cart items", items);
 
 
   return (
@@ -106,14 +107,14 @@ export default function Cart({ items: propsItems, onUpdateQuantity, onRemoveItem
           >
             <input
               type="checkbox"
-              checked={selectedIds.includes(it.product._id)}
-              onChange={() => toggleSelect(it.product._id)}
+              checked={selectedIds.includes(it.product?._id)}
+              onChange={() => toggleSelect(it.product?._id)}
               className="w-5 h-5 flex-shrink-0"
-              aria-label={`Chọn ${it.product.name}`}
+              aria-label={`Chọn ${it.product?.name}`}
             />
 
             <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 flex items-center justify-center">
-              {it.product.images?.[0] ? (
+              {it.product?.images?.[0] ? (
                 <Image src={it.product.images[0]} alt={it.product.name} width={80} height={80} className="object-cover" />
               ) : (
                 <div className="text-xs text-gray-400">No image</div>
@@ -123,22 +124,22 @@ export default function Cart({ items: propsItems, onUpdateQuantity, onRemoveItem
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-4">
                 <div className="truncate">
-                  <h3 className="font-semibold text-gray-800 truncate">{it.product.name}</h3>
+                  <h3 className="font-semibold text-gray-800 truncate">{it.product?.name}</h3>
                 </div>
 
                 <div className="text-right">
-                  {it.product.deal ? (
+                  {it.product?.deal ? (
                     <>
                       <div className="text-red-500 line-through text-xs ">
-                        Giá gốc :{formatCurrency(it.product.price)}
+                        Giá gốc :{formatCurrency(it.product?.price)}
                       </div>
                       <div className="text-green-600 font-semibold">
-                        Chỉ còn :{formatCurrency(it.product.deal)}
+                        Chỉ còn :{formatCurrency(it.product?.deal)}
                       </div>
                     </>
                   ) : (
                     <div className="text-gray-700 font-medium">
-                      Giá gốc :{formatCurrency(it.product.price)}
+                      Giá gốc :{formatCurrency(it.product?.price)}
                     </div>
                   )}
                 </div>
@@ -147,16 +148,16 @@ export default function Cart({ items: propsItems, onUpdateQuantity, onRemoveItem
               <div className="mt-3 flex items-center justify-between">
                 <div className="inline-flex items-center rounded-lg border bg-white">
                   <button
-                    aria-label={`Giảm ${it.product.name}`}
-                    onClick={() => handleQty(it.product._id, it.quantity - 1)}
+                    aria-label={`Giảm ${it.product?.name}`}
+                    onClick={() => handleQty(it.product?._id, it.quantity - 1)}
                     className="px-3 py-1 text-gray-600 hover:bg-gray-50 transition"
                   >
                     −
                   </button>
                   <div className="px-4 py-1 font-medium">{it.quantity}</div>
                   <button
-                    aria-label={`Tăng ${it.product.name}`}
-                    onClick={() => handleQty(it.product._id, it.quantity + 1)}
+                    aria-label={`Tăng ${it.product?.name}`}
+                    onClick={() => handleQty(it.product?._id, it.quantity + 1)}
                     className="px-3 py-1 text-gray-600 hover:bg-gray-50 transition"
                   >
                     +
@@ -165,8 +166,8 @@ export default function Cart({ items: propsItems, onUpdateQuantity, onRemoveItem
 
                 <div className="flex items-center gap-4 ">
                   <button
-                    aria-label={`Xóa ${it.product.name}`}
-                    onClick={() => handleRemove(it.product._id)}
+                    aria-label={`Xóa ${it.product?.name}`}
+                    onClick={() => handleRemove(it.product?._id)}
                     className="p-2 rounded-md hover:bg-red-50 text-red-500  transition"
                   >                 
                     <Trash className="w-5 h-5 cursor-pointer" />                 

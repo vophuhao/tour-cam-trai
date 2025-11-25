@@ -34,7 +34,7 @@ export default function RootLayout({
         <Providers>{children}</Providers>
 
         <Toaster position="top-center" />
-        <ChatModal />
+        
       </body>
     </html>
   );

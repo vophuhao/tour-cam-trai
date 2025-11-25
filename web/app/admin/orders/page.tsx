@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { getAllOrders } from '@/lib/client-actions';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { columns } from './columns';
 import { getStatusInfo } from './helper';
 import {
@@ -26,8 +26,10 @@ import {
 import queryClient from '@/lib/query-client';
 import { updateStatusOrder } from '@/lib/api';
 import { toast } from 'react-toastify';
+import { useRouter } from 'next/navigation';
 
 export default function BookingsPage() {
+  const router = useRouter();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
 
@@ -42,18 +44,8 @@ export default function BookingsPage() {
     },
   });
 
-  const [orders, setOrders] = useState<Order[]>(ordersData);
-
-  // Đồng bộ khi fetch xong
-  useEffect(() => {
-    setOrders(ordersData);
-  }, [ordersData]);
-
-
   const handleView = (order: Order) => {
-    console.log('Viewing order:', order);
-    setSelectedOrder(order);
-    setIsViewDialogOpen(true);
+    router.push(`/admin/orders/detail/${order._id}`);
   };
 
   const handleUpdateStatus = useMutation({
@@ -78,19 +70,20 @@ export default function BookingsPage() {
     );
   }
 
-
   const statuses: { value: 'all' | Order['orderStatus']; label: string }[] = [
     { value: 'all', label: 'Tất cả' },
-    { value: 'pending', label: 'Chờ xử lý' },
-    { value: 'processing', label: 'Đang xử lý' },
+    { value: 'pending', label: 'Chờ thanh toán' },
+    { value: 'processing', label: 'Chờ xác nhận' },
     { value: 'confirmed', label: 'Đã xác nhận' },
     { value: 'shipping', label: 'Đang giao' },
+    { value: 'delivered', label: 'Đã giao' },
     { value: 'completed', label: 'Hoàn thành' },
     { value: 'cancelled', label: 'Đã hủy' },
+    { value: 'cancel_request', label: 'Yêu cầu hủy' },
   ];
 
   const filteredOrders =
-    filterStatus === 'all' ? orders : orders.filter(o => o.orderStatus === filterStatus);
+    filterStatus === 'all' ? ordersData : ordersData.filter(o => o.orderStatus === filterStatus);
 
   return (
     <div className="space-y-6">
@@ -101,8 +94,8 @@ export default function BookingsPage() {
             Quản lý và theo dõi tất cả đơn hàng
           </p>
         </div>
-
       </div>
+
       <div className="flex items-center gap-3">
         <Select
           value={filterStatus}
@@ -124,7 +117,6 @@ export default function BookingsPage() {
         </Select>
       </div>
 
-
       <DataTable
         columns={columns}
         data={filteredOrders}
@@ -133,22 +125,10 @@ export default function BookingsPage() {
         meta={{
           onView: handleView,
           onUpdateStatus: (order: Order) => {
-            handleUpdateStatus.mutate(order._id, {
-              onSuccess: () => {
-                // cập nhật local state ngay
-                setOrders(prev =>
-                  prev.map(o =>
-                    o._id === order._id ? { ...o, orderStatus: order.orderStatus } : o
-                  )
-                );
-              },
-              onError: () => toast.error("Cập nhật trạng thái thất bại"),
-            });
+            handleUpdateStatus.mutate(order._id);
           },
         }}
-
       />
-
 
       {/* Order Detail Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
@@ -170,7 +150,6 @@ export default function BookingsPage() {
                     <span className="text-muted-foreground">Tên:   {typeof selectedOrder.user === 'object'
                       ? selectedOrder.user.username
                       : 'N/A'} </span>
-
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Email: {typeof selectedOrder.user === 'object'
@@ -186,17 +165,14 @@ export default function BookingsPage() {
                 <div className="bg-muted/50 space-y-2 rounded-lg border p-4">
                   <div className="flex justify-between">
                     <span className="font-medium text-muted-foreground">Người nhận: {selectedOrder.shippingAddress.fullName}</span>
-
                   </div>
                   <div className="flex justify-between">
                     <span className="font-medium text-muted-foreground">SĐT: {selectedOrder.shippingAddress.phone}</span>
-
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-muted-foreground">Địa chỉ:  {selectedOrder.shippingAddress.addressLine},{' '}
                       {selectedOrder.shippingAddress.district},{' '}
                       {selectedOrder.shippingAddress.province}</span>
-
                   </div>
                 </div>
               </div>
@@ -292,16 +268,6 @@ export default function BookingsPage() {
                           : 'Chuyển khoản'}
                       </span>
                     </div>
-                    {/* <div className="flex justify-between">
-                      <span className="text-muted-foreground">Trạng thái:</span>
-                      <Badge>
-                        {selectedOrder.paymentStatus === 'pending'
-                          ? 'Chờ thanh toán'
-                          : selectedOrder.paymentStatus === 'paid'
-                            ? 'Đã thanh toán'
-                            : 'Thất bại'}
-                      </Badge>
-                    </div> */}
                   </div>
                 </div>
 
@@ -313,7 +279,6 @@ export default function BookingsPage() {
                         {getStatusInfo(selectedOrder.orderStatus).label}
                       </Badge>
                     )}
-
                   </div>
                 </div>
               </div>

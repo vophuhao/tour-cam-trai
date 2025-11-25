@@ -1,3 +1,4 @@
+import { create } from 'zustand';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import API from "./api-client";
@@ -338,6 +339,9 @@ export const getOrdersByUser = async (): Promise<ApiResponse<Order[]>> =>
 export const updateStatusOrder = async (orderId: string): Promise<ApiResponse> =>
   API.patch(`/orders/${orderId}/status`);
 
+export const updateOrderStatus = async (orderId: string, status: string): Promise<ApiResponse> =>
+  API.post(`/orders/${orderId}/update-status`, { status });
+
 
 export const getOrderById = async (orderId: string): Promise<ApiResponse<Order>> => 
   API.get(`/orders/${orderId}`);
@@ -363,3 +367,40 @@ export const getMessages = async (
   skip = 0
 ): Promise<ApiResponse> =>
   API.get("/support/messages", { params: { conversationId, limit, skip } });
+
+
+
+export const getAllBookings = async (
+  page = 1,
+  limit = 10,
+  search?: string
+): Promise<PaginatedResponse> =>
+  API.get("/booking", { params: { page, limit, search } });
+
+export const getBookingById = async (id: string): Promise<ApiResponse> =>
+  API.get(`/tour-bookings/${id}`);
+
+export const createBooking = async ( data: any): Promise<ApiResponse> =>
+  API.post("/booking", data);
+
+export const updateCustomerInfo = async (
+  bookingId: string,
+  customerInfo: any
+): Promise<ApiResponse> =>
+  API.post(`/booking/${bookingId}/update`, customerInfo);
+
+
+
+export const createLocation = async (data: { name: string; isActive: boolean }): Promise<ApiResponse> => 
+  API.post("/locations", data);
+
+export const updateLocation = async (
+  id: string,
+  data: { name: string; isActive: boolean }
+): Promise<ApiResponse> => API.post(`/locations/update/${id}`, data);
+
+export const getAllLocations = async (): Promise<ApiResponse> => 
+  API.get("/locations/all");
+
+export const deleteLocation = async (id: string): Promise<ApiResponse> => 
+  API.post(`/locations/delete/${id}`);
