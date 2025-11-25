@@ -135,8 +135,17 @@ export const deleteProductSchema = z.object({
 
 // Get Products (with pagination + optional filters)
 export const getProductSchema = paginationSchema.extend({
-  q: z.string().trim().optional(),
-  category: mongoIdSchema.optional(),
+  search: z.string().trim().optional(),
+  categories: z
+    .union([mongoIdSchema, z.array(mongoIdSchema)])
+    .optional()
+    .transform((val) => {
+      if (!val) return undefined;
+      return Array.isArray(val) ? val : [val];
+    }),
+  minPrice: z.string().optional(),
+  maxPrice: z.string().optional(),
+  sort: z.enum(["price-asc", "price-desc", "name-asc", "name-desc"]).optional(),
 });
 
 // Export types

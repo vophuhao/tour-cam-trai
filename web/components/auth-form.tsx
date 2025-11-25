@@ -22,7 +22,7 @@ import {
   FormLabel,
   FormMessage,
 } from './ui/form';
-import GoogleLoginButton from './ui/GoogleLoginButton';
+import GoogleLoginButton from './ui/google-button';
 import { Input } from './ui/input';
 
 export type FormType = 'sign-in' | 'sign-up';

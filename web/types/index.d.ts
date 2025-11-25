@@ -68,6 +68,7 @@ declare interface ProductDetailSection {
 
 declare interface Product {
   _id: string;
+  slug?: string;
   name: string;
   description?: string;
   price: number;

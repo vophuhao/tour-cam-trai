@@ -24,7 +24,6 @@ import supportRouter from "./routes/directMessage.route";
 import tourBRoute from "./routes/tourB.route";
 import locationRoutes from "./routes/location.route";
 
-
 const app = express();
 
 // add middleware
@@ -38,19 +37,18 @@ app.use(
 );
 app.use(cookieParser());
 
-// health check
-app.get("/", (_, res) => {
-  return res.status(OK).json({
-    status: "healthy",
-  });
-});
-
 const orderService = new OrderService();
 
 // Chạy mỗi 10 phút
 cron.schedule("*/10 * * * *", async () => {
   console.log("⏱️ Cron: kiểm tra đơn cần hủy...");
   await orderService.cancelExpiredOrders();
+});
+// health check
+app.get("/", (_, res) => {
+  return res.status(OK).json({
+    status: "healthy",
+  });
 });
 
 // public routes
@@ -59,15 +57,14 @@ app.use("/auth", authRoutes);
 // protected routes
 app.use("/users", authenticate, userRoutes);
 app.use("/categories", categoryRoutes);
-app.use("/products", authenticate, productRoutes);
+app.use("/products", productRoutes);
 app.use("/tours", tourRoutes);
 app.use("/media", authenticate, requireAdmin, mediaRoutes);
 app.use("/cart", authenticate, cartRoutes);
-app.use("/address", authenticate, addressRoutes)
+app.use("/address", authenticate, addressRoutes);
+app.use("/support", authenticate, supportRouter);
 app.use("/orders", orderRoutes);
-app.use("/support", authenticate, supportRouter); // admin support routes
-app.use("/booking", authenticate, tourBRoute); // user support routes
-app.use("/locations", authenticate, requireAdmin, locationRoutes); // admin support routes
+
 // error handler middleware
 app.use(errorHandler);
 

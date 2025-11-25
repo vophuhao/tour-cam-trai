@@ -1,6 +1,6 @@
 'use client';
 
-import { DataTable } from '@/components/data-table';
+import { DataTable } from '@/components/admin/data-table';
 import { DeleteAlertDialog } from '@/components/modals/delete-alert-dialog';
 import ProductModal from '@/components/modals/product-modal';
 import {

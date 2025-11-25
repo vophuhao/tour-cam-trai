@@ -10,7 +10,7 @@ const productService = container.resolve<ProductService>(TOKENS.ProductService);
 const productController = new ProductController(productService);
 
 // prefix: /products
-productRoutes.get("/", productController.getProductsPaginated);
+productRoutes.get("/", productController.getProducts);
 productRoutes.get("/all", productController.getProduct);
 productRoutes.post("/", requireAdmin, productController.createProduct);
 productRoutes.put("/:id", requireAdmin, productController.updateProduct);

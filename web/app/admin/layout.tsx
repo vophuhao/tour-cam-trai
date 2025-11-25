@@ -1,6 +1,6 @@
 'use client';
 
-import AdminSidebar from '@/components/admin-sidebar';
+import AdminSidebar from '@/components/admin/admin-sidebar';
 import { useAuthStore } from '@/store/auth.store';
 import Link from 'next/link';
 import { useState } from 'react';

@@ -1,7 +1,7 @@
 'use client';
 
-import { DataTablePagination } from '@/components/data-table-pagination';
-import { DataTableViewOptions } from '@/components/data-table-view-options';
+import { DataTablePagination } from '@/components/admin/data-table-pagination';
+import { DataTableViewOptions } from '@/components/admin/data-table-view-options';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {

@@ -4,7 +4,7 @@ import { googleLogin } from '@/lib/client-actions';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import GoogleIcon from './GoogleIcon';
+import GoogleIcon from './google-icon';
 
 interface GoogleUserInfo {
   email: string;
