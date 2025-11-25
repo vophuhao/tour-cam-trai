@@ -5,7 +5,6 @@ import {
   createTour,
   deactivateTour,
   deleteTour,
-  getTopTours,
   getTourById,
   getTourBySlug,
   getTours,

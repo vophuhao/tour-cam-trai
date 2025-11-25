@@ -13,29 +13,62 @@ export default class ProductService {
     return ProductModel.create(data);
   }
 
-  // Lấy tất cả product có phân trang + tìm kiếm
+  // Lấy tất cả product có phân trang + tìm kiếm + filter
   async getProductsPaginated(
     page: number = 1,
     limit: number = 10,
     search?: string,
-    category?: string
+    categories?: string[], // Changed to array
+    minPrice?: number,
+    maxPrice?: number,
+    sort?: string
   ): Promise<{
     data: ProductDocument[];
     pagination: PaginationType;
   }> {
     const query: any = {};
+
+    // Text search
     if (search) {
-      query.$text = { $search: search };
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
     }
-    if (category) {
-      query.category = category;
+
+    // Categories filter (multiple)
+    if (categories && categories.length > 0) {
+      query.category = { $in: categories };
+    }
+
+    // Price range filter
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      query.price = {};
+      if (minPrice !== undefined) {
+        query.price.$gte = minPrice;
+      }
+      if (maxPrice !== undefined) {
+        query.price.$lte = maxPrice;
+      }
     }
 
     const total = await ProductModel.countDocuments(query);
 
+    // Sorting
+    let sortOption: any = { createdAt: -1 }; // Default: newest first
+    if (sort === "price-asc") {
+      sortOption = { price: 1 };
+    } else if (sort === "price-desc") {
+      sortOption = { price: -1 };
+    } else if (sort === "name-asc") {
+      sortOption = { name: 1 };
+    } else if (sort === "name-desc") {
+      sortOption = { name: -1 };
+    }
+
     const data = await ProductModel.find(query)
       .populate("category", "name")
-      .sort({ createdAt: -1 })
+      .sort(sortOption)
       .skip((page - 1) * limit)
       .limit(limit)
       .exec();
@@ -52,7 +85,6 @@ export default class ProductService {
       },
     };
   }
-
   async getProduct(): Promise<ProductDocument[]> {
     return ProductModel.find().exec();
   }

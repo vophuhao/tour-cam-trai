@@ -56,14 +56,19 @@ export default class ProductController {
    * Get all products (paginated + search)
    * @route GET /products
    */
-  getProductsPaginated = catchErrors(async (req, res) => {
-    const { page, limit, q: query, category } = getProductSchema.parse(req.query);
+  getProducts = catchErrors(async (req, res) => {
+    const { page, limit, search, categories, minPrice, maxPrice, sort } = getProductSchema.parse(
+      req.query
+    );
 
     const { data, pagination } = await this.productService.getProductsPaginated(
       page,
       limit,
-      query,
-      category
+      search,
+      categories,
+      minPrice ? Number(minPrice) : undefined,
+      maxPrice ? Number(maxPrice) : undefined,
+      sort
     );
 
     return ResponseUtil.paginated(

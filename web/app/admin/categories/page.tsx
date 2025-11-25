@@ -1,6 +1,6 @@
 'use client';
 
-import { DataTable } from '@/components/data-table';
+import { DataTable } from '@/components/admin/data-table';
 import { CategoryModal } from '@/components/modals/category-modal';
 import { DeleteAlertDialog } from '@/components/modals/delete-alert-dialog';
 import { deleteCategory, getAllCategories } from '@/lib/client-actions';

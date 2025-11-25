@@ -43,13 +43,12 @@ app.use("/auth", authRoutes);
 // protected routes
 app.use("/users", authenticate, userRoutes);
 app.use("/categories", categoryRoutes);
-app.use("/products", authenticate, productRoutes);
+app.use("/products", productRoutes);
 app.use("/tours", tourRoutes);
 app.use("/media", authenticate, requireAdmin, mediaRoutes);
 app.use("/cart", authenticate, cartRoutes);
-app.use("/address", authenticate, addressRoutes)
-app.use("/orders",  orderRoutes);
-
+app.use("/address", authenticate, addressRoutes);
+app.use("/orders", orderRoutes);
 
 // error handler middleware
 app.use(errorHandler);

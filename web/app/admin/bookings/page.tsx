@@ -1,6 +1,6 @@
 'use client';
 
-import { DataTable } from '@/components/data-table';
+import { DataTable } from '@/components/admin/data-table';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,

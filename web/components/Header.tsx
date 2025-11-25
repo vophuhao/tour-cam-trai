@@ -1,81 +1,212 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import Link from "next/link";
+import { Button } from '@/components/ui/button';
+import { logout } from '@/lib/client-actions';
+import { useAuthStore } from '@/store/auth.store';
+import {
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  ShoppingCart,
+  Tent,
+  User,
+  X,
+} from 'lucide-react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 const navItems = [
-  { name: "Trang chủ", href: "/" },
-  { name: "Tour", href: "/tour" },
-  { name: "Phụ kiện", href: "/accessories" },
-  { name: "Giới thiệu", href: "/about" },
-  { name: "Liên hệ", href: "/contact" },
+  { name: 'Trang chủ', href: '/' },
+  { name: 'Tour', href: '/tours' },
+  { name: 'Sản phẩm', href: '/products' },
+  { name: 'Giới thiệu', href: '/about' },
+  { name: 'Liên hệ', href: '/contact' },
 ];
 
 export default function Header() {
-  const [hovered, setHovered] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user, isAuthenticated, setUser } = useAuthStore();
+
+  const handleLogout = async () => {
+    const res = await logout();
+    if (res.success) {
+      setUser(null);
+      router.push('/');
+    }
+  };
 
   return (
-    <header className="relative w-full">
+    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-backdrop-filter:bg-white/60">
+      <div className="container-padding mx-auto max-w-7xl">
+        <div className="flex-between h-16">
+          {/* Logo */}
+          <Link
+            href="/"
+            className="hover:text-primary flex items-center gap-2 text-xl font-bold transition-colors md:text-2xl"
+          >
+            <Tent className="text-primary h-6 w-6" />
+            <span>Campo</span>
+          </Link>
 
+          {/* Desktop Navigation */}
+          <nav className="hidden items-center gap-6 md:flex">
+            {navItems.map(item => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`hover:text-primary text-sm font-medium transition-colors ${
+                    isActive ? 'text-primary' : 'text-foreground/60'
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              );
+            })}
+          </nav>
 
-      {/* Header Content */}
-      <div className="relative z-10 max-w-7xl mx-auto flex items-center justify-between p-4">
-        {/* Logo */}
-        <Link href="/" className="text-2xl md:text-3xl font-bold text-black drop-shadow-lg">
-          CampAdventure
-        </Link>
+          {/* Desktop Actions */}
+          <div className="hidden items-center gap-3 md:flex">
+            {/* Shopping Cart */}
+            <Button variant="ghost" size="icon" className="relative">
+              <ShoppingCart className="h-5 w-5" />
+              <span className="bg-primary flex-center absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs text-white">
+                0
+              </span>
+            </Button>
 
-        {/* Desktop Menu */}
-        <nav className="hidden md:flex items-center gap-6">
-          {navItems.map((item) => {
-            const isActive =
-              typeof window !== "undefined" &&
-              window.location.pathname === item.href;
+            {/* User Menu */}
+            {isAuthenticated && user ? (
+              <div className="flex items-center gap-2">
+                {user.role === 'admin' && (
+                  <Link href="/admin">
+                    <Button variant="outline" size="sm">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Admin
+                    </Button>
+                  </Link>
+                )}
+                <div className="flex items-center gap-2 rounded-md border px-3 py-2">
+                  <User className="h-4 w-4" />
+                  <span className="text-sm font-medium">{user.username}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLogout}
+                  title="Đăng xuất"
+                >
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link href="/sign-in">
+                  <Button variant="ghost" size="sm">
+                    Đăng nhập
+                  </Button>
+                </Link>
+                <Link href="/sign-up">
+                  <Button size="sm">Đăng ký</Button>
+                </Link>
+              </div>
+            )}
+          </div>
 
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                onMouseEnter={() => setHovered(item.href)}
-                onMouseLeave={() => setHovered(null)}
-                className={`px-3 py-2 rounded-md font-medium transition-colors ${
-                  hovered === item.href || isActive
-                    ? "bg-[hsl(var(--primary-light))] text-black"
-                    : "hover:bg-[hsl(var(--primary-light))]/50 text-black"
-                }`}
-              >
-                {item.name}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Mobile Menu Toggle */}
-        <button
-          className="md:hidden p-2 rounded-md hover:bg-[hsl(var(--primary-light))]/50 transition-colors"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          <span className="block w-6 h-0.5 mb-1"></span>
-          <span className="block w-6 h-0.5 mb-1"></span>
-          <span className="block w-6 h-0.5 "></span>
-        </button>
+          {/* Mobile Menu Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <nav className="md:hidden relative z-10 bg-[hsl(var(--primary))]/90">
-          {navItems.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-4 py-3 text-black hover:bg-[hsl(var(--primary-light))]/50 transition-colors"
-            >
-              {item.name}
-            </Link>
-          ))}
-        </nav>
+        <div className="border-t bg-white md:hidden">
+          <nav className="container-padding mx-auto max-w-7xl space-y-1 py-4">
+            {navItems.map(item => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block rounded-md px-3 py-2 text-base font-medium transition-colors ${
+                    isActive
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-foreground/60 hover:text-primary hover:bg-gray-100'
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              );
+            })}
+
+            <div className="border-t pt-4">
+              {isAuthenticated && user ? (
+                <div className="space-y-2">
+                  {user.role === 'admin' && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                      >
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Admin Panel
+                      </Button>
+                    </Link>
+                  )}
+                  <div className="flex items-center gap-2 rounded-md border px-3 py-2">
+                    <User className="h-4 w-4" />
+                    <span className="text-sm font-medium">{user.username}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Đăng xuất
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Link
+                    href="/sign-in"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Button variant="outline" className="w-full">
+                      Đăng nhập
+                    </Button>
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Button className="w-full">Đăng ký</Button>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </nav>
+        </div>
       )}
     </header>
   );

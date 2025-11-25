@@ -108,3 +108,157 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 }
+
+@utility tour-highlight-card {
+  @apply flex items-center gap-2 rounded-lg p-3;
+}
+
+@utility info-label {
+  @apply text-xs text-gray-600;
+}
+
+@utility info-value {
+  @apply text-sm font-semibold;
+}
+
+@utility service-list-item {
+  @apply flex items-start gap-2;
+}
+
+@utility service-icon {
+  @apply mt-0.5 h-4 w-4 shrink-0;
+}
+
+@utility form-label {
+  @apply mb-2 flex items-center gap-2 text-sm font-medium text-gray-700;
+}
+
+@utility form-input {
+  @apply focus:border-primary focus:ring-primary/20 w-full rounded-lg border border-gray-300 p-2.5 text-sm focus:ring-2 focus:outline-none;
+}
+
+@utility section-title {
+  @apply flex items-center gap-2;
+}
+
+@utility accordion-button {
+  @apply flex w-full items-center justify-between p-4 text-left transition-colors;
+}
+
+@utility gradient-primary-green {
+  @apply from-primary bg-linear-to-r to-green-600;
+}
+
+@utility gradient-gray-subtle {
+  @apply bg-linear-to-r from-gray-50 to-white hover:from-gray-100 hover:to-gray-50;
+}
+
+@utility image-thumbnail {
+  @apply relative shrink-0 overflow-hidden rounded-lg border-2 transition-all;
+}
+
+@utility image-thumbnail-active {
+  @apply border-primary ring-primary/20 ring-2;
+}
+
+@utility image-thumbnail-inactive {
+  @apply hover:border-primary/50 border-gray-200;
+}
+
+@utility price-large {
+  @apply text-primary text-3xl font-bold;
+}
+
+@utility price-medium {
+  @apply text-primary text-2xl font-bold;
+}
+
+@utility sticky-sidebar {
+  @apply sticky top-6;
+}
+
+@utility loading-center {
+  @apply p-10 text-center text-gray-500;
+}
+
+@utility error-center {
+  @apply p-10 text-center text-red-500;
+}
+
+@utility flex-center {
+  @apply flex items-center justify-center;
+}
+
+@utility flex-between {
+  @apply flex items-center justify-between;
+}
+
+@utility flex-start {
+  @apply flex items-center justify-start;
+}
+
+@utility card-base {
+  @apply bg-card rounded-lg border p-6 shadow-sm;
+}
+
+@utility card-hover {
+  @apply transition-all hover:shadow-md;
+}
+
+@utility btn-base {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors;
+}
+
+@utility btn-primary {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90;
+}
+
+@utility btn-secondary {
+  @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
+}
+
+@utility text-gradient {
+  @apply from-primary bg-linear-to-r to-green-600 bg-clip-text font-semibold text-transparent;
+}
+
+@utility text-muted {
+  @apply text-muted-foreground text-sm;
+}
+
+@utility badge-success {
+  @apply rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800;
+}
+
+@utility badge-warning {
+  @apply rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800;
+}
+
+@utility badge-error {
+  @apply rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800;
+}
+
+@utility badge-info {
+  @apply rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800;
+}
+
+@utility container-padding {
+  @apply px-4 md:px-6 lg:px-8;
+}
+
+@utility section-padding {
+  @apply py-12 md:py-16 lg:py-20;
+}
+
+@utility grid-auto-fit {
+  @apply grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6;
+}
+
+@utility grid-auto-fill {
+  @apply grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-6;
+}
+
+@utility compact-select {
+  height: 2rem !important;
+  font-size: 0.875rem !important;
+  min-height: 2rem !important;
+}
