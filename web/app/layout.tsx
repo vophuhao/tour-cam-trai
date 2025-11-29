@@ -1,3 +1,4 @@
+import Footer from '@/components/footer';
 import Header from '@/components/header';
 import { Providers } from '@/components/providers';
 import type { Metadata } from 'next';
@@ -61,6 +62,7 @@ export default function RootLayout({
             <Header />
           </Suspense>
           {children}
+          <Footer />
         </Providers>
 
         <Toaster position="top-center" />

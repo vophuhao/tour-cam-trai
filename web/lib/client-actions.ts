@@ -296,6 +296,66 @@ export async function deactivateTour(id: string): Promise<ApiResponse> {
   return apiClient.patch(`/tours/deactivate/${id}`);
 }
 
+// ================== CAMPSITE API ==================
+export async function searchCampsites(
+  params?: SearchCampsiteParams,
+): Promise<PaginatedResponse<Campsite>> {
+  const queryString = new URLSearchParams(
+    Object.entries(params || {}).reduce(
+      (acc, [key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          if (Array.isArray(value)) {
+            acc[key] = value.join(',');
+          } else {
+            acc[key] = String(value);
+          }
+        }
+        return acc;
+      },
+      {} as Record<string, string>,
+    ),
+  ).toString();
+
+  return apiClient.get(`/campsites${queryString ? `?${queryString}` : ''}`);
+}
+
+export async function getCampsite(
+  idOrSlug: string,
+): Promise<ApiResponse<Campsite>> {
+  return apiClient.get(`/campsites/${idOrSlug}`);
+}
+
+export async function createCampsite(
+  data: any,
+): Promise<ApiResponse<Campsite>> {
+  return apiClient.post('/campsites', data);
+}
+
+export async function updateCampsite(
+  id: string,
+  data: any,
+): Promise<ApiResponse<Campsite>> {
+  return apiClient.patch(`/campsites/${id}`, data);
+}
+
+export async function deleteCampsite(id: string): Promise<ApiResponse> {
+  return apiClient.delete(`/campsites/${id}`);
+}
+
+export async function getMyCampsites(): Promise<ApiResponse<Campsite[]>> {
+  return apiClient.get('/campsites/my/list');
+}
+
+export async function checkCampsiteAvailability(
+  id: string,
+  checkIn: string,
+  checkOut: string,
+): Promise<ApiResponse<{ isAvailable: boolean }>> {
+  return apiClient.get(
+    `/campsites/${id}/availability?checkIn=${checkIn}&checkOut=${checkOut}`,
+  );
+}
+
 // ================== ORDER API ==================
 export async function getAllOrders(): Promise<ApiResponse<Order[]>> {
   return apiClient.get('/orders');

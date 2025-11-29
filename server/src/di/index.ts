@@ -8,6 +8,12 @@ import {
   ProductService,
   TourService,
   VerificationService,
+  // Hipcamp-style services
+  CampsiteService,
+  BookingService,
+  ReviewService,
+  AmenityService,
+  ActivityService,
 } from "@/services";
 import { Container } from "./container";
 import { TOKENS } from "./tokens";
@@ -30,6 +36,13 @@ container.register(
   () => new AuthService(container.resolve(TOKENS.VerificationService)),
   { singleton: true }
 );
+
+// Register Hipcamp-style services
+container.register(TOKENS.CampsiteService, () => new CampsiteService(), { singleton: true });
+container.register(TOKENS.BookingService, () => new BookingService(), { singleton: true });
+container.register(TOKENS.ReviewService, () => new ReviewService(), { singleton: true });
+container.register(TOKENS.AmenityService, () => new AmenityService(), { singleton: true });
+container.register(TOKENS.ActivityService, () => new ActivityService(), { singleton: true });
 
 export type { Container } from "./container";
 export { TOKENS } from "./tokens";

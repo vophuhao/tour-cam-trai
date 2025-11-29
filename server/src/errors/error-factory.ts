@@ -44,6 +44,18 @@ class ErrorFactory {
     return new AppError(CONFLICT, errorMessage, AppErrorCode.RESOURCE_ALREADY_EXISTS);
   }
 
+  static conflict(message: string) {
+    return new AppError(CONFLICT, message, AppErrorCode.RESOURCE_ALREADY_EXISTS);
+  }
+
+  static badRequest(message: string) {
+    return new AppError(BAD_REQUEST, message, AppErrorCode.VALIDATION_ERROR);
+  }
+
+  static forbidden(message: string) {
+    return new AppError(FORBIDDEN, message, AppErrorCode.FORBIDDEN_ACTION);
+  }
+
   // Validation Errors
   static validationFailed(message = "Validation failed", details?: Record<string, unknown>) {
     return new AppError(

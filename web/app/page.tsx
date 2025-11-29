@@ -1,4 +1,3 @@
-import Footer from '@/components/footer';
 import FeaturedDestinations from '@/components/home/featured-destinations';
 import FeaturedProducts from '@/components/home/featured-products';
 import FeaturedTours from '@/components/home/featured-tours';
@@ -385,7 +384,6 @@ export default function HomePage() {
       </section>
 
       <Newsletter />
-      <Footer />
     </div>
   );
 }

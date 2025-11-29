@@ -92,6 +92,112 @@ declare interface ProductDetail extends Product {
   count: number;
 }
 
+declare interface Campsite {
+  _id: string;
+  name: string;
+  slug: string;
+  tagline?: string;
+  description: string;
+  host: {
+    _id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+  };
+  location: {
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    coordinates:
+      | {
+          // GeoJSON format (new)
+          type: 'Point';
+          coordinates: [number, number]; // [lng, lat]
+        }
+      | {
+          // Legacy format (old)
+          lat: number;
+          lng: number;
+        };
+    accessInstructions?: string;
+  };
+  propertyType:
+    | 'tent'
+    | 'rv'
+    | 'cabin'
+    | 'glamping'
+    | 'treehouse'
+    | 'yurt'
+    | 'other';
+  capacity: {
+    maxGuests: number;
+    maxVehicles?: number;
+    maxPets?: number;
+  };
+  pricing: {
+    basePrice: number;
+    weekendPrice?: number;
+    cleaningFee?: number;
+    petFee?: number;
+    extraGuestFee?: number;
+    currency: string;
+  };
+  amenities: Array<{
+    _id: string;
+    name: string;
+    icon?: string;
+  }>;
+  activities: Array<{
+    _id: string;
+    name: string;
+    icon?: string;
+  }>;
+  rules: {
+    checkInTime: string;
+    checkOutTime: string;
+    minNights: number;
+    maxNights?: number;
+    allowPets: boolean;
+    allowChildren: boolean;
+    allowSmoking: boolean;
+    customRules?: string[];
+  };
+  images: string[];
+  videos?: string[];
+  isInstantBook: boolean;
+  isActive: boolean;
+  rating?: {
+    average: number;
+    count: number;
+  };
+  views: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+declare interface SearchCampsiteParams {
+  search?: string;
+  city?: string;
+  state?: string;
+  lat?: number;
+  lng?: number;
+  radius?: number;
+  propertyType?: string;
+  minGuests?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  amenities?: string[];
+  activities?: string[];
+  allowPets?: boolean;
+  isInstantBook?: boolean;
+  checkIn?: string;
+  checkOut?: string;
+  sort?: string;
+  page?: number;
+  limit?: number;
+}
+
 declare interface Tour {
   _id?: string;
   code?: string;

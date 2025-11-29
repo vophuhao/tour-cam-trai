@@ -6,12 +6,18 @@ import { connectRedis, connectToDatabase } from "./config";
 import { APP_ORIGIN, NODE_ENV, OK, PORT } from "./constants";
 import { authenticate, errorHandler, requireAdmin } from "./middleware";
 import {
+  activityRoutes,
   addressRoutes,
+  amenityRoutes,
   authRoutes,
+  bookingRoutes,
+  // Hipcamp-style routes
+  campsiteRoutes,
   categoryRoutes,
   mediaRoutes,
   orderRoutes,
   productRoutes,
+  reviewRoutes,
   tourRoutes,
   userRoutes,
 } from "./routes";
@@ -49,6 +55,11 @@ app.use("/media", authenticate, requireAdmin, mediaRoutes);
 app.use("/cart", authenticate, cartRoutes);
 app.use("/address", authenticate, addressRoutes);
 app.use("/orders", orderRoutes);
+app.use("/campsites", campsiteRoutes);
+app.use("/bookings", bookingRoutes);
+app.use("/reviews", reviewRoutes);
+app.use("/amenities", amenityRoutes);
+app.use("/activities", activityRoutes);
 
 // error handler middleware
 app.use(errorHandler);
