@@ -100,7 +100,7 @@ declare interface Campsite {
   description: string;
   host: {
     _id: string;
-    name: string;
+    name?: string; // Optional since backend may not return it
     email: string;
     avatar?: string;
   };

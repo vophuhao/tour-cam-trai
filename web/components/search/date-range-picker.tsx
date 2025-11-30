@@ -15,11 +15,16 @@ export type DateRangeType = {
 interface DateRangePickerProps {
   date?: DateRangeType;
   onDateChange: (date?: DateRangeType) => void;
+  disabledDates?: Date[]; // Dates that are not available
 }
 
 const today = new Date();
 
-export function DateRangePicker({ date, onDateChange }: DateRangePickerProps) {
+export function DateRangePicker({
+  date,
+  onDateChange,
+  disabledDates = [],
+}: DateRangePickerProps) {
   const [state, setState] = useState([
     {
       startDate: date?.from || today,
@@ -135,6 +140,7 @@ export function DateRangePicker({ date, onDateChange }: DateRangePickerProps) {
         showDateDisplay={false}
         moveRangeOnFirstSelection={false}
         minDate={today}
+        disabledDates={disabledDates}
         locale={vi}
         rangeColors={['#d4d6d8']}
       />

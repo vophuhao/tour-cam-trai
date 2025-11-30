@@ -28,7 +28,7 @@ interface SearchBarProps {
   dateRange?: DateRangeType;
   onDateChange: (date?: DateRangeType) => void;
   guests: number;
-  children: number;
+  childrenCount: number;
   pets: number;
   onGuestsChange: (value: number) => void;
   onChildrenChange: (value: number) => void;
@@ -45,7 +45,7 @@ export function SearchBar({
   dateRange,
   onDateChange,
   guests,
-  children,
+  childrenCount,
   pets,
   onGuestsChange,
   onChildrenChange,
@@ -66,7 +66,7 @@ export function SearchBar({
   };
 
   const formatGuests = () => {
-    const total = guests + children;
+    const total = guests + childrenCount;
     if (total === 0) return 'Thêm khách';
     return `${total} khách${pets > 0 ? `, ${pets} thú cưng` : ''}`;
   };
@@ -167,7 +167,7 @@ export function SearchBar({
               <h3 className="mb-4 text-lg font-semibold">Số lượng khách</h3>
               <GuestSelector
                 guests={guests}
-                childrenCount={children}
+                childrenCount={childrenCount}
                 pets={pets}
                 onGuestsChange={onGuestsChange}
                 onChildrenChange={onChildrenChange}
@@ -185,7 +185,7 @@ export function SearchBar({
           disabled={loading}
         >
           <Search className="mr-2 h-5 w-5" />
-          Search
+          Tìm
         </Button>
       </div>
     </div>

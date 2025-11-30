@@ -165,6 +165,28 @@ export async function deleteProduct(id: string): Promise<ApiResponse> {
   return apiClient.delete(`/products/${id}`);
 }
 
+// ================== REVIEW API ==================
+export async function getCampsiteReviews(
+  campsiteId: string,
+  page: number = 1,
+  limit: number = 10,
+): Promise<PaginatedResponse<any>> {
+  return apiClient.get(`/campsites/${campsiteId}/reviews`, {
+    params: { page, limit },
+  });
+}
+
+export async function getCampsiteReviewStats(campsiteId: string): Promise<
+  ApiResponse<{
+    totalReviews: number;
+    averageRating: number;
+    breakdown: Record<string, number>;
+    distribution: Record<number, number>;
+  }>
+> {
+  return apiClient.get(`/campsites/${campsiteId}/reviews/stats`);
+}
+
 // ================== TOUR API ==================
 export async function getTours(
   page = 1,

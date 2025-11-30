@@ -9,11 +9,13 @@ import { useState } from 'react';
 
 interface CampsiteListProps {
   initialCampsites: Campsite[];
+  totalResults?: number;
   searchCoordinates?: { lat: number; lng: number } | null;
 }
 
 export function CampsiteList({
   initialCampsites,
+  totalResults = 0,
   searchCoordinates,
 }: CampsiteListProps) {
   const [selectedCampsite, setSelectedCampsite] = useState<Campsite | null>(
@@ -32,6 +34,14 @@ export function CampsiteList({
     <div className="flex h-[calc(100vh-64px)] gap-0">
       {/* Campsites Grid - 3 columns - Scrollable */}
       <div className="scrollbar-hide flex-1 overflow-y-auto px-6">
+        {/* Results Count */}
+        {totalResults > 0 && (
+          <div className="pt-4">
+            <p className="text-sm text-gray-700">
+              <span className="font-semibold">{totalResults}</span> kết quả
+            </p>
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-4 py-6 md:grid-cols-2 lg:grid-cols-3">
           {initialCampsites.map(campsite => (
             <Card
