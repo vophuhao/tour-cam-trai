@@ -2,7 +2,6 @@ export { default as AuthService } from "@/services/auth.service";
 
 export { default as CategoryService } from "@/services/category.service";
 
-export { default as CommentService } from "@/services/comment.service";
 
 export { default as ProductService } from "@/services/product.service";
 

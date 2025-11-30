@@ -198,6 +198,7 @@ declare interface Order {
   discount: number;
   grandTotal: number;
   promoCode?: string;
+  hasRated: boolean;
   orderNote?: string;
   paymentStatus: 'pending' | 'paid' | 'failed';
   orderStatus:

@@ -1,17 +1,19 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { getOrdersByUser } from "@/lib/api";
+import { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { createRating, getOrdersByUser, updateOrderStatus } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Package, 
-  Clock, 
-  CheckCircle2, 
-  Truck, 
+import {
+  Package,
+  Clock,
+  CheckCircle2,
+  Truck,
   XCircle,
   ShoppingBag,
   Calendar,
@@ -19,9 +21,10 @@ import {
   Eye,
   RotateCcw,
   Tent,
-  MapPin
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import RatingModal from "@/components/modals/RatingModal";
+import { toast } from "sonner";
 
 const TABS = [
   { key: "all", label: "Tất cả", icon: ShoppingBag, color: "text-gray-600" },
@@ -45,36 +48,84 @@ const STATUS_CONFIG = {
 };
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [openModal, setOpenModal] = useState<boolean>(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  
+  const queryClient = useQueryClient();
+
+  // Fetch orders với React Query
+  const { data: orders = [], isLoading, error } = useQuery({
+    queryKey: ['orders'],
+    queryFn: async () => {
+      const res = await getOrdersByUser();
+      return res.data || [];
+    },
+    refetchInterval: 30000, // Auto refetch mỗi 30s
+    refetchOnWindowFocus: true, // Refetch khi quay lại tab
+    staleTime: 10000, // Data coi như cũ sau 10s
+  });
+
+  // Mutation cho rating
+  const ratingMutation = useMutation({
+    mutationFn: createRating,
+    onSuccess: () => {
+      toast.success("Đánh giá thành công!");
+      setOpenModal(false);
+      setSelectedOrder(null);
+      // Invalidate và refetch orders
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Có lỗi xảy ra khi đánh giá");
+      console.error("Error submitting rating", error);
+    },
+  });
+
+  // Mutation cho update order status
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ orderId, status }: { orderId: string; status: string }) =>
+      updateOrderStatus(orderId, status),
+    onSuccess: () => {
+      toast.success("Cập nhật trạng thái thành công!");
+      // Invalidate và refetch orders
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Có lỗi xảy ra");
+      console.error("Error updating order status", error);
+    },
+  });
+
+  const handleSubmitRating = async (data: any): Promise<void> => {
+    try {
+      await ratingMutation.mutateAsync(data);
+    } catch (error) {
+      // error is already handled in the mutation onError, but log for diagnostics
+      console.error("Error submitting rating", error);
+    }
+  };
 
   const handlePayment = (payOSCheckoutUrl?: string) => () => {
     if (!payOSCheckoutUrl) return;
     window.location.assign(payOSCheckoutUrl);
   };
 
-  useEffect(() => {
-    async function fetchOrders() {
-      try {
-        const res = await getOrdersByUser();
-        setOrders(res.data || []);
-      } catch (err) {
-        console.error("Error fetching orders", err);
-        setOrders([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchOrders();
-  }, []);
+  const handleComplete = (order: Order) => () => {
+    updateStatusMutation.mutate({ orderId: order._id, status: 'completed' });
+  };
+
+  const handleRating = (order: Order) => () => {
+    setOpenModal(true);
+    setSelectedOrder(order);
+  };
 
   const handleViewDetail = (orderId: string) => () => {
     window.location.href = `/order/detail/${orderId}`;
   };
 
   const filtered = useMemo(() => {
-    return orders.filter((o) => {
+    return orders.filter((o: Order) => {
       if (activeTab === "all") return true;
       return o.orderStatus === activeTab;
     });
@@ -83,18 +134,35 @@ export default function OrdersPage() {
   // Đếm số lượng đơn hàng theo trạng thái
   const orderCounts = useMemo(() => {
     const counts: Record<string, number> = { all: orders.length };
-    orders.forEach(order => {
+    orders.forEach((order: Order) => {
       counts[order.orderStatus] = (counts[order.orderStatus] || 0) + 1;
     });
     return counts;
   }, [orders]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Tent className="w-16 h-16 text-emerald-600 mx-auto mb-4 animate-pulse" />
           <p className="text-gray-600">Đang tải đơn hàng...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <XCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
+          <p className="text-red-600">Có lỗi xảy ra khi tải đơn hàng</p>
+          <Button 
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['orders'] })}
+            className="mt-4"
+          >
+            Thử lại
+          </Button>
         </div>
       </div>
     );
@@ -130,7 +198,7 @@ export default function OrdersPage() {
           <p className="text-gray-600 mt-1">Quản lý và theo dõi đơn hàng của bạn</p>
         </div>
 
-        {/* Tabs - Cải thiện UI */}
+        {/* Tabs */}
         <div className="mb-6 bg-white rounded-lg shadow-sm border p-4">
           <ScrollArea className="w-full">
             <div className="flex gap-2 pb-2 min-w-max">
@@ -138,15 +206,15 @@ export default function OrdersPage() {
                 const Icon = tab.icon;
                 const count = orderCounts[tab.key] || 0;
                 const isActive = activeTab === tab.key;
-                
+
                 return (
                   <button
                     key={tab.key}
                     onClick={() => setActiveTab(tab.key)}
                     className={`
                       flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all
-                      ${isActive 
-                        ? 'bg-emerald-100 text-emerald-700 shadow-sm' 
+                      ${isActive
+                        ? 'bg-emerald-100 text-emerald-700 shadow-sm'
                         : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
                       }
                     `}
@@ -154,11 +222,11 @@ export default function OrdersPage() {
                     <Icon className={`w-5 h-5 ${isActive ? 'text-emerald-600' : tab.color}`} />
                     <span className="font-medium whitespace-nowrap">{tab.label}</span>
                     {count > 0 && (
-                      <Badge 
+                      <Badge
                         className={`
                           ml-1 px-2 py-0.5 text-xs font-semibold
-                          ${isActive 
-                            ? 'bg-emerald-200 text-emerald-800' 
+                          ${isActive
+                            ? 'bg-emerald-200 text-emerald-800'
                             : 'bg-gray-200 text-gray-700'
                           }
                         `}
@@ -188,9 +256,9 @@ export default function OrdersPage() {
               </motion.div>
             ) : (
               <div className="space-y-4 pb-4">
-                {filtered.map((order, index) => {
+                {filtered.map((order: Order, index: number) => {
                   const statusConfig = STATUS_CONFIG[order.orderStatus as keyof typeof STATUS_CONFIG];
-                  
+
                   return (
                     <motion.div
                       key={order._id}
@@ -223,7 +291,7 @@ export default function OrdersPage() {
                                 </div>
                               </div>
                             </div>
-                            
+
                             <Badge className={`${statusConfig.color} border-2 px-4 py-1.5 font-semibold text-sm`}>
                               {statusConfig.label}
                             </Badge>
@@ -247,7 +315,7 @@ export default function OrdersPage() {
                                     </div>
                                   )}
                                 </div>
-                                
+
                                 <div className="flex-1 min-w-0">
                                   <h4 className="font-semibold text-gray-900 truncate">{item.name}</h4>
                                   <p className="text-sm text-gray-600 mt-1">Số lượng: {item.quantity}</p>
@@ -261,21 +329,6 @@ export default function OrdersPage() {
                               </div>
                             ))}
                           </div>
-
-                          {order.shippingAddress && (
-                            <div className="mt-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-100">
-                              <div className="flex gap-3">
-                                <MapPin className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                                <div>
-                                  <p className="font-semibold text-gray-900">{order.shippingAddress.fullName}</p>
-                                  <p className="text-sm text-gray-600 mt-1">{order.shippingAddress.phone}</p>
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    {order.shippingAddress.addressLine}, {order.shippingAddress.district}, {order.shippingAddress.province}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
                         </CardContent>
 
                         <CardFooter className="bg-gradient-to-r from-gray-50 to-white border-t py-4 px-6">
@@ -322,12 +375,35 @@ export default function OrdersPage() {
                               )}
 
                               {order.orderStatus === "delivered" && (
+                                <>
+                                  <Button
+                                    onClick={handleComplete(order)}
+                                    size="sm"
+                                    disabled={updateStatusMutation.isPending}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4 mr-1" />
+                                    {updateStatusMutation.isPending ? "Đang xử lý..." : "Đã nhận"}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="bg-red-600 hover:bg-red-700 text-white font-semibold shadow-md"
+                                  >
+                                    <XCircle className="w-4 h-4 mr-1" />
+                                    Yêu cầu hủy đơn
+                                  </Button>
+                                </>
+                              )}
+
+                              {order.orderStatus === "completed" && order.hasRated === false && (
                                 <Button
+                                  onClick={handleRating(order)}
                                   size="sm"
+                                  disabled={ratingMutation.isPending}
                                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md"
                                 >
                                   <CheckCircle2 className="w-4 h-4 mr-1" />
-                                  Đã nhận
+                                  {ratingMutation.isPending ? "Đang gửi..." : "Đánh giá"}
                                 </Button>
                               )}
                             </div>
@@ -342,6 +418,18 @@ export default function OrdersPage() {
           </AnimatePresence>
         </ScrollArea>
       </div>
+
+      {openModal && selectedOrder && (
+        <RatingModal
+          isOpen={openModal}
+          onClose={() => {
+            setOpenModal(false);
+            setSelectedOrder(null);
+          }}
+          order={selectedOrder}
+          onSubmit={handleSubmitRating}
+        />
+      )}
     </div>
   );
 }

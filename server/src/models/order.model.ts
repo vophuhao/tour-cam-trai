@@ -29,6 +29,7 @@ export interface OrderDocument extends Document {
   discount?: number;
   grandTotal: number;
   promoCode?: string;
+  hasRated: boolean;
   orderNote?: string;
   paymentStatus: "pending" | "paid" | "failed";
   orderStatus: "pending" | "processing" | "confirmed" | "shipping" | "delivered" |  "completed" | "cancelled" | "cancel_request";
@@ -89,6 +90,7 @@ const orderSchema = new Schema<OrderDocument>(
     promoCode: { type: String },
    
     orderNote: String,
+    hasRated: { type: Boolean, default: false },
 
     payOSOrderCode: Number,
     payOSCheckoutUrl: String,

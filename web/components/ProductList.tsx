@@ -97,7 +97,7 @@ export default function ProductList({ products }: ProductListProps) {
                     >
                         {products.map((product, idx) => (
                             <Link
-                                href={`/product/${product.slug || product._id}`}
+                                href={`/products/${product.slug }`}
                                 key={product._id}
                                 className="shrink-0"
                             // set a ref on first card to measure width

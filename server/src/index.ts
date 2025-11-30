@@ -21,8 +21,8 @@ import cartRoutes from "./routes/cart.route";
 import { OrderService } from "./services";
 import { initializeSocket } from "./socket";
 import supportRouter from "./routes/directMessage.route";
-import tourBRoute from "./routes/tourB.route";
 import locationRoutes from "./routes/location.route";
+import ratingRoutes from "./routes/rating.route";
 
 const app = express();
 
@@ -63,7 +63,8 @@ app.use("/media", authenticate, requireAdmin, mediaRoutes);
 app.use("/cart", authenticate, cartRoutes);
 app.use("/address", authenticate, addressRoutes);
 app.use("/support", authenticate, supportRouter);
-app.use("/orders", orderRoutes);
+app.use("/orders", authenticate, orderRoutes);
+app.use("/rating", authenticate, ratingRoutes);
 
 // error handler middleware
 app.use(errorHandler);

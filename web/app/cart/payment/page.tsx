@@ -19,6 +19,7 @@ import {
   Package
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
@@ -118,13 +119,13 @@ export default function PaymentPage() {
       };
 
       const res = await createOrderMutation.mutateAsync(payload);
+      console.log("Order response:", res);
 
-      if (res.data === "OUT_OF_STOCK") {
-        alert("Đặt hàng thất bại: Sản phẩm không còn đủ hàng.");
+      if (res.message === "OUT_OF_STOCK") {
+        toast.error("Đặt hàng thất bại: Sản phẩm không còn đủ hàng.");
         setPlacing(false);
         return;
       }
-
       const order = res.data;
 
       if (payment === "cod") {

@@ -4,7 +4,7 @@ import OrderService from "@/services/order.service";
 import { ResponseUtil } from "@/utils";
 
 export default class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(private readonly orderService: OrderService) { }
 
   getAllOrders = catchErrors(async (req, res) => {
     const orders = await this.orderService.getAllOrders();
@@ -14,8 +14,7 @@ export default class OrderController {
   createOrder = catchErrors(async (req, res) => {
     const result = await this.orderService.createOrder(req.body, req.userId.toString());
     if (!result.success) {
-      console.error("❌ Đặt hàng lỗi:", result.message);
-      return ResponseUtil.error(res, result.code, result.message);
+      return ResponseUtil.success(res, result.order, "OUT_OF_STOCK");                                                                                                                                                     (res, statusCode, result.message, result.code);
     }
     console.log("✅ Đặt hàng thành công:", result.order);
     return ResponseUtil.success(res, result.order, result.message);
@@ -32,7 +31,7 @@ export default class OrderController {
   updateStatusOrder = catchErrors(async (req, res) => {
     const { orderId } = req.params;
     const result = await this.orderService.updateStatusOrder(orderId?.toString() || "");
-  
+
     return ResponseUtil.success(res, result.order, result.message);
   });
   getOrderById = catchErrors(async (req, res) => {

@@ -95,6 +95,13 @@ class ResponseUtil {
   static noContent(res: Response): Response {
     return res.status(NO_CONTENT).send();
   }
+  static outOfStock(res: Response, statusCode: number, message: string, code?: string) {
+  return res.status(statusCode).json({
+    success: false,
+    code,
+    message
+  });
+}
 }
 
 export default ResponseUtil;

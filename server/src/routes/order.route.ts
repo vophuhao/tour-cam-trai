@@ -22,6 +22,6 @@ router.get("/:orderId", authenticate, orderController.getOrderById);
 
 router.post("/:orderId/cancel", authenticate, orderController.cancelOrder);
 
-router.post("/:orderId/update-status", requireAdmin, orderController.updateOrderStatus);
+router.post("/:orderId/update-status", orderController.updateOrderStatus);
 
 export default router;

@@ -404,3 +404,13 @@ export const getAllLocations = async (): Promise<ApiResponse> =>
 
 export const deleteLocation = async (id: string): Promise<ApiResponse> => 
   API.post(`/locations/delete/${id}`);
+
+
+export const getRatingsByProductId = async (productId: string): Promise<ApiResponse> => 
+  API.get(`/rating/product/${productId}`);
+
+export const getRatingsByUserId = async (userId: string): Promise<ApiResponse> =>
+  API.get(`/rating/user/${userId}`);
+
+export const createRating = async (data: any): Promise<ApiResponse> =>
+  API.post("/rating", data);
