@@ -1,6 +1,7 @@
 import { catchErrors } from "@/errors";
 import type { BookingService } from "@/services/booking.service";
 import { ResponseUtil } from "@/utils";
+import { mongoIdSchema } from "@/validators";
 import {
   cancelBookingSchema,
   confirmBookingSchema,
@@ -8,6 +9,7 @@ import {
   searchBookingSchema,
   updatePaymentSchema,
 } from "@/validators/booking.validator";
+import mongoose from "mongoose";
 
 export default class BookingController {
   constructor(private readonly bookingService: BookingService) {}
@@ -18,7 +20,7 @@ export default class BookingController {
    */
   createBooking = catchErrors(async (req, res) => {
     const input = createBookingSchema.parse(req.body);
-    const guestId = req.userId!;
+    const guestId = mongoIdSchema.parse(req.userId);
 
     const booking = await this.bookingService.createBooking(guestId, input);
 
@@ -31,9 +33,9 @@ export default class BookingController {
    */
   getBooking = catchErrors(async (req, res) => {
     const { id } = req.params;
-    const userId = req.userId!;
+    const userId = mongoIdSchema.parse(req.userId);
 
-    const booking = await this.bookingService.getBooking(id, userId);
+    const booking = await this.bookingService.getBooking(id || "", userId);
 
     return ResponseUtil.success(res, booking, "Lấy thông tin booking thành công");
   });
@@ -44,7 +46,7 @@ export default class BookingController {
    */
   searchBookings = catchErrors(async (req, res) => {
     const input = searchBookingSchema.parse(req.query);
-    const userId = req.userId!;
+    const userId = mongoIdSchema.parse(req.userId);
 
     const { data, pagination } = await this.bookingService.searchBookings(userId, input);
 
@@ -57,10 +59,10 @@ export default class BookingController {
    */
   confirmBooking = catchErrors(async (req, res) => {
     const { id } = req.params;
-    const hostId = req.userId!;
+    const hostId = mongoIdSchema.parse(req.userId);
     const { hostMessage } = confirmBookingSchema.parse(req.body);
 
-    const booking = await this.bookingService.confirmBooking(id, hostId, hostMessage);
+    const booking = await this.bookingService.confirmBooking(id || "", hostId, hostMessage);
 
     return ResponseUtil.success(res, booking, "Xác nhận booking thành công");
   });
@@ -71,10 +73,14 @@ export default class BookingController {
    */
   cancelBooking = catchErrors(async (req, res) => {
     const { id } = req.params;
-    const userId = req.userId!;
+    const userId = mongoIdSchema.parse(req.userId);
     const input = cancelBookingSchema.parse(req.body);
 
-    const booking = await this.bookingService.cancelBooking(id, userId, input);
+    const booking = await this.bookingService.cancelBooking(
+      id || "",
+      userId as unknown as mongoose.Types.ObjectId,
+      input
+    );
 
     return ResponseUtil.success(res, booking, "Hủy booking thành công");
   });
@@ -86,8 +92,7 @@ export default class BookingController {
   completeBooking = catchErrors(async (req, res) => {
     const { id } = req.params;
 
-    const booking = await this.bookingService.completeBooking(id);
-
+    const booking = await this.bookingService.completeBooking(id || "");
     return ResponseUtil.success(res, booking, "Hoàn thành booking thành công");
   });
 
@@ -101,7 +106,7 @@ export default class BookingController {
     updatePaymentSchema.parse(req.body);
 
     // This would be in a separate payment service, simplified here
-    const booking = await this.bookingService.getBooking(id, req.userId!);
+    const booking = await this.bookingService.getBooking(id || "", mongoIdSchema.parse(req.userId));
 
     return ResponseUtil.success(res, booking, "Cập nhật thanh toán thành công");
   });

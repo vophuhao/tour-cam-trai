@@ -1,11 +1,11 @@
 import { catchErrors } from "@/errors";
-import type { AmenityService, ActivityService } from "@/services/amenity.service";
+import type { ActivityService, AmenityService } from "@/services/amenity.service";
 import { ResponseUtil } from "@/utils";
 import {
-  createAmenitySchema,
-  updateAmenitySchema,
   createActivitySchema,
+  createAmenitySchema,
   updateActivitySchema,
+  updateAmenitySchema,
 } from "@/validators/amenity.validator";
 
 export default class AmenityController {
@@ -37,7 +37,7 @@ export default class AmenityController {
     const { includeInactive } = req.query as { includeInactive?: string };
 
     const amenities = await this.amenityService.getAmenitiesByCategory(
-      category,
+      category || "",
       includeInactive === "true"
     );
 
@@ -64,7 +64,7 @@ export default class AmenityController {
     const { id } = req.params;
     const input = updateAmenitySchema.parse(req.body);
 
-    const amenity = await this.amenityService.updateAmenity(id, input);
+    const amenity = await this.amenityService.updateAmenity(id || "", input);
 
     return ResponseUtil.success(res, amenity, "Cập nhật amenity thành công");
   });
@@ -76,7 +76,7 @@ export default class AmenityController {
   deleteAmenity = catchErrors(async (req, res) => {
     const { id } = req.params;
 
-    await this.amenityService.deleteAmenity(id);
+    await this.amenityService.deleteAmenity(id || "");
 
     return ResponseUtil.success(res, null, "Xóa amenity thành công");
   });
@@ -89,7 +89,7 @@ export default class AmenityController {
     const { id } = req.params;
     const { isActive } = req.body;
 
-    const amenity = await this.amenityService.toggleActive(id, isActive);
+    const amenity = await this.amenityService.toggleActive(id || "", isActive);
 
     return ResponseUtil.success(res, amenity, "Cập nhật trạng thái amenity thành công");
   });
@@ -117,7 +117,7 @@ export default class AmenityController {
     const { includeInactive } = req.query as { includeInactive?: string };
 
     const activities = await this.activityService.getActivitiesByCategory(
-      category,
+      category || "",
       includeInactive === "true"
     );
 
@@ -144,7 +144,7 @@ export default class AmenityController {
     const { id } = req.params;
     const input = updateActivitySchema.parse(req.body);
 
-    const activity = await this.activityService.updateActivity(id, input);
+    const activity = await this.activityService.updateActivity(id || "", input);
 
     return ResponseUtil.success(res, activity, "Cập nhật activity thành công");
   });
@@ -156,7 +156,7 @@ export default class AmenityController {
   deleteActivity = catchErrors(async (req, res) => {
     const { id } = req.params;
 
-    await this.activityService.deleteActivity(id);
+    await this.activityService.deleteActivity(id || "");
 
     return ResponseUtil.success(res, null, "Xóa activity thành công");
   });
@@ -169,7 +169,7 @@ export default class AmenityController {
     const { id } = req.params;
     const { isActive } = req.body;
 
-    const activity = await this.activityService.toggleActive(id, isActive);
+    const activity = await this.activityService.toggleActive(id || "", isActive);
 
     return ResponseUtil.success(res, activity, "Cập nhật trạng thái activity thành công");
   });

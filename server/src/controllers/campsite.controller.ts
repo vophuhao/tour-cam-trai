@@ -91,15 +91,24 @@ export default class CampsiteController {
   });
 
   /**
-   * Check availability
+   * Check availability cho khoảng thời gian HOẶC get all availability records
    * @route GET /api/campsites/:id/availability
+   * Query params:
+   * - No params: Returns array of all availability records for calendar
+   * - checkIn + checkOut: Returns boolean isAvailable for specific dates
    */
   checkAvailability = catchErrors(async (req, res) => {
     const { id } = req.params;
-    const { checkIn, checkOut } = req.query as { checkIn: string; checkOut: string };
+    const { checkIn, checkOut } = req.query as { checkIn?: string; checkOut?: string };
 
+    // Case 1: Get all availability records (for calendar)
+    if (!checkIn || !checkOut) {
+      const availability = await this.campsiteService.getCampsiteAvailability(id || "");
+      return ResponseUtil.success(res, availability, "Lấy thông tin availability thành công");
+    }
+
+    // Case 2: Check specific date range
     const isAvailable = await this.campsiteService.checkAvailability(id || "", checkIn, checkOut);
-
     return ResponseUtil.success(res, { isAvailable }, "Kiểm tra lịch trống thành công");
   });
 }

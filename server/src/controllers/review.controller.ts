@@ -33,7 +33,7 @@ export default class ReviewController {
   getReview = catchErrors(async (req, res) => {
     const { id } = req.params;
 
-    const review = await this.reviewService.getReview(id);
+    const review = await this.reviewService.getReview(id || "");
 
     return ResponseUtil.success(res, review, "Lấy thông tin review thành công");
   });
@@ -59,7 +59,7 @@ export default class ReviewController {
     const { page = 1, limit = 20 } = req.query as { page?: string; limit?: string };
 
     const { data, pagination } = await this.reviewService.getCampsiteReviews(
-      campsiteId,
+      campsiteId || "",
       Number(page),
       Number(limit)
     );
@@ -74,7 +74,7 @@ export default class ReviewController {
   getCampsiteReviewStats = catchErrors(async (req, res) => {
     const { campsiteId } = req.params;
 
-    const stats = await this.reviewService.getCampsiteReviewStats(campsiteId);
+    const stats = await this.reviewService.getCampsiteReviewStats(campsiteId || "");
 
     return ResponseUtil.success(res, stats, "Lấy thống kê review thành công");
   });
@@ -85,10 +85,10 @@ export default class ReviewController {
    */
   addHostResponse = catchErrors(async (req, res) => {
     const { id } = req.params;
-    const hostId = req.userId!;
+    const hostId = mongoIdSchema.parse(req.userId);
     const input = hostResponseSchema.parse(req.body);
 
-    const review = await this.reviewService.addHostResponse(id, hostId, input);
+    const review = await this.reviewService.addHostResponse(id || "", hostId, input);
 
     return ResponseUtil.success(res, review, "Phản hồi review thành công");
   });
@@ -101,7 +101,7 @@ export default class ReviewController {
     const { id } = req.params;
     const { voteType } = voteReviewSchema.parse(req.body);
 
-    const review = await this.reviewService.voteReview(id, voteType);
+    const review = await this.reviewService.voteReview(id || "", voteType);
 
     return ResponseUtil.success(res, review, "Vote review thành công");
   });
@@ -114,7 +114,7 @@ export default class ReviewController {
     const { id } = req.params;
     const { isPublished } = reviewStatusSchema.parse(req.body);
 
-    const review = await this.reviewService.togglePublish(id, isPublished);
+    const review = await this.reviewService.togglePublish(id || "", isPublished);
 
     return ResponseUtil.success(
       res,
@@ -131,7 +131,7 @@ export default class ReviewController {
     const { id } = req.params;
     const { isFeatured } = req.body;
 
-    const review = await this.reviewService.toggleFeature(id, isFeatured);
+    const review = await this.reviewService.toggleFeature(id || "", isFeatured);
 
     return ResponseUtil.success(
       res,

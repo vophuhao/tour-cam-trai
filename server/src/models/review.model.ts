@@ -125,7 +125,7 @@ reviewSchema.methods.addHostResponse = async function (this: ReviewDocument, res
 
 reviewSchema.methods.calculateOverallRating = function (this: ReviewDocument): number {
   const { cleanliness, accuracy, location, value, communication } = this.ratings;
-  return (cleanliness + accuracy + location + value + communication) / 5;
+  return Math.round(((cleanliness + accuracy + location + value + communication) / 5) * 10) / 10;
 };
 
 // Auto-calculate overall rating before save

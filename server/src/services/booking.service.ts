@@ -1,12 +1,12 @@
-import { BookingModel, CampsiteModel, AvailabilityModel, type BookingDocument } from "@/models";
 import { ErrorFactory } from "@/errors";
+import { AvailabilityModel, BookingModel, CampsiteModel, type BookingDocument } from "@/models";
 import appAssert from "@/utils/app-assert";
 import type {
-  CreateBookingInput,
   CancelBookingInput,
+  CreateBookingInput,
   SearchBookingInput,
 } from "@/validators/booking.validator";
-import type { PaginatedResult } from "@/types/response";
+import mongoose from "mongoose";
 
 export class BookingService {
   /**
@@ -164,15 +164,15 @@ export class BookingService {
    */
   async cancelBooking(
     bookingId: string,
-    userId: string,
+    userId: mongoose.Types.ObjectId,
     input: CancelBookingInput
   ): Promise<BookingDocument> {
     const booking = await BookingModel.findById(bookingId);
     appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
 
     // Check permission
-    const isGuest = booking.guest.toString() === userId;
-    const isHost = booking.host.toString() === userId;
+    const isGuest = booking.guest.toString() === userId.toString();
+    const isHost = booking.host.toString() === userId.toString();
     appAssert(isGuest || isHost, ErrorFactory.forbidden("Bạn không có quyền hủy booking này"));
 
     // Check status
@@ -204,10 +204,7 @@ export class BookingService {
   /**
    * Search bookings with filters
    */
-  async searchBookings(
-    userId: string,
-    input: SearchBookingInput
-  ): Promise<PaginatedResult<BookingDocument>> {
+  async searchBookings(userId: string, input: SearchBookingInput) {
     const { status, checkInFrom, checkInTo, role, sort, page, limit } = input;
 
     // Build query
@@ -252,7 +249,7 @@ export class BookingService {
 
     // Execute query with pagination
     const skip = (page - 1) * limit;
-    const [bookings, totalCount] = await Promise.all([
+    const [bookings, total] = await Promise.all([
       BookingModel.find(query)
         .populate("campsite", "name slug images location")
         .populate("guest", "name email avatar")
@@ -265,12 +262,14 @@ export class BookingService {
     ]);
 
     return {
-      data: bookings as BookingDocument[],
+      data: bookings,
       pagination: {
         page,
         limit,
-        totalCount,
-        totalPages: Math.ceil(totalCount / limit),
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1,
       },
     };
   }

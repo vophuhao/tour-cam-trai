@@ -4,6 +4,7 @@ import { MONGO_URI } from "@/constants/env";
 import {
   ActivityModel,
   AmenityModel,
+  AvailabilityModel,
   BookingModel,
   CampsiteModel,
   ReviewModel,
@@ -1065,11 +1066,12 @@ async function seedDatabase() {
     // ===== SEED BOOKINGS =====
     console.log("📅 Seeding bookings...");
     const bookingsData = [
+      // Completed bookings (can be reviewed)
       {
         campsiteIndex: 0,
         guestIndex: 0,
-        checkIn: new Date("2025-12-01"),
-        checkOut: new Date("2025-12-05"),
+        checkIn: new Date("2024-11-01"),
+        checkOut: new Date("2024-11-05"),
         numberOfGuests: 2,
         numberOfPets: 0,
         numberOfVehicles: 1,
@@ -1078,6 +1080,84 @@ async function seedDatabase() {
       },
       {
         campsiteIndex: 1,
+        guestIndex: 1,
+        checkIn: new Date("2024-10-15"),
+        checkOut: new Date("2024-10-18"),
+        numberOfGuests: 4,
+        numberOfPets: 1,
+        numberOfVehicles: 1,
+        status: "completed",
+        paymentStatus: "paid",
+      },
+      {
+        campsiteIndex: 2,
+        guestIndex: 2,
+        checkIn: new Date("2024-09-20"),
+        checkOut: new Date("2024-09-23"),
+        numberOfGuests: 3,
+        numberOfPets: 0,
+        numberOfVehicles: 1,
+        status: "completed",
+        paymentStatus: "paid",
+      },
+      {
+        campsiteIndex: 0,
+        guestIndex: 2,
+        checkIn: new Date("2024-08-10"),
+        checkOut: new Date("2024-08-14"),
+        numberOfGuests: 2,
+        numberOfPets: 0,
+        numberOfVehicles: 1,
+        status: "completed",
+        paymentStatus: "paid",
+      },
+      {
+        campsiteIndex: 3,
+        guestIndex: 0,
+        checkIn: new Date("2024-07-05"),
+        checkOut: new Date("2024-07-08"),
+        numberOfGuests: 5,
+        numberOfPets: 1,
+        numberOfVehicles: 2,
+        status: "completed",
+        paymentStatus: "paid",
+      },
+      {
+        campsiteIndex: 1,
+        guestIndex: 2,
+        checkIn: new Date("2024-06-20"),
+        checkOut: new Date("2024-06-23"),
+        numberOfGuests: 2,
+        numberOfPets: 0,
+        numberOfVehicles: 1,
+        status: "completed",
+        paymentStatus: "paid",
+      },
+      {
+        campsiteIndex: 4,
+        guestIndex: 1,
+        checkIn: new Date("2024-05-15"),
+        checkOut: new Date("2024-05-18"),
+        numberOfGuests: 4,
+        numberOfPets: 2,
+        numberOfVehicles: 2,
+        status: "completed",
+        paymentStatus: "paid",
+      },
+      {
+        campsiteIndex: 2,
+        guestIndex: 0,
+        checkIn: new Date("2024-04-10"),
+        checkOut: new Date("2024-04-13"),
+        numberOfGuests: 3,
+        numberOfPets: 0,
+        numberOfVehicles: 1,
+        status: "completed",
+        paymentStatus: "paid",
+      },
+      // Future confirmed bookings
+      {
+        campsiteIndex: 5,
         guestIndex: 1,
         checkIn: new Date("2025-12-10"),
         checkOut: new Date("2025-12-12"),
@@ -1151,50 +1231,216 @@ async function seedDatabase() {
     }
     console.log(`✅ Created ${createdBookings.length} bookings`);
 
+    // ===== SEED AVAILABILITY =====
+    console.log("📅 Seeding availability...");
+    const availabilityRecords = [];
+
+    for (const campsite of createdCampsites) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Create 90 days of availability (next 3 months)
+      for (let i = 0; i < 90; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() + i);
+
+        // Randomly block some dates for variety
+        const randomBlock = Math.random();
+        let isAvailable = true;
+        let blockType = undefined;
+        let reason = undefined;
+        let price = undefined;
+
+        // 10% chance of being booked
+        if (randomBlock < 0.1) {
+          isAvailable = false;
+          blockType = "booked";
+          reason = "Đã được đặt";
+        }
+        // 5% chance of maintenance
+        else if (randomBlock < 0.15) {
+          isAvailable = false;
+          blockType = "maintenance";
+          reason = "Bảo trì định kỳ";
+        }
+        // 5% chance of being blocked by host
+        else if (randomBlock < 0.2) {
+          isAvailable = false;
+          blockType = "blocked";
+          reason = "Chủ nhà tạm khóa";
+        }
+        // 10% chance of weekend pricing (higher price)
+        else if (date.getDay() === 0 || date.getDay() === 6) {
+          if (campsite.pricing.weekendPrice) {
+            price = campsite.pricing.weekendPrice;
+          }
+        }
+
+        availabilityRecords.push({
+          campsite: campsite._id,
+          date,
+          isAvailable,
+          blockType,
+          reason,
+          price,
+        });
+      }
+    }
+
+    await AvailabilityModel.insertMany(availabilityRecords);
+    console.log(`✅ Created ${availabilityRecords.length} availability records`);
+
     // ===== SEED REVIEWS =====
     console.log("⭐ Seeding reviews...");
-    const completedBooking = createdBookings.find((b) => b.status === "completed");
+    const completedBookings = createdBookings.filter((b) => b.status === "completed");
 
-    if (completedBooking) {
-      await ReviewModel.create({
-        booking: completedBooking._id,
-        campsite: completedBooking.campsite,
-        guest: completedBooking.guest,
-        host: completedBooking.host,
-        ratings: {
-          cleanliness: 5,
-          accuracy: 5,
-          location: 5,
-          value: 4,
-          communication: 5,
-          amenities: 5,
-          overall: 4.8,
-        },
+    const reviewTemplates = [
+      {
+        ratings: { cleanliness: 5, accuracy: 5, location: 5, value: 5, communication: 5 },
         title: "Trải nghiệm tuyệt vời!",
         comment:
           "Chúng tôi đã có một kỳ nghỉ tuyệt vời tại đây. View đẹp, không khí trong lành, chủ nhà thân thiện. Sẽ quay lại lần sau!",
         pros: ["View đẹp", "Sạch sẽ", "Chủ nhà nhiệt tình"],
         cons: ["Wifi hơi yếu"],
+        isFeatured: true,
+        hasResponse: true,
+      },
+      {
+        ratings: { cleanliness: 4, accuracy: 5, location: 5, value: 4, communication: 5 },
+        title: "Rất đáng để thử!",
+        comment:
+          "Địa điểm yên tĩnh, phù hợp cho gia đình. Tiện nghi đầy đủ, chủ nhà support rất tốt. Giá cả hợp lý.",
+        pros: ["Yên tĩnh", "Phù hợp gia đình", "Giá tốt"],
+        cons: ["Đường vào hơi khó"],
+        isFeatured: false,
+        hasResponse: true,
+      },
+      {
+        ratings: { cleanliness: 5, accuracy: 4, location: 4, value: 5, communication: 5 },
+        title: "Nơi nghỉ dưỡng lý tưởng",
+        comment:
+          "Campsite rất sạch sẽ và thoáng mát. Hoạt động ngoài trời phong phú, con cái rất thích. Chắc chắn sẽ quay lại!",
+        pros: ["Sạch sẽ", "Nhiều hoạt động", "Thân thiện với trẻ em"],
+        cons: [],
+        isFeatured: true,
+        hasResponse: false,
+      },
+      {
+        ratings: { cleanliness: 4, accuracy: 4, location: 5, value: 4, communication: 4 },
+        title: "Tốt cho nhóm bạn",
+        comment:
+          "Không gian rộng rãi, phù hợp đi nhóm. Có khu nấu ăn tiện lợi. View núi rất đẹp vào buổi sáng.",
+        pros: ["Rộng rãi", "View đẹp", "Khu BBQ tiện lợi"],
+        cons: ["Nhà vệ sinh chung hơi xa"],
+        isFeatured: false,
+        hasResponse: false,
+      },
+      {
+        ratings: { cleanliness: 5, accuracy: 5, location: 4, value: 5, communication: 5 },
+        title: "Hoàn hảo cho pet!",
+        comment:
+          "Chủ nhà rất thân thiện với pet. Khu vực rộng để cún chạy nhảy. Mọi thứ đều sạch sẽ và tiện nghi.",
+        pros: ["Pet friendly", "Khu vực rộng", "Chủ nhà tuyệt vời"],
+        cons: ["Hơi xa siêu thị"],
+        isFeatured: false,
+        hasResponse: true,
+      },
+    ];
+
+    const reviewsToCreate = [];
+    for (let i = 0; i < Math.min(completedBookings.length, 20); i++) {
+      const booking = completedBookings[i];
+      if (!booking) continue;
+
+      const template = reviewTemplates[i % reviewTemplates.length];
+      if (!template) continue;
+
+      // Calculate overall rating
+      const overallRating =
+        Math.round(
+          ((template.ratings.cleanliness +
+            template.ratings.accuracy +
+            template.ratings.location +
+            template.ratings.value +
+            template.ratings.communication) /
+            5) *
+            10
+        ) / 10;
+
+      const review: any = {
+        booking: booking._id,
+        campsite: booking.campsite,
+        guest: booking.guest,
+        host: booking.host,
+        ratings: {
+          ...template.ratings,
+          overall: overallRating,
+        },
+        title: template.title,
+        comment: template.comment,
+        pros: template.pros,
+        cons: template.cons,
         images: [],
         isPublished: true,
-        isFeatured: true,
-        hostResponse: {
-          comment:
-            "Cảm ơn bạn rất nhiều! Chúng tôi rất vui vì bạn đã có trải nghiệm tốt. Hẹn gặp lại!",
-          respondedAt: new Date(),
+        isFeatured: template.isFeatured,
+        isVerified: true,
+        helpfulCount: Math.floor(Math.random() * 20),
+        notHelpfulCount: Math.floor(Math.random() * 3),
+      };
+
+      if (template.hasResponse) {
+        review.hostResponse = {
+          comment: "Cảm ơn bạn rất nhiều! Rất vui vì bạn đã có trải nghiệm tốt. Hẹn gặp lại!",
+          respondedAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
+        };
+      }
+
+      reviewsToCreate.push(review);
+      booking.reviewed = true;
+      booking.review = review.booking;
+    }
+
+    const createdReviews = await ReviewModel.insertMany(reviewsToCreate);
+    await Promise.all(completedBookings.slice(0, reviewsToCreate.length).map((b) => b.save()));
+
+    console.log(`✅ Created ${createdReviews.length} reviews`);
+
+    // Update campsite ratings for all campsites with reviews
+    const campsitesWithReviews = [...new Set(createdReviews.map((r) => r.campsite.toString()))];
+    for (const campsiteId of campsitesWithReviews) {
+      const reviews = await ReviewModel.find({ campsite: campsiteId, isPublished: true });
+      if (reviews.length === 0) continue;
+
+      const totalRatings = reviews.reduce(
+        (acc, review) => {
+          acc.overall += review.ratings.overall;
+          acc.cleanliness += review.ratings.cleanliness;
+          acc.accuracy += review.ratings.accuracy;
+          acc.location += review.ratings.location;
+          acc.value += review.ratings.value;
+          acc.communication += review.ratings.communication;
+          return acc;
+        },
+        { overall: 0, cleanliness: 0, accuracy: 0, location: 0, value: 0, communication: 0 }
+      );
+
+      const count = reviews.length;
+      await CampsiteModel.findByIdAndUpdate(campsiteId, {
+        rating: {
+          average: Math.round((totalRatings.overall / count) * 10) / 10,
+          count,
+          breakdown: {
+            cleanliness: Math.round((totalRatings.cleanliness / count) * 10) / 10,
+            accuracy: Math.round((totalRatings.accuracy / count) * 10) / 10,
+            location: Math.round((totalRatings.location / count) * 10) / 10,
+            value: Math.round((totalRatings.value / count) * 10) / 10,
+            communication: Math.round((totalRatings.communication / count) * 10) / 10,
+          },
         },
       });
-
-      console.log(`✅ Created 1 review`);
-
-      // Update campsite rating
-      const campsite = await CampsiteModel.findById(completedBooking.campsite);
-      if (campsite && campsite.rating) {
-        campsite.rating.average = 4.8;
-        campsite.rating.count = 1;
-        await campsite.save();
-      }
     }
+
+    console.log(`✅ Updated ratings for ${campsitesWithReviews.length} campsites`);
 
     console.log("\n🎉 Database seeded successfully!");
     console.log("📊 Summary:");
@@ -1202,8 +1448,9 @@ async function seedDatabase() {
     console.log(`   - Activities: ${createdActivities.length}`);
     console.log(`   - Users: ${createdUsers.length}`);
     console.log(`   - Campsites: ${createdCampsites.length}`);
+    console.log(`   - Availability: ${availabilityRecords.length}`);
     console.log(`   - Bookings: ${createdBookings.length}`);
-    console.log(`   - Reviews: ${completedBooking ? 1 : 0}`);
+    console.log(`   - Reviews: ${createdReviews.length}`);
     console.log("\n👤 Test accounts:");
     console.log("   Admin: admin@hipcamp.vn / Admin@123");
     console.log("   Host: host1@hipcamp.vn / Host@123");

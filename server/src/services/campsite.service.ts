@@ -6,6 +6,7 @@ import type {
   SearchCampsiteInput,
   UpdateCampsiteInput,
 } from "@/validators/campsite.validator";
+import { isValidObjectId } from "mongoose";
 
 export class CampsiteService {
   /**
@@ -31,10 +32,11 @@ export class CampsiteService {
   /**
    * Get campsite by ID or slug
    */
+
   async getCampsite(idOrSlug: string): Promise<CampsiteDocument> {
-    const campsite = await CampsiteModel.findOne({
-      $or: [{ _id: idOrSlug }, { slug: idOrSlug }],
-    })
+    const query = isValidObjectId(idOrSlug) ? { _id: idOrSlug } : { slug: idOrSlug };
+
+    const campsite = await CampsiteModel.findOne(query)
       .populate("host", "name email avatar")
       .populate("amenities")
       .populate("activities");
@@ -128,7 +130,9 @@ export class CampsiteService {
     if (state) query["location.state"] = new RegExp(state, "i");
 
     // Property filters
-    if (propertyType) query.propertyType = propertyType;
+    if (propertyType) {
+      query.propertyType = Array.isArray(propertyType) ? { $in: propertyType } : propertyType;
+    }
     if (minGuests) query["capacity.maxGuests"] = { $gte: minGuests };
 
     // Price range
@@ -138,14 +142,14 @@ export class CampsiteService {
       if (maxPrice !== undefined) query["pricing.basePrice"].$lte = maxPrice;
     }
 
-    // Amenities filter
+    // Amenities filter - $in means has at least one of the selected amenities
     if (amenities && amenities.length > 0) {
-      query.amenities = { $all: amenities };
+      query.amenities = { $in: amenities };
     }
 
-    // Activities filter
+    // Activities filter - $in means has at least one of the selected activities
     if (activities && activities.length > 0) {
-      query.activities = { $all: activities };
+      query.activities = { $in: activities };
     }
 
     // Preferences
@@ -399,10 +403,30 @@ export class CampsiteService {
    * Increment views count
    */
   async incrementViews(campsiteId: string): Promise<void> {
-    const campsite = await CampsiteModel.findById(campsiteId);
+    const query = isValidObjectId(campsiteId) ? { _id: campsiteId } : { slug: campsiteId };
+    const campsite = await CampsiteModel.findOne(query);
     if (campsite) {
       await campsite.incrementViews();
     }
+  }
+
+  /**
+   * Get all availability records for a campsite (for calendar display)
+   */
+  async getCampsiteAvailability(campsiteId: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Get next 365 days of availability
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + 365);
+
+    const availabilityRecords = await AvailabilityModel.find({
+      campsite: campsiteId,
+      date: { $gte: today, $lte: endDate },
+    }).sort({ date: 1 });
+
+    return availabilityRecords;
   }
 
   /**
@@ -411,6 +435,11 @@ export class CampsiteService {
   async checkAvailability(campsiteId: string, checkIn: string, checkOut: string): Promise<boolean> {
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
+
+    // Validate dates
+    if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
+      throw ErrorFactory.badRequest("Invalid date format");
+    }
 
     // Check in Availability collection
     const blockedDates = await AvailabilityModel.countDocuments({

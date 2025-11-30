@@ -1,12 +1,11 @@
-import { ReviewModel, BookingModel, CampsiteModel, type ReviewDocument } from "@/models";
 import { ErrorFactory } from "@/errors";
+import { BookingModel, CampsiteModel, ReviewModel, type ReviewDocument } from "@/models";
 import appAssert from "@/utils/app-assert";
 import type {
   CreateReviewInput,
   HostResponseInput,
   SearchReviewInput,
 } from "@/validators/review.validator";
-import type { PaginatedResult } from "@/types/response";
 
 export class ReviewService {
   /**
@@ -90,7 +89,7 @@ export class ReviewService {
   /**
    * Search reviews with filters
    */
-  async searchReviews(input: SearchReviewInput): Promise<PaginatedResult<ReviewDocument>> {
+  async searchReviews(input: SearchReviewInput) {
     const { campsite, guest, minRating, isPublished, isFeatured, sort, page, limit } = input;
 
     // Build query
@@ -125,10 +124,10 @@ export class ReviewService {
 
     // Execute query with pagination
     const skip = (page - 1) * limit;
-    const [reviews, totalCount] = await Promise.all([
+    const [reviews, total] = await Promise.all([
       ReviewModel.find(query)
         .populate("campsite", "name slug images")
-        .populate("guest", "name avatar")
+        .populate("guest", "username avatarUrl")
         .sort(sortOption)
         .skip(skip)
         .limit(limit),
@@ -140,8 +139,10 @@ export class ReviewService {
       pagination: {
         page,
         limit,
-        totalCount,
-        totalPages: Math.ceil(totalCount / limit),
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1,
       },
     };
   }
@@ -149,11 +150,7 @@ export class ReviewService {
   /**
    * Get reviews for specific campsite
    */
-  async getCampsiteReviews(
-    campsiteId: string,
-    page: number = 1,
-    limit: number = 20
-  ): Promise<PaginatedResult<ReviewDocument>> {
+  async getCampsiteReviews(campsiteId: string, page: number = 1, limit: number = 20) {
     return this.searchReviews({
       campsite: campsiteId,
       isPublished: true,

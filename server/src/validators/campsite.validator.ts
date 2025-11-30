@@ -78,9 +78,23 @@ export const searchCampsiteSchema = z.object({
   lng: z.coerce.number().min(-180).max(180).optional(),
   radius: z.coerce.number().min(0).max(500).optional(), // km
 
-  // Property filters
+  // Property filters - handle both comma-separated strings and arrays
   propertyType: z
-    .enum(["tent", "rv", "cabin", "glamping", "treehouse", "yurt", "other"])
+    .union([
+      z.string(),
+      z.enum(["tent", "rv", "cabin", "glamping", "treehouse", "yurt", "other"]),
+      z.array(z.enum(["tent", "rv", "cabin", "glamping", "treehouse", "yurt", "other"])),
+    ])
+    .transform((val) => {
+      if (typeof val === "string") {
+        const types = val.split(",").map((v) => v.trim());
+        // Validate each type
+        const validTypes = ["tent", "rv", "cabin", "glamping", "treehouse", "yurt", "other"];
+        const filtered = types.filter((t) => validTypes.includes(t));
+        return filtered.length === 1 ? filtered[0] : filtered;
+      }
+      return val;
+    })
     .optional(),
   minGuests: z.coerce.number().int().min(1).optional(),
 
@@ -88,9 +102,25 @@ export const searchCampsiteSchema = z.object({
   minPrice: z.coerce.number().min(0).optional(),
   maxPrice: z.coerce.number().min(0).optional(),
 
-  // Features
-  amenities: z.array(z.string()).optional(), // filter by amenity IDs
-  activities: z.array(z.string()).optional(), // filter by activity IDs
+  // Features - handle both comma-separated strings and arrays
+  amenities: z
+    .union([z.string(), z.array(z.string())])
+    .transform((val) => {
+      if (typeof val === "string") {
+        return val.split(",").filter((v) => v.trim().length > 0);
+      }
+      return val;
+    })
+    .optional(),
+  activities: z
+    .union([z.string(), z.array(z.string())])
+    .transform((val) => {
+      if (typeof val === "string") {
+        return val.split(",").filter((v) => v.trim().length > 0);
+      }
+      return val;
+    })
+    .optional(),
 
   // Preferences
   allowPets: z.coerce.boolean().optional(),
