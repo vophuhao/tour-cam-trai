@@ -382,3 +382,30 @@ export async function checkCampsiteAvailability(
 export async function getAllOrders(): Promise<ApiResponse<Order[]>> {
   return apiClient.get('/orders');
 }
+
+// ================== BOOKING API ==================
+export async function createBooking(data: {
+  campsite: string;
+  checkIn: string;
+  checkOut: string;
+  numberOfGuests: number;
+  numberOfPets?: number;
+  numberOfVehicles?: number;
+  guestMessage?: string;
+  paymentMethod: 'card' | 'bank_transfer' | 'momo' | 'zalopay';
+}): Promise<ApiResponse> {
+  return apiClient.post('/bookings', data);
+}
+
+export async function getBooking(id: string): Promise<ApiResponse> {
+  return apiClient.get(`/bookings/${id}`);
+}
+
+export async function getUserBookings(params?: {
+  status?: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded';
+  role?: 'guest' | 'host';
+  page?: number;
+  limit?: number;
+}): Promise<ApiResponse> {
+  return apiClient.get('/bookings', { params });
+}

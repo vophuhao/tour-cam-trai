@@ -16,6 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { differenceInDays, format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { CalendarIcon, Minus, Plus, Star, Users, Zap } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 interface BookingCardProps {
@@ -35,6 +36,7 @@ export function BookingCard({
   checkIn,
   checkOut,
 }: BookingCardProps) {
+  const router = useRouter();
   const [dateRange, setDateRange] = useState<DateRangeType | undefined>(() => {
     if (checkIn && checkOut) {
       return {
@@ -150,8 +152,24 @@ export function BookingCard({
       return;
     }
 
-    // TODO: Navigate to booking page or open booking modal
-    console.log('Book now', { dateRange, guests, children, pets });
+    // Navigate to payment page with booking details
+    const params = new URLSearchParams({
+      campsiteId: campsite._id,
+      name: campsite.name,
+      location: `${campsite.location.city}, ${campsite.location.state}`,
+      image: campsite.images[0] || '',
+      checkIn: dateRange.from.toISOString(),
+      checkOut: dateRange.to.toISOString(),
+      basePrice: campsite.pricing.basePrice.toString(),
+      cleaningFee: (campsite.pricing.cleaningFee || 0).toString(),
+      petFee: (campsite.pricing.petFee || 0).toString(),
+      currency: campsite.pricing.currency || 'VND',
+      guests: guests.toString(),
+      children: children.toString(),
+      pets: pets.toString(),
+    });
+
+    router.push(`/checkouts/payment?${params.toString()}`);
   };
 
   return (
