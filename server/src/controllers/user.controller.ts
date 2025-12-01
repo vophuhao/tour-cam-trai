@@ -9,4 +9,11 @@ export default class UserController {
     appAssert(user, ErrorFactory.resourceNotFound("User"));
     return ResponseUtil.success(res, user, "Lấy thông tin user thành công");
   });
+
+  getUserByUsernameHandler = catchErrors(async (req, res) => {
+    const { username } = req.params;
+    const user = await UserModel.findOne({ username });
+    appAssert(user, ErrorFactory.resourceNotFound("User"));
+    return ResponseUtil.success(res, user, "Lấy thông tin user thành công");
+  });
 }
