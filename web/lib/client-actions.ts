@@ -1,3 +1,5 @@
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import apiClient from './api-client';
 
 export async function login(data: {
@@ -165,6 +167,28 @@ export async function deleteProduct(id: string): Promise<ApiResponse> {
   return apiClient.delete(`/products/${id}`);
 }
 
+// ================== REVIEW API ==================
+export async function getCampsiteReviews(
+  campsiteId: string,
+  page: number = 1,
+  limit: number = 10,
+): Promise<PaginatedResponse<any>> {
+  return apiClient.get(`/campsites/${campsiteId}/reviews`, {
+    params: { page, limit },
+  });
+}
+
+export async function getCampsiteReviewStats(campsiteId: string): Promise<
+  ApiResponse<{
+    totalReviews: number;
+    averageRating: number;
+    breakdown: Record<string, number>;
+    distribution: Record<number, number>;
+  }>
+> {
+  return apiClient.get(`/campsites/${campsiteId}/reviews/stats`);
+}
+
 // ================== TOUR API ==================
 export async function getTours(
   page = 1,
@@ -296,7 +320,93 @@ export async function deactivateTour(id: string): Promise<ApiResponse> {
   return apiClient.patch(`/tours/deactivate/${id}`);
 }
 
+// ================== CAMPSITE API ==================
+export async function searchCampsites(
+  params?: SearchCampsiteParams,
+): Promise<PaginatedResponse<Campsite>> {
+  const queryString = new URLSearchParams(
+    Object.entries(params || {}).reduce(
+      (acc, [key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          if (Array.isArray(value)) {
+            acc[key] = value.join(',');
+          } else {
+            acc[key] = String(value);
+          }
+        }
+        return acc;
+      },
+      {} as Record<string, string>,
+    ),
+  ).toString();
+
+  return apiClient.get(`/campsites${queryString ? `?${queryString}` : ''}`);
+}
+
+export async function getCampsite(
+  idOrSlug: string,
+): Promise<ApiResponse<Campsite>> {
+  return apiClient.get(`/campsites/${idOrSlug}`);
+}
+
+export async function createCampsite(
+  data: any,
+): Promise<ApiResponse<Campsite>> {
+  return apiClient.post('/campsites', data);
+}
+
+export async function updateCampsite(
+  id: string,
+  data: any,
+): Promise<ApiResponse<Campsite>> {
+  return apiClient.patch(`/campsites/${id}`, data);
+}
+
+export async function deleteCampsite(id: string): Promise<ApiResponse> {
+  return apiClient.delete(`/campsites/${id}`);
+}
+
+export async function getMyCampsites(): Promise<ApiResponse<Campsite[]>> {
+  return apiClient.get('/campsites/my/list');
+}
+
+export async function checkCampsiteAvailability(
+  id: string,
+  checkIn: string,
+  checkOut: string,
+): Promise<ApiResponse<{ isAvailable: boolean }>> {
+  return apiClient.get(
+    `/campsites/${id}/availability?checkIn=${checkIn}&checkOut=${checkOut}`,
+  );
+}
+
 // ================== ORDER API ==================
 export async function getAllOrders(): Promise<ApiResponse<Order[]>> {
   return apiClient.get('/orders');
+}
+
+
+export async function getAllAmenities(): Promise<ApiResponse<Amenity[]>> {
+  return apiClient.get('/amenities');
+}
+
+export async function getAllActivities(): Promise<ApiResponse<Activity[]>> {
+  return apiClient.get('/activities');
+}
+
+
+
+export async function getMyBookings(): Promise<ApiResponse<Booking[]>> {
+  return apiClient.get('/bookings/my/list');
+}
+
+
+
+
+export async function getMyCampsitesReview(): Promise<ApiResponse<Reviews[]>> {
+  return apiClient.get('/reviews/my');
+}
+
+export async function addHostResponse(reviewId: string, comment: string): Promise<ApiResponse> {
+  return apiClient.post(`/reviews/${reviewId}/response`, { comment });
 }

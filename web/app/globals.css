@@ -262,3 +262,11 @@
   font-size: 0.875rem !important;
   min-height: 2rem !important;
 }
+
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

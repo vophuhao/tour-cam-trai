@@ -1,5 +1,6 @@
+import Footer from '@/components/footer';
 import Header from '@/components/Header';
-import { Providers } from '@/components/Providers';
+import { Providers } from '@/components/Providers'
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Suspense } from 'react';
@@ -58,9 +59,10 @@ export default function RootLayout({
       >
         <Providers>
           <Suspense fallback={<HeaderSkeleton />}>
-            <Header />
+            {/* <Header /> */}
           </Suspense>
           {children}
+          {/* <Footer /> */}
         </Providers>
 
         <Toaster position="top-center" />

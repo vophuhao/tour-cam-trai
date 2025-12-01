@@ -23,7 +23,7 @@ export default function Footer() {
           <div>
             <h3 className="mb-4 flex items-center gap-2 text-2xl font-bold">
               <Tent className="text-primary h-6 w-6" />
-              CampAdventure
+              Campo
             </h3>
             <p className="mb-4 text-sm leading-relaxed text-gray-400">
               Đồng hành cùng bạn khám phá vẻ đẹp thiên nhiên Việt Nam với những

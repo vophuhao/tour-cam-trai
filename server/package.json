@@ -18,7 +18,8 @@
     "clean": "rimraf dist",
     "seed": "ts-node -r tsconfig-paths/register src/seeds/seedDatabase.ts",
     "seed:dev": "ts-node-dev -r tsconfig-paths/register src/seeds/seedDatabase.ts",
-    "seed:posts": "ts-node -r tsconfig-paths/register src/seeds/addMorePosts.ts"
+    "seed:posts": "ts-node -r tsconfig-paths/register src/seeds/addMorePosts.ts",
+    "seed:hipcamp": "ts-node -r tsconfig-paths/register src/seeds/seedHipcamp.ts"
   },
   "engines": {
     "node": ">=18.0.0"

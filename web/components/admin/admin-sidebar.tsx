@@ -58,9 +58,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Category', href: '/admin/categories', icon: Package },
     { name: 'Products', href: '/admin/products', icon: Package },
-    { name: 'Tours', href: '/admin/tours', icon: Tent },
-    { name: 'Bookings', href: '/admin/bookings', icon: BarChart },
-    { name: 'Locations', href: '/admin/locations', icon: Package },
+    { name: 'Host', href: '/admin/hosts', icon: Tent },
     {
       name: 'Orders',
       href: '/admin/orders',

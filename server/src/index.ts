@@ -8,12 +8,18 @@ import { authenticate, errorHandler, requireAdmin } from "./middleware";
 import http from "http";
 import cron from "node-cron";
 import {
+  activityRoutes,
   addressRoutes,
+  amenityRoutes,
   authRoutes,
+  bookingRoutes,
+  // Hipcamp-style routes
+  campsiteRoutes,
   categoryRoutes,
   mediaRoutes,
   orderRoutes,
   productRoutes,
+  reviewRoutes,
   tourRoutes,
   userRoutes,
 } from "./routes";
@@ -39,9 +45,9 @@ app.use(cookieParser());
 
 const orderService = new OrderService();
 
-// Chạy mỗi 10 phút
+// Ch?y m?i 10 ph�t
 cron.schedule("*/10 * * * *", async () => {
-  console.log("⏱️ Cron: kiểm tra đơn cần hủy...");
+  console.log("?? Cron: ki?m tra don c?n h?y...");
   await orderService.cancelExpiredOrders();
 });
 // health check
@@ -59,12 +65,17 @@ app.use("/users", authenticate, userRoutes);
 app.use("/categories", categoryRoutes);
 app.use("/products", productRoutes);
 app.use("/tours", tourRoutes);
-app.use("/media", authenticate, requireAdmin, mediaRoutes);
+app.use("/media", authenticate, mediaRoutes);
 app.use("/cart", authenticate, cartRoutes);
 app.use("/address", authenticate, addressRoutes);
 app.use("/support", authenticate, supportRouter);
 app.use("/orders", authenticate, orderRoutes);
 app.use("/rating", authenticate, ratingRoutes);
+app.use("/campsites", campsiteRoutes);
+app.use("/bookings", bookingRoutes);
+app.use("/reviews", reviewRoutes);
+app.use("/amenities", amenityRoutes);
+app.use("/activities", activityRoutes);
 
 // error handler middleware
 app.use(errorHandler);

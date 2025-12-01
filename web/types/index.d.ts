@@ -93,6 +93,112 @@ declare interface ProductDetail extends Product {
   count: number;
 }
 
+declare interface Campsite {
+  _id: string;
+  name: string;
+  slug: string;
+  tagline?: string;
+  description: string;
+  host: {
+    _id: string;
+    name?: string; // Optional since backend may not return it
+    email: string;
+    avatar?: string;
+  };
+  location: {
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    coordinates:
+      | {
+          // GeoJSON format (new)
+          type: 'Point';
+          coordinates: [number, number]; // [lng, lat]
+        }
+      | {
+          // Legacy format (old)
+          lat: number;
+          lng: number;
+        };
+    accessInstructions?: string;
+  };
+  propertyType:
+    | 'tent'
+    | 'rv'
+    | 'cabin'
+    | 'glamping'
+    | 'treehouse'
+    | 'yurt'
+    | 'other';
+  capacity: {
+    maxGuests: number;
+    maxVehicles?: number;
+    maxPets?: number;
+  };
+  pricing: {
+    basePrice: number;
+    weekendPrice?: number;
+    cleaningFee?: number;
+    petFee?: number;
+    extraGuestFee?: number;
+    currency: string;
+  };
+  amenities: Array<{
+    _id: string;
+    name: string;
+    icon?: string;
+  }>;
+  activities: Array<{
+    _id: string;
+    name: string;
+    icon?: string;
+  }>;
+  rules: {
+    checkInTime: string;
+    checkOutTime: string;
+    minNights: number;
+    maxNights?: number;
+    allowPets: boolean;
+    allowChildren: boolean;
+    allowSmoking: boolean;
+    customRules?: string[];
+  };
+  images: string[];
+  videos?: string[];
+  isInstantBook: boolean;
+  isActive: boolean;
+  rating?: {
+    average: number;
+    count: number;
+  };
+  views: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+declare interface SearchCampsiteParams {
+  search?: string;
+  city?: string;
+  state?: string;
+  lat?: number;
+  lng?: number;
+  radius?: number;
+  propertyType?: string;
+  minGuests?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  amenities?: string[];
+  activities?: string[];
+  allowPets?: boolean;
+  isInstantBook?: boolean;
+  checkIn?: string;
+  checkOut?: string;
+  sort?: string;
+  page?: number;
+  limit?: number;
+}
+
 declare interface Tour {
   _id?: string;
   code?: string;
@@ -224,3 +330,82 @@ declare interface Location {
   createdAt: string;
   updatedAt: string;
 }
+
+declare interface Amenity {
+  _id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  category: 'basic' | 'comfort' | 'safety' | 'outdoor' | 'special';
+  isActive: boolean;
+}
+
+declare interface Activity {
+  _id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  category: 'water' | 'hiking' | 'wildlife' | 'winter' | 'adventure' | 'relaxation' | 'other';
+  isActive: boolean;
+}
+
+
+declare interface Reviews {
+  _id: string;
+  campsite: {
+    _id: string;
+    name: string;
+    slug: string;
+    images: string[];
+  };
+  guest: {
+    _id: string;  
+    username: string;
+    avatarUrl?: string;
+  };
+  ratings: {
+    overall: number;
+    cleanliness: number;
+    accuracy: number;
+    location: number;
+    value: number;
+    communication: number;
+  };
+  title?: string;
+  comment: string;
+  pros?: string[];
+  cons?: string[];
+  images?: string[];
+  hostResponse?: {
+    comment: string;
+    createdAt: string;
+  };
+}
+
+declare interface Booking {
+  _id: string;
+  campsite: { 
+    _id: string;
+    name: string;
+    slug: string;
+    images: string[];
+  };
+  guest: {
+    _id: string;
+    username: string;
+    avatarUrl?: string;
+  };
+  host: {
+    _id: string;
+    username: string;
+    avatarUrl?: string;
+  };
+  checkInDate: string;
+  checkOutDate: string;
+  guestsCount: number;
+  totalPrice: number;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  createdAt: string;
+  updatedAt: string;
+}
+// Amenity model - Tiện ích có tại campsite
