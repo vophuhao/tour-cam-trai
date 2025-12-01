@@ -104,6 +104,9 @@ export class BookingService {
     // Calculate total
     await booking.calculateTotal();
 
+    // Block dates in availability calendar
+    await this.blockDatesForBooking(campsiteId, checkInDate, checkOutDate);
+
     // Auto-confirm if instant book
     if (campsite.isInstantBook) {
       await booking.confirm();
@@ -118,14 +121,14 @@ export class BookingService {
   async getBooking(bookingId: string, userId: string): Promise<BookingDocument> {
     const booking = await BookingModel.findById(bookingId)
       .populate("campsite")
-      .populate("guest", "name email avatar")
-      .populate("host", "name email avatar");
+      .populate("guest", "username email avatarUrl")
+      .populate("host", "username email avatarUrl");
 
     appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
 
     // Check permission (chỉ guest hoặc host mới xem được)
     appAssert(
-      booking.guest.toString() === userId || booking.host.toString() === userId,
+      booking.guest._id.toString() === userId || booking.host._id.toString() === userId,
       ErrorFactory.forbidden("Bạn không có quyền xem booking này")
     );
 
@@ -182,6 +185,14 @@ export class BookingService {
     );
 
     await booking.cancel(userId, input.cancellationReason);
+
+    // Unblock dates when booking is cancelled
+    await this.unblockDatesForBooking(
+      booking.campsite.toString(),
+      booking.checkIn,
+      booking.checkOut
+    );
+
     return booking;
   }
 
@@ -339,5 +350,61 @@ export class BookingService {
       tax: 0, // will be calculated later
       total: 0, // will be calculated by booking.calculateTotal()
     };
+  }
+
+  /**
+   * Block dates in availability calendar when booking is created
+   */
+  private async blockDatesForBooking(
+    campsiteId: string,
+    checkIn: Date,
+    checkOut: Date
+  ): Promise<void> {
+    const dates: Date[] = [];
+    const currentDate = new Date(checkIn);
+
+    // Generate all dates from checkIn to checkOut (exclusive)
+    while (currentDate < checkOut) {
+      dates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Create availability records for each date
+    const availabilityRecords = dates.map((date) => ({
+      campsite: campsiteId,
+      date,
+      isAvailable: false,
+      blockType: "booked" as const,
+      reason: "Đã được đặt",
+    }));
+
+    // Use bulkWrite with upsert to avoid duplicates
+    const bulkOps = availabilityRecords.map((record) => ({
+      updateOne: {
+        filter: { campsite: record.campsite, date: record.date },
+        update: { $set: record },
+        upsert: true,
+      },
+    }));
+
+    if (bulkOps.length > 0) {
+      await AvailabilityModel.bulkWrite(bulkOps);
+    }
+  }
+
+  /**
+   * Unblock dates when booking is cancelled
+   */
+  private async unblockDatesForBooking(
+    campsiteId: string,
+    checkIn: Date,
+    checkOut: Date
+  ): Promise<void> {
+    // Remove availability records for booked dates
+    await AvailabilityModel.deleteMany({
+      campsite: campsiteId,
+      date: { $gte: checkIn, $lt: checkOut },
+      blockType: "booked",
+    });
   }
 }
