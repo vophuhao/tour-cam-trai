@@ -61,9 +61,9 @@ export const searchBookingSchema = z.object({
   // Sorting
   sort: z.enum(["newest", "oldest", "check-in"]).default("newest"),
 
-  // Pagination
-  page: z.number().int().min(1).default(1),
-  limit: z.number().int().min(1).max(100).default(20),
+  // Pagination (coerce string to number for query params)
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 // Validator cho update payment

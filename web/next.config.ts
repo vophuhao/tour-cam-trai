@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
         hostname: 'res.cloudinary.com',
       },
     ],
-    domains: ['images.unsplash.com', 'i.pravatar.cc'],
+    domains: ['images.unsplash.com', 'i.pravatar.cc', 'i.pinimg.com'],
   },
 };
 
