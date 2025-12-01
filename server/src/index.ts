@@ -76,6 +76,7 @@ app.use("/bookings", bookingRoutes);
 app.use("/reviews", reviewRoutes);
 app.use("/amenities", amenityRoutes);
 app.use("/activities", activityRoutes);
+app.use("/", locationRoutes);
 
 // error handler middleware
 app.use(errorHandler);

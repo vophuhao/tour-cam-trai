@@ -401,6 +401,10 @@ export async function getBooking(id: string): Promise<ApiResponse> {
   return apiClient.get(`/bookings/${id}`);
 }
 
+export async function getBookingByCode(code: string): Promise<ApiResponse> {
+  return apiClient.post(`/bookings/${code}/code`);
+}
+
 export async function getUserBookings(params?: {
   status?: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded';
   role?: 'guest' | 'host';

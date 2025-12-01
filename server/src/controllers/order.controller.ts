@@ -14,7 +14,7 @@ export default class OrderController {
   createOrder = catchErrors(async (req, res) => {
     const result = await this.orderService.createOrder(req.body, req.userId.toString());
     if (!result.success) {
-      return ResponseUtil.success(res, result.order, "OUT_OF_STOCK");                                                                                                                                                     (res, statusCode, result.message, result.code);
+      return ResponseUtil.success(res, result.order, "OUT_OF_STOCK");      
     }
     console.log("✅ Đặt hàng thành công:", result.order);
     return ResponseUtil.success(res, result.order, result.message);

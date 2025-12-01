@@ -1,3 +1,4 @@
+
 import { ErrorFactory } from "@/errors";
 import { AvailabilityModel, BookingModel, CampsiteModel, type BookingDocument } from "@/models";
 import { CLIENT_URL, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY, PAYOS_CLIENT_ID } from "@/constants";
@@ -8,7 +9,7 @@ import type {
   SearchBookingInput,
 } from "@/validators/booking.validator";
 import mongoose from "mongoose";
-import { orderRoutes } from "@/routes";
+
 
 const { PayOS } = require("@payos/node");
 
@@ -102,8 +103,12 @@ export class BookingService {
         orderCode: payOSOrderCode,
         amount,
         description: "Thanh toán ",
-        returnUrl: `${CLIENT_URL}/checkouts/${code}/success`,
-        cancelUrl: `${CLIENT_URL}/checkouts/${code}/cancel`,
+        returnUrl: `${CLIENT_URL}/bookings/${code}/success`,
+        cancelUrl: `${CLIENT_URL}/bookings/cancel`,
+        metadata :{
+          type : "booking",
+          code : code
+        }
       });
 
       payOSCheckoutUrl =
@@ -147,6 +152,17 @@ export class BookingService {
     if (campsite.isInstantBook) {
       await booking.confirm();
     }
+
+    return booking;
+  }
+
+  async getBookingByCode(code: string): Promise<BookingDocument> {
+    const booking = await BookingModel.findOne({ code })
+      .populate("campsite")
+      .populate("guest", "username email avatarUrl")
+      .populate("host", "username email avatarUrl");
+
+    appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
 
     return booking;
   }

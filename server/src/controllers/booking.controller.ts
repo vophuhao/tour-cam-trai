@@ -117,4 +117,15 @@ export default class BookingController {
     const { data, pagination } = await this.bookingService.getMyBookings(userId);
     return ResponseUtil.paginated(res, data, pagination, "Lấy danh sách booking của tôi thành công");
   });
+  getBookingByCode = catchErrors(async (req, res) => {
+    const { code } = req.params;
+
+    const booking = await this.bookingService.getBookingByCode(code || "");
+    return ResponseUtil.success(res, booking, "Lấy thông tin booking thành công");
+  });
+
+  handlePayOSWebhook = catchErrors(async (req, res) => {
+    const result = await this.bookingService.handlePayOSWebhook(req.body);
+    return res.status(200).json(result);
+  });
 }
