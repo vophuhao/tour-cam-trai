@@ -93,11 +93,13 @@ export class BookingService {
 
     // Calculate pricing
     const pricing = this.calculatePricing(campsite, nights, numberOfGuests, numberOfPets);
+
     let payOSOrderCode: number | null = null;
     let payOSCheckoutUrl: string | null = null;
     const code = this.generateBookingCode();
     payOSOrderCode = Math.floor(Date.now() / 1000);
     const amount = 2000; // TODO: TESTING ONLY
+
     try {
       const paymentLink = await payos.paymentRequests.create({
         orderCode: payOSOrderCode,
@@ -520,5 +522,6 @@ export class BookingService {
         hasPrev: false,
       },
     };
-  }
+  }  
+
 }

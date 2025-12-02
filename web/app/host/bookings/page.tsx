@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -27,6 +28,7 @@ import {
     Download,
     Filter,
     Search,
+
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -42,47 +44,10 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { get } from "http";
-import { getAllBookings } from "@/lib/api";
+
+
 import { getMyBookings } from "@/lib/client-actions";
 
-// Mock data - replace with actual API call
-const MOCK_BOOKINGS = [
-    {
-        _id: "1",
-        campsite: {
-            _id: "c1",
-            name: "Lakeside Paradise",
-            images: ["/placeholder-campsite.jpg"],
-            location: { city: "Đà Lạt", state: "Lâm Đồng" },
-        },
-        guest: {
-            _id: "g1",
-            name: "Nguyễn Văn A",
-            email: "nguyenvana@email.com",
-            avatar: null,
-        },
-        checkIn: "2024-12-15",
-        checkOut: "2024-12-17",
-        nights: 2,
-        numberOfGuests: 4,
-        numberOfPets: 1,
-        pricing: {
-            basePrice: 500000,
-            subtotal: 1000000,
-            cleaningFee: 100000,
-            petFee: 50000,
-            serviceFee: 115000,
-            tax: 126500,
-            total: 1391500,
-        },
-        status: "confirmed",
-        paymentStatus: "paid",
-        paymentMethod: "card",
-        guestMessage: "Chúng tôi sẽ đến vào khoảng 14h",
-        createdAt: "2024-12-01T10:30:00Z",
-    },
-];
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
     pending: { label: "Chờ xác nhận", color: "bg-yellow-100 text-yellow-800" },
@@ -107,6 +72,7 @@ export default function BookingsPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(true);
     const [selectedBooking, setSelectedBooking] = useState<any>(null);
+    const router = useRouter();
     const [actionDialog, setActionDialog] = useState<{
         open: boolean;
         type: "confirm" | "cancel" | "complete" | null;
@@ -526,7 +492,9 @@ export default function BookingsPage() {
                                                         </Button>
                                                     )}
 
-                                                <Button size="sm" variant="outline" className="flex-1">
+                                                <Button 
+                                                onClick={() => router.push(`/host/bookings/detail/${booking.code}`)}
+                                                 size="sm" variant="outline" className="flex-1">
                                                     <Eye className="mr-2 h-4 w-4" />
                                                     Xem chi tiết
                                                 </Button>

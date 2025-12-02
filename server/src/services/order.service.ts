@@ -1,4 +1,5 @@
 
+
 import { CLIENT_URL, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY, PAYOS_CLIENT_ID } from "@/constants";
 import { OrderModel } from "@/models/order.model";
 import ProductModel from "@/models/product.model";
@@ -43,6 +44,7 @@ export default class OrderService {
       let payOSCheckoutUrl: string | null = null;
       const paymentStatus = "pending";
       let orderStatus = "pending";
+      const orderCode = generateOrderCode();
 
       if (data.paymentMethod === "cod") {
         orderStatus = "processing";
@@ -61,6 +63,10 @@ export default class OrderService {
             description: "Thanh toán đơn hàng",
             returnUrl: `${CLIENT_URL}/cart/payment/success`,
             cancelUrl: `${CLIENT_URL}/cart/payment/cancel`,
+            metadata: {
+              type: "order",
+              code : orderCode,
+            },
           });
 
           payOSCheckoutUrl =
@@ -79,7 +85,7 @@ export default class OrderService {
           };
         }
       }
-      const orderCode = generateOrderCode();
+     
       const [order] = await OrderModel.create(
         [
           {

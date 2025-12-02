@@ -128,4 +128,5 @@ export default class BookingController {
     const result = await this.bookingService.handlePayOSWebhook(req.body);
     return res.status(200).json(result);
   });
+  
 }

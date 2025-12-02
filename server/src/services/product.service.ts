@@ -87,7 +87,7 @@ export default class ProductService {
     };
   }
   async getProduct(): Promise<ProductDocument[]> {
-    return ProductModel.find().exec();
+    return ProductModel.find().populate("category", "name").exec();
   }
 
   async getProductBySlug(slug: string): Promise<ProductDocument | null> {
@@ -130,7 +130,7 @@ export default class ProductService {
     await product.deleteOne();
   }
 
-   async getProductsByCategoryName(
+  async getProductsByCategoryName(
     categoryName: string,
     page: number = 1,
     limit: number = 10
@@ -219,33 +219,33 @@ export default class ProductService {
   }
 
   // Tìm sản phẩm theo khoảng giá
-async getProductsByPriceRange(
-  minPrice: number,
-  maxPrice: number,
-  categoryName?: string,
-  page: number = 1,
-  limit: number = 10
-): Promise<{ data: ProductDocument[]; total: number; page: number; limit: number }> {
-  const query: any = { price: { $gte: minPrice, $lte: maxPrice }, isActive: true };
+  async getProductsByPriceRange(
+    minPrice: number,
+    maxPrice: number,
+    categoryName?: string,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{ data: ProductDocument[]; total: number; page: number; limit: number }> {
+    const query: any = { price: { $gte: minPrice, $lte: maxPrice }, isActive: true };
 
-  // Nếu có category
-  if (categoryName) {
-    const cat = await mongoose.connection.collection("categories").findOne({ name: categoryName });
-    if (!cat) return { data: [], total: 0, page, limit };
-    query.category = cat._id;
+    // Nếu có category
+    if (categoryName) {
+      const cat = await mongoose.connection.collection("categories").findOne({ name: categoryName });
+      if (!cat) return { data: [], total: 0, page, limit };
+      query.category = cat._id;
+    }
+
+    const total = await ProductModel.countDocuments(query);
+
+    const data = await ProductModel.find(query)
+      .populate("category", "name")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .exec();
+
+    return { data, total, page, limit };
   }
-
-  const total = await ProductModel.countDocuments(query);
-
-  const data = await ProductModel.find(query)
-    .populate("category", "name")
-    .sort({ createdAt: -1 })
-    .skip((page - 1) * limit)
-    .limit(limit)
-    .exec();
-
-  return { data, total, page, limit };
-}
 
 
 }
