@@ -59,10 +59,12 @@ export default class UserController {
     
     // Tìm kiếm theo username, full_name, email
     const users = await UserModel.find({
-      _id: { $ne: userId }, // Không bao gồm chính mình
+      _id: { $ne: userId }, 
+      role : "host",
       $or: [
         { username: { $regex: query, $options: 'i' } },
         { email: { $regex: query, $options: 'i' } },
+        { role : "host" },
       ],
     })
       .select('username  avatar email')

@@ -17,38 +17,57 @@ export function initializeSocket(httpServer: HttpServer) {
     path: "/socket.io",
   });
 
-  // set module instance
   ioInstance = io;
-
-  // authentication middleware (should set socket.userId / socket.userRole)
   io.use(socketAuthMiddleware);
 
   io.on("connection", (socket: Socket & { userId?: string; userRole?: string }) => {
     const uid = socket.userId ?? "anonymous";
-    console.log(`[SOCKET] connected: socket=${socket.id} user=${uid} role=${socket.userRole || "?"}`);
+    console.log(`[SOCKET] ✅ connected: socket=${socket.id} user=${uid} role=${socket.userRole || "?"}`);
 
-    // join personal room so server can target user/admin directly
+    // ✅ Join personal room
     socket.join(`user:${uid}`);
-    console.log(`[SOCKET] user:${uid} joined personal room`);
+    console.log(`[SOCKET] 🚪 user:${uid} joined personal room`);
 
-    // Support: join / leave conversation room
+    // ✅ JOIN USER ROOM - for direct messages
+    socket.on("join_user_room", (userId: string, callback?: Function) => {
+      const room = `user:${userId}`;
+      socket.join(room);
+      console.log(`[SOCKET] 🚪 ${uid} joined ${room}`);
+      if (callback) callback({ success: true, room });
+    });
+
+    // ✅ JOIN CONVERSATION - for chat window
+    socket.on("join_conversation", (conversationId: string, callback?: Function) => {
+      if (!conversationId) return;
+      const room = `conversation:${conversationId}`;
+      socket.join(room);
+      console.log(`[SOCKET] 🚪 ${uid} joined ${room}`);
+      if (callback) callback({ success: true, room });
+    });
+
+    // ✅ LEAVE CONVERSATION
+    socket.on("leave_conversation", (conversationId: string) => {
+      if (!conversationId) return;
+      const room = `conversation:${conversationId}`;
+      socket.leave(room);
+      console.log(`[SOCKET] 🚪 ${uid} left ${room}`);
+    });
+
+    // Support rooms (existing)
     socket.on("join_support_room", (conversationId: string) => {
       if (!conversationId) return;
       const room = `support:${conversationId}`;
       socket.join(room);
-      console.log(`[SOCKET] ${uid} joined ${room}`);
+      console.log(`[SOCKET] 🚪 ${uid} joined ${room}`);
     });
 
     socket.on("leave_support_room", (conversationId: string) => {
       if (!conversationId) return;
       const room = `support:${conversationId}`;
       socket.leave(room);
-      console.log(`[SOCKET] ${uid} left ${room}`);
+      console.log(`[SOCKET] 🚪 ${uid} left ${room}`);
     });
 
-    // When server receives support_send_message from a trusted source (server-side services should emit),
-    // or if you want to allow clients to emit, server must validate sender identity.
-    // Here we accept a message payload and broadcast to the support room and assigned admin (if any).
     socket.on("support_send_message", (payload: any) => {
       try {
         const { conversationId, sellerId } = payload || {};
@@ -58,25 +77,23 @@ export function initializeSocket(httpServer: HttpServer) {
         }
 
         const room = `support:${conversationId}`;
-        // broadcast to conversation room (user + admin in room)
         io.to(room).emit("support_new_message", payload);
-        // also notify assigned admin directly (if assigned)
         if (sellerId) {
           io.to(`user:${String(sellerId)}`).emit("support_new_message", payload);
         }
 
-        console.log(`[SOCKET] support_new_message emitted to ${room} (admin:${sellerId ?? "none"})`);
+        console.log(`[SOCKET] 📨 support_new_message emitted to ${room} (admin:${sellerId ?? "none"})`);
       } catch (err) {
-        console.error("[SOCKET] error in support_send_message", err);
+        console.error("[SOCKET] ❌ error in support_send_message", err);
       }
     });
 
     socket.on("disconnect", (reason) => {
-      console.log(`[SOCKET] disconnected: socket=${socket.id} user=${uid} reason=${reason}`);
+      console.log(`[SOCKET] ❌ disconnected: socket=${socket.id} user=${uid} reason=${reason}`);
     });
 
     socket.on("error", (err) => {
-      console.error(`[SOCKET] error: socket=${socket.id} user=${uid}`, err);
+      console.error(`[SOCKET] 🚨 error: socket=${socket.id} user=${uid}`, err);
     });
   });
 

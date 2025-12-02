@@ -1,6 +1,5 @@
 'use client';
 
-// ...existing code...
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 
@@ -20,12 +19,12 @@ export default function SocketProvider({ children }: { children: React.ReactNode
     const s = io(url, {
       path: '/socket.io',
       transports: ['websocket'],
-      withCredentials: true, // gửi cookie httpOnly
+      withCredentials: true, // ✅ Gửi cookie (accessToken phải là httpOnly cookie)
       autoConnect: true,
     });
 
-    console.log('[socket] connecting to', url);
-    // schedule the initial state update asynchronously to avoid synchronous setState inside the effect
+    console.log('[SocketProvider] 🔌 Connecting to', url);
+    
     let isMounted = true;
     let connectTimer: ReturnType<typeof setTimeout> | null = null;
     connectTimer = setTimeout(() => {
@@ -33,14 +32,23 @@ export default function SocketProvider({ children }: { children: React.ReactNode
     }, 0);
 
     s.on('connect', () => {
-      console.log('[socket] connected', s.id);
+      console.log('[SocketProvider] ✅ Connected:', s.id);
       setIsConnected(true);
     });
+    
     s.on('disconnect', (reason) => {
-      console.log('[socket] disconnected', reason);
+      console.log('[SocketProvider] ❌ Disconnected:', reason);
       setIsConnected(false);
     });
-    s.on('connect_error', (err) => console.warn('[socket] connect_error', err));
+    
+    s.on('connect_error', (err) => {
+      console.error('[SocketProvider] 🚨 Connection error:', err.message);
+    });
+
+    // ✅ Debug: Listen all events
+    s.onAny((eventName, ...args) => {
+      console.log('[SocketProvider] 📨 Event received:', eventName, args);
+    });
 
     return () => {
       if (connectTimer) clearTimeout(connectTimer);
@@ -49,9 +57,9 @@ export default function SocketProvider({ children }: { children: React.ReactNode
       s.disconnect();
       setSocket(null);
       setIsConnected(false);
+      console.log('[SocketProvider] 🔌 Cleanup socket');
     };
   }, []);
 
   return <SocketContext.Provider value={{ socket, isConnected }}>{children}</SocketContext.Provider>;
 }
-// ...existing code...
