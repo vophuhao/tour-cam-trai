@@ -44,83 +44,127 @@ export function CampsiteMap({
   const [popupInfo, setPopupInfo] = useState<Campsite | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
 
+  // Check if map is already loaded when component mounts (due to reuseMaps)
+  useEffect(() => {
+    const checkMapLoaded = () => {
+      if (mapRef.current?.getMap) {
+        try {
+          const map = mapRef.current.getMap();
+          if (map?.loaded()) {
+            setMapLoaded(true);
+          }
+        } catch {
+          // Map not ready
+        }
+      }
+    };
+
+    // Check immediately
+    checkMapLoaded();
+
+    // Also check after a short delay in case map loads asynchronously
+    const timer = setTimeout(checkMapLoaded, 100);
+
+    return () => {
+      clearTimeout(timer);
+      setPopupInfo(null);
+    };
+  }, []);
+
   // Fly to search coordinates when they change
   useEffect(() => {
     if (searchCoordinates && mapRef.current && mapLoaded) {
-      mapRef.current.flyTo({
-        center: [searchCoordinates.lng, searchCoordinates.lat],
-        zoom: 10,
-        duration: 2000,
-      });
+      try {
+        mapRef.current.flyTo({
+          center: [searchCoordinates.lng, searchCoordinates.lat],
+          zoom: 10,
+          duration: 2000,
+        });
+      } catch (error) {
+        console.error('Error flying to coordinates:', error);
+      }
     }
   }, [searchCoordinates, mapLoaded]);
 
   const handleMarkerClick = useCallback(
     (campsite: Campsite) => {
+      if (!mapLoaded) return;
+
       setPopupInfo(campsite);
       onCampsiteSelect?.(campsite);
 
       const coords = getCoordinates(campsite.location.coordinates);
       // Fly to marker
-      if (mapRef.current && mapLoaded) {
-        mapRef.current.flyTo({
-          center: [coords.lng, coords.lat],
-          zoom: 10,
-          duration: 1000,
-        });
+      if (mapRef.current) {
+        try {
+          mapRef.current.flyTo({
+            center: [coords.lng, coords.lat],
+            zoom: 10,
+            duration: 1000,
+          });
+        } catch (error) {
+          console.error('Error flying to marker:', error);
+        }
       }
     },
     [onCampsiteSelect, mapLoaded],
   );
 
-  const formatPrice = (price: number) => {
+  const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND',
     }).format(price);
-  };
+  }, []);
 
   // Memoize markers to prevent unnecessary rerenders
   // Only create markers when map is loaded
   const markers = useMemo(() => {
+    // Don't render markers until map is fully loaded
     if (!mapLoaded) return null;
 
-    return campsites.map(campsite => {
-      const isSelected = selectedCampsite?._id === campsite._id;
-      const isHovered = hoveredCampsite?._id === campsite._id;
-      const isActive = isSelected || isHovered;
-      const coords = getCoordinates(campsite.location.coordinates);
+    // Safely create markers with error boundary
+    try {
+      return campsites.map(campsite => {
+        const isSelected = selectedCampsite?._id === campsite._id;
+        const isHovered = hoveredCampsite?._id === campsite._id;
+        const isActive = isSelected || isHovered;
+        const coords = getCoordinates(campsite.location.coordinates);
 
-      return (
-        <Marker
-          key={campsite._id}
-          longitude={coords.lng}
-          latitude={coords.lat}
-          anchor="bottom"
-          onClick={e => {
-            e.originalEvent.stopPropagation();
-            handleMarkerClick(campsite);
-          }}
-        >
-          <div
-            className={`group relative cursor-pointer transition-all duration-200 ${
-              isActive ? 'z-50 scale-125' : 'hover:scale-110'
-            }`}
+        return (
+          <Marker
+            key={campsite._id}
+            longitude={coords.lng}
+            latitude={coords.lat}
+            anchor="bottom"
+            onClick={e => {
+              e.originalEvent.stopPropagation();
+              handleMarkerClick(campsite);
+            }}
           >
-            {/* Price Badge */}
             <div
-              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
-                isActive
-                  ? 'border-black bg-black text-white shadow-md'
-                  : 'border-gray-300 bg-white text-gray-900 hover:border-black hover:bg-black hover:text-white hover:shadow-md'
+              className={`group relative cursor-pointer transition-all duration-200 ${
+                isActive ? 'z-50 scale-125' : 'hover:scale-110'
               }`}
             >
-              {formatPrice(campsite.pricing.basePrice).replace('₫', 'đ')}
+              {/* Price Badge */}
+              <div
+                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
+                  isActive
+                    ? 'border-black bg-black text-white shadow-md'
+                    : 'border-gray-300 bg-white text-gray-900 hover:border-black hover:bg-black hover:text-white hover:shadow-md'
+                }`}
+              >
+                {formatPrice(campsite.pricing.basePrice).replace('₫', 'đ')}
+              </div>
             </div>
-          </div>
-        </Marker>
-      );
-    });
+          </Marker>
+        );
+      });
+    } catch (error) {
+      console.error('Error rendering markers:', error);
+      return null;
+    }
   }, [
     mapLoaded,
     campsites,
@@ -145,15 +189,29 @@ export function CampsiteMap({
       ref={mapRef}
       {...viewState}
       onMove={evt => setViewState(evt.viewState)}
-      onLoad={() => setMapLoaded(true)}
+      onLoad={() => {
+        // Small delay to ensure DOM is fully ready before rendering markers
+        setTimeout(() => {
+          setMapLoaded(true);
+        }, 100);
+      }}
+      onRemove={() => {
+        // Map is being removed from DOM - clean up state
+        setMapLoaded(false);
+        setPopupInfo(null);
+      }}
+      onError={e => {
+        console.error('Map error:', e);
+      }}
       mapStyle="mapbox://styles/mapbox/streets-v12"
       mapboxAccessToken={MAPBOX_TOKEN}
       style={{ width: '100%', height: '100%' }}
       minPitch={0}
       maxPitch={0}
-      projection="mercator"
+      projection={{ name: 'mercator' }}
       dragRotate={false}
       touchPitch={false}
+      reuseMaps
     >
       {/* Navigation Controls */}
       <NavigationControl
