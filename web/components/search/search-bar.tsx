@@ -35,6 +35,8 @@ interface SearchBarProps {
   onPetsChange: (value: number) => void;
   onSearch: () => void;
   loading?: boolean;
+  onRecentSearchDateSelect?: (checkIn: string, checkOut: string) => void;
+  onRecentSearchGuestsSelect?: (guests: number) => void;
 }
 
 export function SearchBar({
@@ -52,6 +54,8 @@ export function SearchBar({
   onPetsChange,
   onSearch,
   loading = false,
+  onRecentSearchDateSelect,
+  onRecentSearchGuestsSelect,
 }: SearchBarProps) {
   const [locationOpen, setLocationOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
@@ -114,6 +118,8 @@ export function SearchBar({
                 showInlineResults={true}
                 placeholder="Tìm địa điểm"
                 className="w-full"
+                onDateRangeSelect={onRecentSearchDateSelect}
+                onGuestsSelect={onRecentSearchGuestsSelect}
               />
             </div>
           </PopoverContent>

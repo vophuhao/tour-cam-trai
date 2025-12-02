@@ -64,8 +64,15 @@ export function SearchHeader({ amenities = [] }: SearchHeaderProps) {
       params.set('lat', coordinates.lat.toString());
       params.set('lng', coordinates.lng.toString());
       params.set('radius', '50'); // 50km radius
-      // Save to recent searches
-      saveSearchToHistory(location, coordinates);
+      // Save to recent searches with date and guest info
+      const totalGuests = guests + childrenCount;
+      saveSearchToHistory(
+        location,
+        coordinates,
+        dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : undefined,
+        dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
+        totalGuests || undefined,
+      );
     }
     // Otherwise use city name for text-based search
     else if (location) {
@@ -165,6 +172,16 @@ export function SearchHeader({ amenities = [] }: SearchHeaderProps) {
         onPetsChange={setPets}
         onSearch={handleSearch}
         loading={false}
+        onRecentSearchDateSelect={(checkIn, checkOut) => {
+          setDateRange({
+            from: new Date(checkIn),
+            to: new Date(checkOut),
+          });
+        }}
+        onRecentSearchGuestsSelect={totalGuests => {
+          setGuests(totalGuests);
+          setChildrenCount(0);
+        }}
       />
     </>
   );

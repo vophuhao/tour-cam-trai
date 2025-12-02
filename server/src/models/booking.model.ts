@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 // Booking/Reservation model
 export interface BookingDocument extends mongoose.Document {
   // Reference
-  code ?: string; // mã đặt chỗ
+  code?: string; // mã đặt chỗ
   campsite: mongoose.Types.ObjectId;
   guest: mongoose.Types.ObjectId; // user đặt chỗ
   host: mongoose.Types.ObjectId; // chủ campsite
@@ -36,7 +36,7 @@ export interface BookingDocument extends mongoose.Document {
 
   // Payment
   paymentStatus: "pending" | "paid" | "refunded" | "failed";
-  paymentMethod?: "card" ;
+  paymentMethod?: "card";
   transactionId?: string;
   paidAt?: Date;
 
@@ -58,14 +58,14 @@ export interface BookingDocument extends mongoose.Document {
   createdAt: Date;
   updatedAt: Date;
 
-  payOSOrderCode?: Number,
-  payOSCheckoutUrl?: String,
+  payOSOrderCode?: Number;
+  payOSCheckoutUrl?: String;
 
   // Methods
   confirm(): Promise<BookingDocument>;
   cancel(userId: mongoose.Types.ObjectId, reason?: string): Promise<BookingDocument>;
   complete(): Promise<BookingDocument>;
-  calculateTotal(): number;
+  calculateTotal(): Promise<BookingDocument>;
 }
 
 const bookingSchema = new mongoose.Schema<BookingDocument>(
@@ -182,9 +182,12 @@ bookingSchema.methods.complete = async function (this: BookingDocument) {
   return this.save();
 };
 
-bookingSchema.methods.calculateTotal = function (this: BookingDocument): number {
+bookingSchema.methods.calculateTotal = async function (
+  this: BookingDocument
+): Promise<BookingDocument> {
   const { subtotal, cleaningFee, petFee, extraGuestFee, serviceFee, tax } = this.pricing;
-  return subtotal + cleaningFee + petFee + extraGuestFee + serviceFee + tax;
+  this.pricing.total = subtotal + cleaningFee + petFee + extraGuestFee + serviceFee + tax;
+  return this.save();
 };
 
 export const BookingModel = mongoose.model<BookingDocument>("Booking", bookingSchema);

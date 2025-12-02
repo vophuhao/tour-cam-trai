@@ -14,11 +14,16 @@ interface LocationSearchProps {
   showDropdown?: boolean;
   showInlineResults?: boolean;
   className?: string;
+  onDateRangeSelect?: (checkIn: string, checkOut: string) => void;
+  onGuestsSelect?: (guests: number) => void;
 }
 
 interface RecentSearch {
   location: string;
   coordinates?: { lat: number; lng: number };
+  checkIn?: string;
+  checkOut?: string;
+  guests?: number;
 }
 
 interface MapboxFeature {
@@ -55,6 +60,8 @@ export function LocationSearch({
   showDropdown = true,
   showInlineResults = true,
   className,
+  onDateRangeSelect,
+  onGuestsSelect,
 }: LocationSearchProps) {
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [suggestions, setSuggestions] = useState<MapboxFeature[]>([]);
@@ -125,7 +132,7 @@ export function LocationSearch({
   };
 
   const handleSelectSuggestion = (feature: MapboxFeature) => {
-    const coordinates = {
+    const coords = {
       lng: feature.center[0],
       lat: feature.center[1],
     };
@@ -134,12 +141,12 @@ export function LocationSearch({
     // Use feature.text which is the primary name, not the full place_name
     const cityName = feature.text || feature.place_name.split(',')[0].trim();
 
-    onChange(cityName, coordinates);
+    onChange(cityName, coords);
     setSuggestions([]);
     setShowSuggestions(false);
 
-    // Save full place_name to recent searches for display
-    saveToRecentSearches(feature.place_name, coordinates);
+    // Save only city name to prevent duplicates in recent searches
+    saveToRecentSearches(cityName, coords);
 
     // Close popover if callback provided
     onClose?.();
@@ -147,6 +154,17 @@ export function LocationSearch({
 
   const handleSelectRecent = (search: RecentSearch) => {
     onChange(search.location, search.coordinates);
+
+    // Auto-fill dates if available
+    if (search.checkIn && search.checkOut && onDateRangeSelect) {
+      onDateRangeSelect(search.checkIn, search.checkOut);
+    }
+
+    // Auto-fill guests if available
+    if (search.guests && onGuestsSelect) {
+      onGuestsSelect(search.guests);
+    }
+
     setShowSuggestions(false);
     onClose?.();
   };
@@ -161,6 +179,9 @@ export function LocationSearch({
   const saveToRecentSearches = (
     location: string,
     coordinates?: { lat: number; lng: number },
+    checkIn?: string,
+    checkOut?: string,
+    guests?: number,
   ) => {
     if (
       !location.trim() ||
@@ -169,7 +190,13 @@ export function LocationSearch({
     )
       return;
 
-    const newSearch: RecentSearch = { location, coordinates };
+    const newSearch: RecentSearch = {
+      location,
+      coordinates,
+      checkIn,
+      checkOut,
+      guests,
+    };
     const updated = [
       newSearch,
       ...recentSearches.filter(s => s.location !== location),
@@ -284,56 +311,80 @@ export function LocationSearch({
                 <div className="px-2 pt-2 pb-1 text-xs font-semibold tracking-wide text-gray-500 uppercase">
                   Tìm kiếm gần đây
                 </div>
-                {recentSearches.map((search, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSelectRecent(search)}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-gray-100"
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50">
-                      <Clock className="h-4 w-4 text-gray-600" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium text-gray-900">
-                        {search.location}
+                {recentSearches.map((search, index) => {
+                  const hasDateInfo = search.checkIn && search.checkOut;
+                  const dateText = hasDateInfo
+                    ? `${new Date(search.checkIn!).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })} - ${new Date(search.checkOut!).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}`
+                    : null;
+                  const guestText = search.guests
+                    ? `${search.guests} khách`
+                    : null;
+                  const detailText = [dateText, guestText]
+                    .filter(Boolean)
+                    .join(' · ');
+
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleSelectRecent(search)}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-gray-100"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50">
+                        <Clock className="h-4 w-4 text-gray-600" />
                       </div>
-                      {search.coordinates && (
-                        <div className="truncate text-sm text-gray-500">
-                          {search.coordinates.lat.toFixed(4)},{' '}
-                          {search.coordinates.lng.toFixed(4)}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium text-gray-900">
+                          {search.location}
                         </div>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                        {detailText && (
+                          <div className="truncate text-sm text-gray-500">
+                            {detailText}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </>
             )}
 
             {/* Recent Searches - Show without header when input is empty */}
             {recentSearches.length > 0 && !value.trim() && (
               <>
-                {recentSearches.map((search, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSelectRecent(search)}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-gray-100"
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50">
-                      <Clock className="h-4 w-4 text-gray-600" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium text-gray-900">
-                        {search.location}
+                {recentSearches.map((search, index) => {
+                  const hasDateInfo = search.checkIn && search.checkOut;
+                  const dateText = hasDateInfo
+                    ? `${new Date(search.checkIn!).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })} - ${new Date(search.checkOut!).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}`
+                    : null;
+                  const guestText = search.guests
+                    ? `${search.guests} khách`
+                    : null;
+                  const detailText = [dateText, guestText]
+                    .filter(Boolean)
+                    .join(' · ');
+
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleSelectRecent(search)}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-gray-100"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50">
+                        <Clock className="h-4 w-4 text-gray-600" />
                       </div>
-                      {search.coordinates && (
-                        <div className="truncate text-sm text-gray-500">
-                          {search.coordinates.lat.toFixed(4)},{' '}
-                          {search.coordinates.lng.toFixed(4)}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium text-gray-900">
+                          {search.location}
                         </div>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                        {detailText && (
+                          <div className="truncate text-sm text-gray-500">
+                            {detailText}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </>
             )}
 
@@ -422,26 +473,38 @@ export function LocationSearch({
                 <div className="px-4 py-2 text-sm font-semibold text-gray-500">
                   Tìm kiếm gần đây
                 </div>
-                {recentSearches.map((search, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSelectRecent(search)}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50"
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
-                      <Clock className="h-5 w-5 text-gray-700" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold">{search.location}</div>
-                      {search.coordinates && (
-                        <div className="text-sm text-gray-500">
-                          {search.coordinates.lat.toFixed(4)},{' '}
-                          {search.coordinates.lng.toFixed(4)}
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                {recentSearches.map((search, index) => {
+                  const hasDateInfo = search.checkIn && search.checkOut;
+                  const dateText = hasDateInfo
+                    ? `${new Date(search.checkIn!).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })} - ${new Date(search.checkOut!).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}`
+                    : null;
+                  const guestText = search.guests
+                    ? `${search.guests} khách`
+                    : null;
+                  const detailText = [dateText, guestText]
+                    .filter(Boolean)
+                    .join(' · ');
+
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleSelectRecent(search)}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50"
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
+                        <Clock className="h-5 w-5 text-gray-700" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold">{search.location}</div>
+                        {detailText && (
+                          <div className="text-sm text-gray-500">
+                            {detailText}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -474,6 +537,9 @@ export function LocationSearch({
 export function saveSearchToHistory(
   location: string,
   coordinates?: { lat: number; lng: number },
+  checkIn?: string,
+  checkOut?: string,
+  guests?: number,
 ) {
   if (
     !location.trim() ||
@@ -486,7 +552,13 @@ export function saveSearchToHistory(
     const stored = localStorage.getItem('recentSearches');
     const existing: RecentSearch[] = stored ? JSON.parse(stored) : [];
 
-    const newSearch: RecentSearch = { location, coordinates };
+    const newSearch: RecentSearch = {
+      location,
+      coordinates,
+      checkIn,
+      checkOut,
+      guests,
+    };
     const updated = [
       newSearch,
       ...existing.filter(s => s.location !== location),
