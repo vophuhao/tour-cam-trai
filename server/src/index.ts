@@ -27,8 +27,8 @@ import cartRoutes from "./routes/cart.route";
 import { OrderService } from "./services";
 import { initializeSocket } from "./socket";
 import supportRouter from "./routes/directMessage.route";
-import locationRoutes from "./routes/location.route";
 import ratingRoutes from "./routes/rating.route";
+import payosRoutes from "./routes/payos.route,";
 
 const app = express();
 
@@ -76,7 +76,7 @@ app.use("/bookings", bookingRoutes);
 app.use("/reviews", reviewRoutes);
 app.use("/amenities", amenityRoutes);
 app.use("/activities", activityRoutes);
-app.use("/", locationRoutes);
+app.use("/payos/webhook", payosRoutes);
 
 // error handler middleware
 app.use(errorHandler);

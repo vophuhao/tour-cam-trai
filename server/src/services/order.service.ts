@@ -60,13 +60,9 @@ export default class OrderService {
           const paymentLink = await payos.paymentRequests.create({
             orderCode: payOSOrderCode,
             amount,
-            description: "Thanh toán đơn hàng",
+            description: `ORDER`, 
             returnUrl: `${CLIENT_URL}/cart/payment/success`,
             cancelUrl: `${CLIENT_URL}/cart/payment/cancel`,
-            metadata: {
-              type: "order",
-              code : orderCode,
-            },
           });
 
           payOSCheckoutUrl =
@@ -85,7 +81,7 @@ export default class OrderService {
           };
         }
       }
-     
+
       const [order] = await OrderModel.create(
         [
           {
@@ -329,50 +325,50 @@ export default class OrderService {
   }
 
   async updateOrderStatus(
-  orderId: string,
-  status: "pending" | "processing" | "confirmed" | "shipping" | "delivered" | "completed" | "cancelled" | "cancel_request") {
-  const order = await OrderModel.findById(orderId);
-  if (!order) {
-    return { success: false, message: "Đơn hàng không tồn tại" };
-  }
+    orderId: string,
+    status: "pending" | "processing" | "confirmed" | "shipping" | "delivered" | "completed" | "cancelled" | "cancel_request") {
+    const order = await OrderModel.findById(orderId);
+    if (!order) {
+      return { success: false, message: "Đơn hàng không tồn tại" };
+    }
 
-  // Validate status transition
-  const validTransitions: Record<string, Array<"pending" | "processing" | "confirmed" | "shipping" | "delivered" | "completed" | "cancelled" | "cancel_request">> = {
-    pending: ["processing", "cancelled"],
-    processing: ["confirmed", "cancelled"],
-    confirmed: ["shipping", "cancelled"],
-    shipping: ["delivered", "cancelled"],
-    delivered: ["completed"],
-    cancel_request: ["cancelled"],
-  };
+    // Validate status transition
+    const validTransitions: Record<string, Array<"pending" | "processing" | "confirmed" | "shipping" | "delivered" | "completed" | "cancelled" | "cancel_request">> = {
+      pending: ["processing", "cancelled"],
+      processing: ["confirmed", "cancelled"],
+      confirmed: ["shipping", "cancelled"],
+      shipping: ["delivered", "cancelled"],
+      delivered: ["completed"],
+      cancel_request: ["cancelled"],
+    };
 
-  const currentStatus = order.orderStatus;
-  const allowedStatuses = validTransitions[currentStatus] || [];
+    const currentStatus = order.orderStatus;
+    const allowedStatuses = validTransitions[currentStatus] || [];
 
-  if (!allowedStatuses.includes(status)) {
+    if (!allowedStatuses.includes(status)) {
+      return {
+        success: false,
+        message: `Không thể chuyển từ trạng thái "${currentStatus}" sang "${status}"`,
+      };
+    }
+
+    // Update status
+    order.orderStatus = status;
+
+    // Add to history
+    order.history.push({
+      status: status,
+      date: new Date(),
+    });
+
+    await order.save();
+
     return {
-      success: false,
-      message: `Không thể chuyển từ trạng thái "${currentStatus}" sang "${status}"`,
+      success: true,
+      message: "Cập nhật trạng thái đơn hàng thành công",
+      order,
     };
   }
-
-  // Update status
-  order.orderStatus = status;
-
-  // Add to history
-  order.history.push({
-    status: status,
-    date: new Date(),
-  });
-
-  await order.save();
-
-  return {
-    success: true,
-    message: "Cập nhật trạng thái đơn hàng thành công",
-    order,
-  };
-}
 
 }
 

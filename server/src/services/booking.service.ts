@@ -104,13 +104,9 @@ export class BookingService {
       const paymentLink = await payos.paymentRequests.create({
         orderCode: payOSOrderCode,
         amount,
-        description: "Thanh toán ",
+        description: `BOOKING`, 
         returnUrl: `${CLIENT_URL}/bookings/${code}/success`,
         cancelUrl: `${CLIENT_URL}/bookings/cancel`,
-        metadata :{
-          type : "booking",
-          code : code
-        }
       });
 
       payOSCheckoutUrl =
@@ -124,7 +120,7 @@ export class BookingService {
       console.error("Error creating PayOS payment link:", err.message);
     }
 
-    
+
     // Create booking
     const booking = await BookingModel.create({
       code,
@@ -522,6 +518,6 @@ export class BookingService {
         hasPrev: false,
       },
     };
-  }  
+  }
 
 }

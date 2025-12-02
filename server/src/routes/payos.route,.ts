@@ -2,6 +2,9 @@ import { handlePayOSWebhook } from "@/controllers/payos.controller";
 import { Router } from "express";
 
 
-const router = Router();
+const payosRoutes = Router();
 
-router.post("/payos/webhook", handlePayOSWebhook);
+payosRoutes.post("/", handlePayOSWebhook);
+
+
+export default payosRoutes;
