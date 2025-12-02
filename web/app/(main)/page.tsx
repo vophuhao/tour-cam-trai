@@ -1,9 +1,7 @@
 import FeaturedDestinations from '@/components/home/featured-destinations';
 import FeaturedProducts from '@/components/home/featured-products';
-import FeaturedTours from '@/components/home/featured-tours';
 import HeroSection from '@/components/home/hero-section';
 import Newsletter from '@/components/home/newsletter';
-import SearchSection from '@/components/home/search-section';
 import RevealOnScroll from '@/components/reveal-on-scroll';
 import { StaggerContainer, StaggerItem } from '@/components/stagger-animation';
 import { Button } from '@/components/ui/button';
@@ -24,71 +22,69 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 
-const tourCategories = [
+const campsiteTypes = [
   {
-    id: 'mountain',
-    name: 'Núi',
-    icon: Mountain,
-    image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
-    count: 15,
-    description: 'Chinh phục đỉnh núi, cắm trại trên cao',
-  },
-  {
-    id: 'forest',
-    name: 'Rừng',
-    icon: Wind,
-    image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800',
-    count: 12,
-    description: 'Khám phá rừng nhiệt đới, trải nghiệm hoang dã',
-  },
-  {
-    id: 'beach',
-    name: 'Biển',
-    icon: Waves,
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
-    count: 18,
-    description: 'Cắm trại bên bờ biển, ngắm sao đêm',
-  },
-  {
-    id: 'lake',
-    name: 'Hồ',
+    id: 'tent',
+    name: 'Cắm Trại Lều',
     icon: Tent,
-    image: 'https://images.unsplash.com/photo-1464207687429-7505649dae38?w=800',
-    count: 8,
-    description: 'Cắm trại ven hồ, câu cá, đốt lửa trại',
+    image: 'https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=800',
+    count: 18,
+    description: 'Trải nghiệm camping truyền thống với lều',
+  },
+  {
+    id: 'rv',
+    name: 'Khu RV',
+    icon: Mountain,
+    image: 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=800',
+    count: 12,
+    description: 'Không gian cho xe cắm trại và RV',
+  },
+  {
+    id: 'cabin',
+    name: 'Cabin',
+    icon: Wind,
+    image: 'https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=800',
+    count: 15,
+    description: 'Nhà gỗ ấm cúng giữa thiên nhiên',
+  },
+  {
+    id: 'glamping',
+    name: 'Glamping',
+    icon: Waves,
+    image: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
+    count: 10,
+    description: 'Camping sang trọng với đầy đủ tiện nghi',
   },
 ];
 
 const mockPromos = [
   {
     id: 1,
-    title: 'Giảm 20% Tour Đà Lạt',
-    description:
-      'Áp dụng cho đoàn từ 4 người trở lên. Bao gồm đầy đủ thiết bị cắm trại chuyên nghiệp.',
+    title: 'Giảm 20% Booking Cuối Tuần',
+    description: 'Áp dụng cho đặt chỗ từ thứ 6-CN. Miễn phí hủy trước 48h.',
     discount: 20,
     validUntil: '31/12/2025',
-    code: 'DALAT20',
+    code: 'WEEKEND20',
     image: 'https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=800',
   },
   {
     id: 2,
-    title: 'Ưu đãi mùa hè - Phú Quốc',
+    title: 'Ưu đãi mùa hè 2026',
     description:
-      'Giảm đến 30% cho booking sớm trước 1 tháng. Tour 3N2Đ trọn gói.',
+      'Giảm đến 30% cho booking sớm trước 1 tháng. Áp dụng tất cả địa điểm.',
     discount: 30,
     validUntil: '15/01/2026',
     code: 'SUMMER30',
-    image: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800',
+    image: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
   },
   {
     id: 3,
-    title: 'Combo cắm trại + Thiết bị',
-    description:
-      'Miễn phí thuê thiết bị khi đặt tour. Bao gồm lều, túi ngủ, bếp gas.',
+    title: 'Miễn phí đêm thứ 3',
+    description: 'Đặt 2 đêm tặng 1 đêm. Khuyến mãi có hạn cho khách hàng mới.',
     discount: 0,
     validUntil: '28/02/2026',
-    code: 'COMBO2026',
-    image: 'https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=800',
+    code: 'STAY3PAY2',
+    image: 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=800',
   },
 ];
 
@@ -99,8 +95,8 @@ const mockReviews = [
     avatar: 'https://i.pravatar.cc/150?img=1',
     rating: 5,
     comment:
-      'Trải nghiệm tuyệt vời! Đội ngũ hướng dẫn nhiệt tình, chuyên nghiệp. Địa điểm đẹp, thiết bị đầy đủ. Chắc chắn sẽ quay lại trong những chuyến đi tiếp theo.',
-    tour: 'Tour Sapa 3N2Đ',
+      'Địa điểm cắm trại tuyệt vời! View đẹp, sạch sẽ, host thân thiện. Có đầy đủ tiện nghi, wifi mạnh. Gia đình mình đã có kỳ nghỉ cuối tuần thật tuyệt.',
+    campsite: 'Mountain View Campsite',
     date: '15/11/2025',
     location: 'Sapa',
   },
@@ -110,8 +106,8 @@ const mockReviews = [
     avatar: 'https://i.pravatar.cc/150?img=5',
     rating: 5,
     comment:
-      'Dịch vụ chuyên nghiệp từ A-Z. Thiết bị cắm trại rất tốt, sạch sẽ. Gia đình mình rất hài lòng với chuyến đi này. Giá cả hợp lý, đáng đồng tiền bát gạo.',
-    tour: 'Tour Đà Lạt 2N1Đ',
+      'Glamping sang trọng, sạch sẽ, có điều hòa. View hồ tuyệt đẹp, yên tĩnh. Phù hợp cho gia đình có trẻ nhỏ. Giá cả hợp lý, đáng đồng tiền.',
+    campsite: 'Lakeside Glamping',
     date: '10/11/2025',
     location: 'Đà Lạt',
   },
@@ -119,37 +115,36 @@ const mockReviews = [
     id: 3,
     name: 'Lê Văn C',
     avatar: 'https://i.pravatar.cc/150?img=12',
-    rating: 4,
+    rating: 5,
     comment:
-      'Phong cảnh đẹp, không khí trong lành. Hoạt động team building rất vui. Một trải nghiệm đáng nhớ cùng bạn bè!',
-    tour: 'Tour Tây Nguyên 4N3Đ',
+      'Cabin xinh xắn, ấm áp. Có BBQ pit riêng, view núi tuyệt đẹp. Host nhiệt tình hướng dẫn. Sẽ quay lại vào mùa hè!',
+    campsite: 'Forest Cabin Retreat',
     date: '05/11/2025',
-    location: 'Tây Nguyên',
+    location: 'Đà Lạt',
   },
 ];
 
 const features = [
   {
     icon: Shield,
-    title: 'An toàn & Bảo hiểm',
-    description:
-      'Đảm bảo an toàn 100% cho mọi chuyến đi với bảo hiểm du lịch toàn diện',
+    title: 'Booking An Toàn',
+    description: 'Thanh toán bảo mật, chính sách hủy linh hoạt, hỗ trợ 24/7',
   },
   {
     icon: Users,
-    title: 'Hướng dẫn viên chuyên nghiệp',
-    description: 'Đội ngũ HDV giàu kinh nghiệm, nhiệt tình, am hiểu địa phương',
+    title: 'Host Tin Cậy',
+    description: 'Tất cả host đều được xác minh và đánh giá bởi cộng đồng',
   },
   {
     icon: ThumbsUp,
-    title: 'Giá tốt nhất',
+    title: 'Giá Tốt Nhất',
     description:
-      'Cam kết giá tour tốt nhất thị trường, hoàn tiền nếu tìm được giá rẻ hơn',
+      'Không phí ẩn, giá minh bạch, nhiều ưu đãi cho khách hàng thân thiết',
   },
   {
     icon: TrendingUp,
-    title: '10,000+ Khách hàng',
-    description: 'Được tin tưởng và lựa chọn bởi hàng nghìn khách hàng mỗi năm',
+    title: 'Đánh Giá Thực Tế',
+    description: 'Hơn 10,000 đánh giá chân thực từ khách hàng đã trải nghiệm',
   },
 ];
 
@@ -157,28 +152,27 @@ export default function HomePage() {
   return (
     <div className="min-h-screen">
       <HeroSection />
-      <SearchSection />
       <FeaturedDestinations />
 
-      {/* Tour Categories */}
+      {/* Campsite Types */}
       <section className="section-padding bg-linear-to-b from-white to-gray-50">
         <div className="container-padding mx-auto max-w-7xl">
           <RevealOnScroll>
             <div className="mb-12 text-center">
-              <span className="bg-primary/10 text-primary mb-3 inline-block rounded-full px-4 py-1 text-sm font-semibold">
-                Danh mục
+              <span className="mb-3 inline-block rounded-full bg-emerald-100 px-4 py-1 text-sm font-semibold text-emerald-700">
+                Loại hình cắm trại
               </span>
               <h2 className="mb-4 text-4xl font-bold md:text-5xl">
-                Phân Loại Tour Theo Địa Hình
+                Chọn Phong Cách Của Bạn
               </h2>
               <p className="text-muted-foreground mx-auto max-w-2xl text-lg">
-                Chọn loại tour phù hợp với sở thích và mức độ thử thách bạn mong
-                muốn
+                Từ camping truyền thống đến glamping sang trọng, tìm trải nghiệm
+                phù hợp với bạn
               </p>
             </div>
           </RevealOnScroll>
           <StaggerContainer className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {tourCategories.map(category => {
+            {campsiteTypes.map(category => {
               const Icon = category.icon;
               return (
                 <StaggerItem key={category.id}>
@@ -201,7 +195,9 @@ export default function HomePage() {
                         <p className="mb-3 text-center text-sm opacity-90">
                           {category.description}
                         </p>
-                        <p className="font-semibold">{category.count} tours</p>
+                        <p className="font-semibold">
+                          {category.count} campsites
+                        </p>
                       </div>
                     </div>
                   </Card>
@@ -212,7 +208,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <FeaturedTours />
       <FeaturedProducts />
 
       {/* Special Offers */}
@@ -227,7 +222,7 @@ export default function HomePage() {
                 Khuyến Mãi Hấp Dẫn
               </h2>
               <p className="text-muted-foreground mx-auto max-w-2xl text-lg">
-                Đừng bỏ lỡ những chương trình ưu đãi tốt nhất trong tháng
+                Tiết kiệm chi phí cho chuyến cắm trại tiếp theo của bạn
               </p>
             </div>
           </RevealOnScroll>
@@ -286,14 +281,14 @@ export default function HomePage() {
         <div className="container-padding mx-auto max-w-7xl">
           <RevealOnScroll>
             <div className="mb-12 text-center">
-              <span className="bg-primary/10 text-primary mb-3 inline-block rounded-full px-4 py-1 text-sm font-semibold">
-                Đánh giá
+              <span className="mb-3 inline-block rounded-full bg-emerald-100 px-4 py-1 text-sm font-semibold text-emerald-700">
+                Đánh giá từ cộng đồng
               </span>
               <h2 className="mb-4 text-4xl font-bold md:text-5xl">
-                Khách Hàng Nói Gì Về Chúng Tôi
+                Trải Nghiệm Thực Tế
               </h2>
               <p className="text-muted-foreground mx-auto max-w-2xl text-lg">
-                Hàng nghìn khách hàng đã tin tưởng và có trải nghiệm tuyệt vời
+                Khám phá những câu chuyện camping đáng nhớ từ cộng đồng
               </p>
             </div>
           </RevealOnScroll>
@@ -331,8 +326,8 @@ export default function HomePage() {
                     </p>
                     <Separator className="mb-4" />
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-primary font-semibold">
-                        {review.tour}
+                      <span className="font-semibold text-emerald-600">
+                        {review.campsite}
                       </span>
                       <span className="text-muted-foreground">
                         {review.date}
@@ -351,14 +346,14 @@ export default function HomePage() {
         <div className="container-padding mx-auto max-w-7xl">
           <RevealOnScroll>
             <div className="mb-12 text-center">
-              <span className="bg-primary/10 text-primary mb-3 inline-block rounded-full px-4 py-1 text-sm font-semibold">
+              <span className="mb-3 inline-block rounded-full bg-emerald-100 px-4 py-1 text-sm font-semibold text-emerald-600">
                 Vì sao chọn chúng tôi
               </span>
               <h2 className="mb-4 text-4xl font-bold md:text-5xl">
                 Cam Kết Của Chúng Tôi
               </h2>
               <p className="text-muted-foreground mx-auto max-w-2xl text-lg">
-                Những lý do khiến hàng nghìn khách hàng tin tưởng lựa chọn
+                Nền tảng đặt chỗ cắm trại đáng tin cậy nhất Việt Nam
               </p>
             </div>
           </RevealOnScroll>
@@ -368,7 +363,7 @@ export default function HomePage() {
               return (
                 <StaggerItem key={index}>
                   <Card className="border-0 p-8 text-center shadow-lg transition-all hover:-translate-y-2 hover:shadow-2xl">
-                    <div className="flex-center from-primary mx-auto mb-6 h-20 w-20 rounded-full bg-linear-to-br to-green-400 text-white shadow-lg">
+                    <div className="flex-center mx-auto mb-6 h-20 w-20 rounded-full bg-linear-to-br from-emerald-500 to-emerald-600 text-white shadow-lg">
                       <Icon className="h-10 w-10" />
                     </div>
                     <h3 className="mb-3 text-xl font-bold">{feature.title}</h3>

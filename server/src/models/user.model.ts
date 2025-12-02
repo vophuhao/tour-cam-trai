@@ -11,6 +11,7 @@ export interface UserDocument extends mongoose.Document {
   username: string;
   avatarUrl?: string;
   phoneNumber?: string;
+  bio?: string;
   isVerified: boolean;
   provider: Provider;
   googleId?: string;
@@ -47,6 +48,11 @@ const userSchema = new mongoose.Schema<UserDocument>(
     },
     phoneNumber: {
       type: String,
+      trim: true,
+    },
+    bio: {
+      type: String,
+      maxlength: 500,
       trim: true,
     },
     isVerified: { type: Boolean, default: false },

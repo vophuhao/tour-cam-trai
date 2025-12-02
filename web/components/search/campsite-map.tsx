@@ -5,7 +5,7 @@ import { MapPin } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Map, { MapRef, Marker, NavigationControl, Popup } from 'react-map-gl';
 
 // Helper to extract lat/lng from both GeoJSON and legacy format
@@ -42,17 +42,18 @@ export function CampsiteMap({
     zoom: 5,
   });
   const [popupInfo, setPopupInfo] = useState<Campsite | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   // Fly to search coordinates when they change
   useEffect(() => {
-    if (searchCoordinates && mapRef.current) {
+    if (searchCoordinates && mapRef.current && mapLoaded) {
       mapRef.current.flyTo({
         center: [searchCoordinates.lng, searchCoordinates.lat],
         zoom: 10,
         duration: 2000,
       });
     }
-  }, [searchCoordinates]);
+  }, [searchCoordinates, mapLoaded]);
 
   const handleMarkerClick = useCallback(
     (campsite: Campsite) => {
@@ -61,13 +62,15 @@ export function CampsiteMap({
 
       const coords = getCoordinates(campsite.location.coordinates);
       // Fly to marker
-      mapRef.current?.flyTo({
-        center: [coords.lng, coords.lat],
-        zoom: 10,
-        duration: 1000,
-      });
+      if (mapRef.current && mapLoaded) {
+        mapRef.current.flyTo({
+          center: [coords.lng, coords.lat],
+          zoom: 10,
+          duration: 1000,
+        });
+      }
     },
-    [onCampsiteSelect],
+    [onCampsiteSelect, mapLoaded],
   );
 
   const formatPrice = (price: number) => {
@@ -76,6 +79,56 @@ export function CampsiteMap({
       currency: 'VND',
     }).format(price);
   };
+
+  // Memoize markers to prevent unnecessary rerenders
+  // Only create markers when map is loaded
+  const markers = useMemo(() => {
+    if (!mapLoaded) return null;
+
+    return campsites.map(campsite => {
+      const isSelected = selectedCampsite?._id === campsite._id;
+      const isHovered = hoveredCampsite?._id === campsite._id;
+      const isActive = isSelected || isHovered;
+      const coords = getCoordinates(campsite.location.coordinates);
+
+      return (
+        <Marker
+          key={campsite._id}
+          longitude={coords.lng}
+          latitude={coords.lat}
+          anchor="bottom"
+          onClick={e => {
+            e.originalEvent.stopPropagation();
+            handleMarkerClick(campsite);
+          }}
+        >
+          <div
+            className={`group relative cursor-pointer transition-all duration-200 ${
+              isActive ? 'z-50 scale-125' : 'hover:scale-110'
+            }`}
+          >
+            {/* Price Badge */}
+            <div
+              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
+                isActive
+                  ? 'border-black bg-black text-white shadow-md'
+                  : 'border-gray-300 bg-white text-gray-900 hover:border-black hover:bg-black hover:text-white hover:shadow-md'
+              }`}
+            >
+              {formatPrice(campsite.pricing.basePrice).replace('₫', 'đ')}
+            </div>
+          </div>
+        </Marker>
+      );
+    });
+  }, [
+    mapLoaded,
+    campsites,
+    selectedCampsite,
+    hoveredCampsite,
+    handleMarkerClick,
+    formatPrice,
+  ]);
 
   if (!MAPBOX_TOKEN) {
     return (
@@ -92,7 +145,7 @@ export function CampsiteMap({
       ref={mapRef}
       {...viewState}
       onMove={evt => setViewState(evt.viewState)}
-      //onMoveEnd={handleMapMoveEnd}
+      onLoad={() => setMapLoaded(true)}
       mapStyle="mapbox://styles/mapbox/streets-v12"
       mapboxAccessToken={MAPBOX_TOKEN}
       style={{ width: '100%', height: '100%' }}
@@ -109,43 +162,8 @@ export function CampsiteMap({
         showZoom={true}
       />
 
-      {/* Campsite Markers */}
-      {campsites.map(campsite => {
-        const isSelected = selectedCampsite?._id === campsite._id;
-        const isHovered = hoveredCampsite?._id === campsite._id;
-        const isActive = isSelected || isHovered;
-        const coords = getCoordinates(campsite.location.coordinates);
-
-        return (
-          <Marker
-            key={campsite._id}
-            longitude={coords.lng}
-            latitude={coords.lat}
-            anchor="bottom"
-            onClick={e => {
-              e.originalEvent.stopPropagation();
-              handleMarkerClick(campsite);
-            }}
-          >
-            <div
-              className={`group relative cursor-pointer transition-all duration-200 ${
-                isActive ? 'z-50 scale-125' : 'hover:scale-110'
-              }`}
-            >
-              {/* Price Badge */}
-              <div
-                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? 'border-black bg-black text-white shadow-md'
-                    : 'border-gray-300 bg-white text-gray-900 hover:border-black hover:bg-black hover:text-white hover:shadow-md'
-                }`}
-              >
-                {formatPrice(campsite.pricing.basePrice).replace('₫', 'đ')}
-              </div>
-            </div>
-          </Marker>
-        );
-      })}
+      {/* Campsite Markers - Only render when map is loaded */}
+      {markers}
 
       {/* Popup */}
       {popupInfo && (

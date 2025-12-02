@@ -4,7 +4,7 @@ import "dotenv/config";
 import express from "express";
 import { connectRedis, connectToDatabase } from "./config";
 import { APP_ORIGIN, NODE_ENV, OK, PORT } from "./constants";
-import { authenticate, errorHandler, requireAdmin } from "./middleware";
+import { authenticate, errorHandler } from "./middleware";
 import http from "http";
 import cron from "node-cron";
 import {
@@ -13,7 +13,6 @@ import {
   amenityRoutes,
   authRoutes,
   bookingRoutes,
-  // Hipcamp-style routes
   campsiteRoutes,
   categoryRoutes,
   mediaRoutes,
@@ -45,7 +44,7 @@ app.use(cookieParser());
 
 const orderService = new OrderService();
 
-// Ch?y m?i 10 ph�t
+// Ch?y m?i 10 ph?t
 cron.schedule("*/10 * * * *", async () => {
   console.log("?? Cron: ki?m tra don c?n h?y...");
   await orderService.cancelExpiredOrders();
@@ -77,7 +76,7 @@ app.use("/reviews", reviewRoutes);
 app.use("/amenities", amenityRoutes);
 app.use("/activities", activityRoutes);
 app.use("/payos/webhook", payosRoutes);
-
+app.use("/messages", authenticate, supportRouter);
 // error handler middleware
 app.use(errorHandler);
 

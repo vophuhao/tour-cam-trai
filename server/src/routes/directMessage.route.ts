@@ -1,25 +1,30 @@
-// ...existing code...
-import SupportController from "@/controllers/directMessage.controller";
+import DirectMessageController from "@/controllers/directMessage.controller";
 import { container } from "@/di";
 import { TOKENS } from "@/di/tokens";
-import SupportChatService from "@/services/directMessage.service";
+import DirectMessageService from "@/services/directMessage.service";
 import { Router } from "express";
+import { authenticate } from "@/middleware";
 
+const messageService = container.resolve<DirectMessageService>(TOKENS.DirectMessageService);
+const messageController = new DirectMessageController(messageService);
 
-const supportService = container.resolve<SupportChatService>(TOKENS.SupportChatService);
-const supportController = new SupportController(supportService);
+const messageRouter = Router();
 
+// Tất cả routes yêu cầu authentication
+messageRouter.use(authenticate);
 
-const supportRouter = Router();
+// Conversations
+messageRouter.post("/conversations", messageController.getOrCreateConversation);
+messageRouter.get("/conversations", messageController.getUserConversations);
+messageRouter.delete("/:conversationId", messageController.deleteConversation);
+messageRouter.put("/:conversationId/archive", messageController.archiveConversation);
 
-supportRouter.post('/conversation/start', supportController.startSupportConversation);
+// Messages
+messageRouter.post("/:conversationId", messageController.sendMessage);
+messageRouter.get("/:conversationId", messageController.getMessages);
+messageRouter.put("/:conversationId/read", messageController.markAsRead);
 
-// thêm các route message / messages / admin / close / stats
-supportRouter.post('/conversation/:conversationId/message', supportController.sendSupportMessage);
-supportRouter.get('/conversation/:conversationId/messages', supportController.getSupportMessages);
-supportRouter.get('/admin/conversations', supportController.listSupportConversationsForAdmin);
-supportRouter.put('/conversation/:conversationId/close', supportController.closeConversation);
-supportRouter.get('/stats', supportController.getStats);
+// Unread count
+messageRouter.get("/unread-count", messageController.getUnreadCount);
 
-export default supportRouter;
-// ...existing code...
+export default messageRouter;

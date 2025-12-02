@@ -16,10 +16,11 @@ import {
 } from "@/services";
 import { Container } from "./container";
 import { TOKENS } from "./tokens";
-import SupportChatService from "@/services/directMessage.service";
+
 
 import LocationService from "@/services/location.service";
 import RatingService from "@/services/rating.service";
+import DirectMessageService from "@/services/directMessage.service";
 
 export const container = new Container();
 
@@ -31,7 +32,7 @@ container.register(TOKENS.AddressService, () => new AddressService(), { singleto
 container.register(TOKENS.OrderService, () => new OrderService(), { singleton: true });
 container.register(TOKENS.CartService, () => new CartService(), { singleton: true });
 container.register(TOKENS.RatingService, () => new RatingService(), { singleton: true });
-container.register(TOKENS.SupportChatService, () => new SupportChatService(), { singleton: true });
+container.register(TOKENS.DirectMessageService, () => new DirectMessageService(), { singleton: true });
 container.register(TOKENS.VerificationService, () => new VerificationService(), {
   singleton: true,
 });

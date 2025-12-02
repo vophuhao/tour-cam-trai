@@ -1,220 +1,336 @@
 import { Types } from "mongoose";
-import { v4 as uuidv4 } from "uuid";
 import { getIO } from "@/socket";
 import UserModel from "@/models/user.model";
-import { SupportMessage, SupportConversation } from "@/models/directMessage.model";
+import { Message, Conversation, ConversationDocument } from "@/models/directMessage.model";
+import { ErrorFactory } from "@/errors";
 
 type SendMessagePayload = {
   message: string;
-  messageType?: string;
-  attachments?: Array<{ url?: string; type?: string }>;
-  productRef?: string | null;
+  messageType?: "text" | "image" | "file" | "booking" | "campsite";
+  attachments?: Array<{ url: string; type: string; name?: string; size?: number }>;
+  bookingRef?: string | null;
+  campsiteRef?: string | null;
 };
 
-export default class SupportChatService {
-  getOrCreateConversation = async (customerId: string) => {
-    const customer = await UserModel.findById(customerId);
-    if (!customer) throw new Error("Customer not found");
+export default class DirectMessageService {
+  /**
+   * Tạo hoặc lấy conversation giữa 2 users
+   */
+  async getOrCreateConversation(
+    userId1: string,
+    userId2: string,
+    context?: { campsiteId?: string; bookingId?: string }
+  ): Promise<ConversationDocument> {
+    const user1Id = new Types.ObjectId(userId1);
+    const user2Id = new Types.ObjectId(userId2);
 
-    let conversation = await SupportConversation.findOne({
-      customerId,
+    // Kiểm tra users tồn tại
+    const [user1, user2] = await Promise.all([
+      UserModel.findById(user1Id),
+      UserModel.findById(user2Id),
+    ]);
+
+    if (!user1 || !user2) {
+      throw ErrorFactory.resourceNotFound("User");
+    }
+
+    // Tìm conversation hiện có
+    let conversation = await Conversation.findOne({
       status: "active",
+      "participants.userId": { $all: [user1Id, user2Id] },
+      $expr: { $eq: [{ $size: "$participants" }, 2] },
     });
 
     if (!conversation) {
-      conversation = await SupportConversation.create({
-        conversationId: uuidv4(),
-        customerId: new Types.ObjectId(customerId),
-        customerName: (customer as any).full_name || (customer as any).username || "",
-        customerAvatar: (customer as any).avatar || null,
+      conversation = await Conversation.create({
+        participants: [
+          {
+            userId: user1Id,
+            role: "user",
+            name: (user1 as any).username || (user1 as any).full_name,
+            avatar: (user1 as any).avatar,
+          },
+          {
+            userId: user2Id,
+            role: "host",
+            name: (user2 as any).username || (user2 as any).full_name,
+            avatar: (user2 as any).avatar,
+          },
+        ],
+        campsiteRef: context?.campsiteId ? new Types.ObjectId(context.campsiteId) : null,
+        bookingRef: context?.bookingId ? new Types.ObjectId(context.bookingId) : null,
+        createdBy: user1Id,
       });
     }
 
     return conversation;
-  };
+  }
 
-  sendMessage = async (
+  /**
+   * Gửi message
+   */
+  async sendMessage(
     conversationId: string,
     senderId: string,
-    senderModel: "User" | "Seller",
     messageData: SendMessagePayload
-  ) => {
-    const { message, messageType = "text", attachments = [], productRef = null } = messageData;
+  ) {
+    const { message, messageType = "text", attachments = [], bookingRef = null, campsiteRef = null } = messageData;
 
-    const sender = await UserModel.findById(senderId);
-    if (!sender) throw new Error("Sender not found");
+    const convId = new Types.ObjectId(conversationId);
+    const senderIdObj = new Types.ObjectId(senderId);
 
-    // create message
-    const newMessage = await SupportMessage.create({
-      conversationId,
-      senderId: new Types.ObjectId(senderId),
-      senderModel,
-      senderName: (sender as any)?.full_name || (sender as any)?.username || "",
-      senderAvatar: (sender as any)?.avatar || null,
+    // Kiểm tra conversation
+    const conversation = await Conversation.findById(convId);
+    if (!conversation) {
+      throw ErrorFactory.resourceNotFound("Conversation");
+    }
+
+    // Kiểm tra sender có trong conversation
+    const isMember = conversation.participants.some((p) => p.userId.equals(senderIdObj));
+    if (!isMember) {
+      throw ErrorFactory.forbidden("Bạn không có quyền gửi tin nhắn trong cuộc trò chuyện này");
+    }
+
+    // Tạo message
+    const newMessage = await Message.create({
+      conversationId: convId,
+      senderId: senderIdObj,
       message,
       messageType,
       attachments,
-      productRef: productRef ? new Types.ObjectId(productRef) : null,
+      bookingRef: bookingRef ? new Types.ObjectId(bookingRef) : null,
+      campsiteRef: campsiteRef ? new Types.ObjectId(campsiteRef) : null,
     });
 
-    // update conversation metadata
-    const updateData: any = {
-      lastMessage: message,
-      lastMessageAt: new Date(),
-    };
+    // Cập nhật conversation
+    conversation.lastMessage = message;
+    conversation.lastMessageAt = new Date();
 
-    if (senderModel === "User") {
-      await SupportConversation.findOneAndUpdate(
-        { conversationId },
-        {
-          ...updateData,
-          $inc: { unreadCountSeller: 1 },
-        }
-      );
-    } else {
-      await SupportConversation.findOneAndUpdate(
-        { conversationId },
-        {
-          ...updateData,
-          $inc: { unreadCountCustomer: 1 },
-          sellerId: new Types.ObjectId(senderId),
-        }
-      );
-    }
+    // Tăng unread count cho người nhận
+    conversation.participants.forEach((p) => {
+      if (!p.userId.equals(senderIdObj)) {
+        p.unreadCount += 1;
+      }
+    });
 
-    // populate product if present
-    if (productRef) {
-      await newMessage.populate("productRef", "name price images slug");
-    }
+    await conversation.save();
 
-    // emit socket events (best-effort)
+    // Populate references
+    await newMessage.populate([
+      { path: "senderId", select: "username avatar _id" },
+      { path: "bookingRef", select: "code checkIn checkOut pricing" },
+      { path: "campsiteRef", select: "name images pricing" },
+    ]);
+
+    // Emit socket events
     try {
       const io = getIO();
-      const roomName = `support:${conversationId}`;
-
-      const room = (io as any).sockets?.adapter?.rooms?.get(roomName) ?? null;
-      const clientCount = room ? room.size : 0;
-
-      const payload = newMessage.toObject ? newMessage.toObject() : newMessage;
-      if (clientCount > 0) {
-        io.to(roomName).emit("support_new_message", payload);
-      }
-
-      io.to("seller").emit("support_conversation_update", {
-        conversationId,
-        lastMessage: message,
-        lastMessageAt: new Date(),
-        senderModel,
+      const roomName = `conversation:${conversationId}`;
+      
+      io.to(roomName).emit("new_message", newMessage);
+      
+      // Thông báo cho các participants
+      conversation.participants.forEach((p) => {
+        io.to(`user:${p.userId.toString()}`).emit("conversation_updated", {
+          conversationId,
+          lastMessage: message,
+          lastMessageAt: conversation.lastMessageAt,
+        });
       });
     } catch (err) {
-      console.warn("[SupportChatService] emit error:", (err as Error).message);
+      console.warn("[DirectMessageService] emit error:", (err as Error).message);
     }
 
     return newMessage;
-  };
+  }
 
-  getMessages = async (conversationId: string, page = 1, limit = 50) => {
+  /**
+   * Lấy messages
+   */
+  async getMessages(conversationId: string, userId: string, page = 1, limit = 50) {
+    const convId = new Types.ObjectId(conversationId);
+    const userIdObj = new Types.ObjectId(userId);
+
+    // Kiểm tra quyền truy cập
+    const conversation = await Conversation.findById(convId);
+    if (!conversation) {
+      throw ErrorFactory.resourceNotFound("Conversation");
+    }
+
+    const isMember = conversation.participants.some((p) => p.userId.equals(userIdObj));
+    if (!isMember) {
+      throw ErrorFactory.forbidden("Bạn không có quyền xem tin nhắn này");
+    }
+
     const skip = (page - 1) * limit;
-    const messages = await SupportMessage.find({ conversationId })
+    const messages = await Message.find({ conversationId: convId, isDeleted: false })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate("productRef", "name price images slug");
+      .populate("bookingRef", "code checkIn checkOut pricing")
+      .populate("campsiteRef", "name images pricing")
+      .populate("senderId", "username avatar");
 
-    const total = await SupportMessage.countDocuments({ conversationId });
+    const total = await Message.countDocuments({ conversationId: convId, isDeleted: false });
 
     return {
       messages: messages.reverse(),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
-  };
+  }
 
-  markAsRead = async (conversationId: string, userType: "customer" | "seller") => {
-    const result = await SupportMessage.updateMany(
+  /**
+   * Đánh dấu đã đọc
+   */
+  async markAsRead(conversationId: string, userId: string) {
+    const convId = new Types.ObjectId(conversationId);
+    const userIdObj = new Types.ObjectId(userId);
+
+    const conversation = await Conversation.findById(convId);
+    if (!conversation) {
+      throw ErrorFactory.resourceNotFound("Conversation");
+    }
+
+    await conversation.markAsRead(userIdObj);
+
+    // Đánh dấu messages chưa đọc
+    await Message.updateMany(
       {
-        conversationId,
-        senderModel: userType === "customer" ? "Seller" : "User",
+        conversationId: convId,
+        senderId: { $ne: userIdObj },
         isRead: false,
       },
       { isRead: true, readAt: new Date() }
     );
 
-    const updateField = userType === "customer" ? { unreadCountCustomer: 0 } : { unreadCountSeller: 0 };
-    await SupportConversation.findOneAndUpdate({ conversationId }, updateField);
-
+    // Emit socket
     try {
       const io = getIO();
-      io.to(`support:${conversationId}`).emit("support_messages_read", {
+      io.to(`conversation:${conversationId}`).emit("messages_read", {
         conversationId,
-        userType,
-        readCount: result.modifiedCount,
+        userId,
+        readAt: new Date(),
       });
     } catch (err) {
-      console.warn("[SupportChatService] emit read event error:", (err as Error).message);
-    }
-
-    return result;
-  };
-
-  getConversations = async (filters: { status?: string } = {}, page = 1, limit = 20) => {
-    const skip = (page - 1) * limit;
-    const query: any = { status: filters.status || "active" };
-
-    const conversations = await SupportConversation.find(query)
-      .sort({ lastMessageAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("customerId", "full_name avatar email")
-      .populate("sellerId", "full_name avatar");
-
-    const total = await SupportConversation.countDocuments(query);
-
-    return {
-      conversations,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-    };
-  };
-
-  closeConversation = async (conversationId: string) => {
-    const conversation = await SupportConversation.findOneAndUpdate(
-      { conversationId },
-      { status: "closed" },
-      { new: true }
-    );
-    if (!conversation) throw new Error("Conversation not found");
-
-    try {
-      const io = getIO();
-      io.to(`support:${conversationId}`).emit("support_conversation_closed", {
-        conversationId,
-        closedAt: new Date(),
-      });
-      io.to("seller").emit("support_conversation_update", {
-        conversationId,
-        status: "closed",
-      });
-    } catch (err) {
-      console.warn("[SupportChatService] emit close event error:", (err as Error).message);
+      console.warn("[DirectMessageService] emit read error:", (err as Error).message);
     }
 
     return conversation;
-  };
+  }
 
-  getStats = async () => {
-    const active = await SupportConversation.countDocuments({ status: "active" });
-    const closed = await SupportConversation.countDocuments({ status: "closed" });
+  /**
+   * Lấy danh sách conversations của user
+   */
+  async getUserConversations(userId: string, page = 1, limit = 20) {
+    const userIdObj = new Types.ObjectId(userId);
+    const skip = (page - 1) * limit;
 
-    const totalUnreadResult = await SupportConversation.aggregate([
-      { $match: { status: "active", unreadCountSeller: { $gt: 0 } } },
-      { $group: { _id: null, total: { $sum: "$unreadCountSeller" } } },
-    ]);
+    const conversations = await Conversation.find({
+      "participants.userId": userIdObj,
+      status: "active",
+    })
+      .sort({ lastMessageAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("participants.userId", "username avatar")
+      .populate("campsiteRef", "name images")
+      .populate("bookingRef", "code status");
 
-    const totalUnread = totalUnreadResult[0]?.total || 0;
+    const total = await Conversation.countDocuments({
+      "participants.userId": userIdObj,
+      status: "active",
+    });
+
+    // Transform data
+    const transformed = conversations.map((conv) => {
+      const otherParticipant = conv.getOtherParticipant(userIdObj);
+      const unreadCount = conv.getUnreadCount(userIdObj);
+
+      return {
+        ...conv.toObject(),
+        otherParticipant,
+        unreadCount,
+      };
+    });
 
     return {
-      activeConversations: active,
-      closedConversations: closed,
-      totalUnread,
+      conversations: transformed,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
-  };
+  }
+
+  /**
+   * Xóa conversation
+   */
+  async deleteConversation(conversationId: string, userId: string) {
+    const convId = new Types.ObjectId(conversationId);
+    const userIdObj = new Types.ObjectId(userId);
+
+    const conversation = await Conversation.findById(convId);
+    if (!conversation) {
+      throw ErrorFactory.resourceNotFound("Conversation");
+    }
+
+    const isMember = conversation.participants.some((p) => p.userId.equals(userIdObj));
+    if (!isMember) {
+      throw ErrorFactory.forbidden("Bạn không có quyền xóa cuộc trò chuyện này");
+    }
+
+    conversation.status = "deleted";
+    await conversation.save();
+
+    try {
+      const io = getIO();
+      io.to(`conversation:${conversationId}`).emit("conversation_deleted", {
+        conversationId,
+        deletedBy: userId,
+      });
+    } catch (err) {
+      console.warn("[DirectMessageService] emit delete error:", (err as Error).message);
+    }
+
+    return conversation;
+  }
+
+  /**
+   * Archive conversation
+   */
+  async archiveConversation(conversationId: string, userId: string) {
+    const convId = new Types.ObjectId(conversationId);
+    const userIdObj = new Types.ObjectId(userId);
+
+    const conversation = await Conversation.findById(convId);
+    if (!conversation) {
+      throw ErrorFactory.resourceNotFound("Conversation");
+    }
+
+    const isMember = conversation.participants.some((p) => p.userId.equals(userIdObj));
+    if (!isMember) {
+      throw ErrorFactory.forbidden("Bạn không có quyền lưu trữ cuộc trò chuyện này");
+    }
+
+    conversation.status = "archived";
+    await conversation.save();
+
+    return conversation;
+  }
+
+  /**
+   * Lấy số lượng tin nhắn chưa đọc
+   */
+  async getUnreadCount(userId: string): Promise<number> {
+    const userIdObj = new Types.ObjectId(userId);
+
+    const conversations = await Conversation.find({
+      "participants.userId": userIdObj,
+      status: "active",
+    });
+
+    let totalUnread = 0;
+    conversations.forEach((conv) => {
+      totalUnread += conv.getUnreadCount(userIdObj);
+    });
+
+    return totalUnread;
+  }
 }

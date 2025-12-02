@@ -1,5 +1,6 @@
 import Footer from '@/components/footer';
 import Header from '@/components/Header';
+import ChatModal from '@/components/modals/chatModal';
 import { Suspense } from 'react';
 
 // Header loading fallback
@@ -39,6 +40,8 @@ export default function MainLayout({
       </Suspense>
       {children}
       <Footer />
+
+       <ChatModal/> 
     </>
   );
 }

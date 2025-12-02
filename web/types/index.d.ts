@@ -28,6 +28,7 @@ declare interface User {
   email: string;
   username: string;
   avatarUrl?: string;
+  bio?: string;
   role: string;
   isVerified: boolean;
   provider: string;
