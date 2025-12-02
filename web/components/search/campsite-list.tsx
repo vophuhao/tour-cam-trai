@@ -1,11 +1,31 @@
 'use client';
 
-import { CampsiteMap } from '@/components/search/campsite-map';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
+
+// Lazy load map component to avoid SSR issues with mapbox-gl
+const CampsiteMap = dynamic(
+  () =>
+    import('@/components/search/campsite-map').then(mod => ({
+      default: mod.CampsiteMap,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <Skeleton className="mx-auto mb-4 h-12 w-12 rounded-full" />
+          <p className="text-sm text-gray-500">Đang tải bản đồ...</p>
+        </div>
+      </div>
+    ),
+  },
+);
 
 interface CampsiteListProps {
   initialCampsites: Campsite[];

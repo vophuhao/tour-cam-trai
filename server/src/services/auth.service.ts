@@ -292,4 +292,30 @@ export default class AuthService {
   async logoutUser(sessionId: string) {
     await SessionModel.findByIdAndDelete(sessionId);
   }
+
+  /**
+   * Changes a user's password.
+   * Requires current password verification.
+   */
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await UserModel.findById(userId);
+    appAssert(user, ErrorFactory.resourceNotFound("User"));
+
+    // Check if user can change password (not OAuth-only user)
+    appAssert(
+      user.password,
+      ErrorFactory.badRequest("Cannot change password for OAuth-only accounts")
+    );
+
+    const isValid = await user.comparePassword(currentPassword);
+    appAssert(isValid, ErrorFactory.invalidCredentials("Current password is incorrect"));
+
+    user.password = newPassword;
+    await user.save();
+
+    // Delete all other sessions (keep current one optional)
+    await SessionModel.deleteMany({ userId: user._id });
+
+    return { user: user.omitPassword() };
+  }
 }

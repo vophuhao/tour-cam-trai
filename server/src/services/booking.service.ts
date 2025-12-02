@@ -120,7 +120,7 @@ export class BookingService {
    */
   async getBooking(bookingId: string, userId: string): Promise<BookingDocument> {
     const booking = await BookingModel.findById(bookingId)
-      .populate("campsite")
+      .populate("campsite", "images")
       .populate("guest", "username email avatarUrl")
       .populate("host", "username email avatarUrl");
 

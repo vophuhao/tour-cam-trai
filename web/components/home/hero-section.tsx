@@ -1,73 +1,150 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Award, MapPin, Package, Search, Users } from 'lucide-react';
+import type { DateRangeType } from '@/components/search/date-range-picker';
+import { saveSearchToHistory } from '@/components/search/location-search';
+import { SearchBar } from '@/components/search/search-bar';
+import { format } from 'date-fns';
+import { Award, MapPin, Tent, Users } from 'lucide-react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 const stats = [
-  { icon: Award, label: 'Tours đã tổ chức', value: '1,200+' },
+  { icon: Tent, label: 'Địa điểm cắm trại', value: '50+' },
   { icon: Users, label: 'Khách hàng hài lòng', value: '10,000+' },
-  { icon: MapPin, label: 'Địa điểm', value: '50+' },
-  { icon: Package, label: 'Sản phẩm', value: '500+' },
+  { icon: MapPin, label: 'Tỉnh thành', value: '30+' },
+  { icon: Award, label: 'Đánh giá 5 sao', value: '95%' },
 ];
 
 export default function HeroSection() {
+  const router = useRouter();
+  const [location, setLocation] = useState('');
+  const [coordinates, setCoordinates] = useState<{
+    lat: number;
+    lng: number;
+  }>();
+  const [dateRange, setDateRange] = useState<DateRangeType>();
+  const [guests, setGuests] = useState(2);
+  const [childrenCount, setChildrenCount] = useState(0);
+  const [pets, setPets] = useState(0);
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+
+    // Add coordinates if available (geospatial search)
+    if (coordinates) {
+      params.set('lat', coordinates.lat.toString());
+      params.set('lng', coordinates.lng.toString());
+      params.set('radius', '50'); // 50km radius
+      // Save to recent searches
+      saveSearchToHistory(location, coordinates);
+    }
+    // Otherwise use city name for text-based search
+    else if (location) {
+      params.set('city', location);
+    }
+
+    if (dateRange?.from) {
+      params.set('checkIn', format(dateRange.from, 'yyyy-MM-dd'));
+    }
+    if (dateRange?.to) {
+      params.set('checkOut', format(dateRange.to, 'yyyy-MM-dd'));
+    }
+    const totalGuests = guests + childrenCount;
+    if (totalGuests) params.set('minGuests', totalGuests.toString());
+
+    router.push(`/search?${params.toString()}`);
+  };
+
+  const handleNearbyClick = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const { latitude, longitude } = position.coords;
+          const coords = { lat: latitude, lng: longitude };
+          setCoordinates(coords);
+          setLocation('Vị trí hiện tại');
+        },
+        error => {
+          console.error('Error getting location:', error);
+          alert('Không thể lấy vị trí hiện tại');
+        },
+      );
+    } else {
+      alert('Trình duyệt không hỗ trợ định vị');
+    }
+  };
+
   return (
-    <section className="relative -mt-16 h-[764px] overflow-hidden">
+    <section className="relative -mt-16 min-h-[85vh] overflow-hidden">
+      {/* Background Image */}
       <div className="absolute inset-0">
         <Image
           src="/assets/images/landing-image.jpeg"
-          alt="Hero camping"
+          alt="Camping in nature"
           fill
+          sizes="100vw"
           className="object-cover"
           priority
         />
-        <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/40 to-black/60" />
+        <div className="absolute inset-0 bg-linear-to-b from-black/50 via-black/30 to-black/70" />
       </div>
-      <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col items-center justify-center px-4 text-center text-white">
-        <div className="bg-primary/20 mb-6 inline-block rounded-full px-6 py-2 text-sm font-semibold backdrop-blur-sm">
-          ✨ Khám phá thiên nhiên cùng chúng tôi
+
+      {/* Content */}
+      <div className="relative z-10 mx-auto flex min-h-[85vh] max-w-7xl flex-col justify-center px-4 pt-16">
+        <div className="mb-12 text-center text-white">
+          <h1 className="mb-6 text-5xl leading-tight font-bold md:text-6xl lg:text-7xl">
+            Tìm Địa Điểm
+            <br />
+            <span className="bg-linear-to-r from-emerald-400 to-green-300 bg-clip-text text-transparent">
+              Cắm Trại Hoàn Hảo
+            </span>
+          </h1>
+          <p className="mx-auto max-w-2xl text-lg leading-relaxed text-gray-100 md:text-xl">
+            Khám phá hơn 50+ địa điểm cắm trại tuyệt vời trên khắp Việt Nam
+          </p>
         </div>
-        <h1 className="mb-6 text-5xl leading-tight font-bold md:text-6xl lg:text-7xl">
-          Trải Nghiệm Cắm Trại
-          <br />
-          <span className="from-primary bg-linear-to-r to-green-400 bg-clip-text text-transparent">
-            Đáng Nhớ Nhất
-          </span>
-        </h1>
-        <p className="mb-10 max-w-2xl text-lg leading-relaxed md:text-xl">
-          Hành trình khám phá thiên nhiên tuyệt vời tại các địa điểm cắm trại
-          đẹp nhất Việt Nam. Tận hưởng không gian yên bình, cùng những trải
-          nghiệm khó quên.
-        </p>
-        <div className="flex flex-col gap-4 sm:flex-row">
-          <Button size="lg" className="group text-lg shadow-lg">
-            <Search className="mr-2 h-5 w-5 transition-transform group-hover:scale-110" />
-            Tìm Tour Ngay
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            className="border-2 border-white bg-white/10 text-lg text-white backdrop-blur-sm hover:bg-white/20"
-          >
-            <Package className="mr-2 h-5 w-5" />
-            Xem Ưu Đãi
-          </Button>
+
+        {/* Search Bar */}
+        <div className="mx-auto w-full max-w-6xl">
+          <SearchBar
+            location={location}
+            onLocationChange={setLocation}
+            onLocationSelect={(loc, coords) => {
+              setLocation(loc);
+              setCoordinates(coords);
+            }}
+            onNearbyClick={handleNearbyClick}
+            dateRange={dateRange}
+            onDateChange={setDateRange}
+            guests={guests}
+            childrenCount={childrenCount}
+            pets={pets}
+            onGuestsChange={setGuests}
+            onChildrenChange={setChildrenCount}
+            onPetsChange={setPets}
+            onSearch={handleSearch}
+          />
         </div>
       </div>
 
       {/* Stats Bar */}
-      <div className="absolute right-0 bottom-0 left-0 z-10 bg-white/10 backdrop-blur-md">
+      <div className="absolute right-0 bottom-0 left-0 z-10 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto max-w-7xl px-4 py-6">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
             {stats.map((stat, index) => {
               const Icon = stat.icon;
               return (
-                <div key={index} className="flex items-center gap-3 text-white">
-                  <Icon className="text-primary h-8 w-8" />
+                <div
+                  key={index}
+                  className="flex items-center gap-3 text-gray-900"
+                >
+                  <div className="rounded-full bg-emerald-100 p-3">
+                    <Icon className="h-6 w-6 text-emerald-600" />
+                  </div>
                   <div>
                     <p className="text-2xl font-bold">{stat.value}</p>
-                    <p className="text-sm opacity-90">{stat.label}</p>
+                    <p className="text-sm text-gray-600">{stat.label}</p>
                   </div>
                 </div>
               );

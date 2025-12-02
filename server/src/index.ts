@@ -4,14 +4,13 @@ import "dotenv/config";
 import express from "express";
 import { connectRedis, connectToDatabase } from "./config";
 import { APP_ORIGIN, NODE_ENV, OK, PORT } from "./constants";
-import { authenticate, errorHandler, requireAdmin } from "./middleware";
+import { authenticate, errorHandler } from "./middleware";
 import {
   activityRoutes,
   addressRoutes,
   amenityRoutes,
   authRoutes,
   bookingRoutes,
-  // Hipcamp-style routes
   campsiteRoutes,
   categoryRoutes,
   mediaRoutes,
@@ -51,7 +50,7 @@ app.use("/users", authenticate, userRoutes);
 app.use("/categories", categoryRoutes);
 app.use("/products", productRoutes);
 app.use("/tours", tourRoutes);
-app.use("/media", authenticate, requireAdmin, mediaRoutes);
+app.use("/media", authenticate, mediaRoutes);
 app.use("/cart", authenticate, cartRoutes);
 app.use("/address", authenticate, addressRoutes);
 app.use("/orders", orderRoutes);

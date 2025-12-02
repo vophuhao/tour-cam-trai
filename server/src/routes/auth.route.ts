@@ -1,5 +1,6 @@
 import AuthController from "@/controllers/auth.controller";
 import { container, TOKENS } from "@/di";
+import { authenticate } from "@/middleware";
 import type AuthService from "@/services/auth.service";
 import { Router } from "express";
 
@@ -19,5 +20,6 @@ authRoutes.post("/verify", authController.verifyEmailHandler);
 authRoutes.post("/password/verify", authController.verifyPasswordResetCodeHandler);
 authRoutes.post("/password/send", authController.sendPasswordResetHandler);
 authRoutes.post("/password/reset", authController.resetPasswordHandler);
+authRoutes.post("/password/change", authenticate, authController.changePasswordHandler);
 
 export default authRoutes;

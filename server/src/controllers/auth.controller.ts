@@ -186,4 +186,24 @@ export default class AuthController {
 
     return ResponseUtil.success(res, user, "Password was reset successfully");
   });
+
+  /**
+   * Change password (authenticated user)
+   * @route POST /password/change
+   */
+  changePasswordHandler = catchErrors(async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+
+    appAssert(currentPassword, ErrorFactory.requiredField("Current password"));
+    appAssert(newPassword, ErrorFactory.requiredField("New password"));
+    appAssert(req.userId, ErrorFactory.requiredField("Authentication required"));
+
+    const { user } = await this.authService.changePassword(
+      req.userId.toString(),
+      currentPassword,
+      newPassword
+    );
+
+    return ResponseUtil.success(res, user, "Password changed successfully");
+  });
 }
