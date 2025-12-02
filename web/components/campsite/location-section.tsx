@@ -2,7 +2,8 @@
 
 import { MapPin } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import Map, { Marker } from 'react-map-gl';
+import { useEffect, useRef, useState } from 'react';
+import Map, { MapRef, Marker } from 'react-map-gl';
 
 interface LocationSectionProps {
   location: {
@@ -24,6 +25,19 @@ interface LocationSectionProps {
 }
 
 export function LocationSection({ location }: LocationSectionProps) {
+  const mapRef = useRef<MapRef>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize and cleanup
+  useEffect(() => {
+    setIsInitialized(true);
+
+    return () => {
+      setMapLoaded(false);
+      setIsInitialized(false);
+    };
+  }, []);
   // Extract coordinates
   const coords =
     'type' in location.coordinates
@@ -54,6 +68,7 @@ export function LocationSection({ location }: LocationSectionProps) {
         {/* Mapbox Map */}
         <div className="relative h-[400px] w-full overflow-hidden rounded-lg border">
           <Map
+            ref={mapRef}
             mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
             initialViewState={{
               longitude: coords.lng,
@@ -63,18 +78,32 @@ export function LocationSection({ location }: LocationSectionProps) {
             style={{ width: '100%', height: '100%' }}
             mapStyle="mapbox://styles/mapbox/streets-v12"
             interactive={false}
+            onLoad={() => {
+              setTimeout(() => {
+                setMapLoaded(true);
+              }, 150);
+            }}
+            onRemove={() => {
+              setMapLoaded(false);
+            }}
+            onError={e => {
+              console.error('Location map error:', e);
+            }}
+            reuseMaps
           >
-            <Marker
-              longitude={coords.lng}
-              latitude={coords.lat}
-              anchor="bottom"
-            >
-              <div className="flex flex-col items-center">
-                <div className="bg-primary rounded-full p-2 shadow-lg">
-                  <MapPin className="text-primary-foreground h-6 w-6" />
+            {mapLoaded && isInitialized && (
+              <Marker
+                longitude={coords.lng}
+                latitude={coords.lat}
+                anchor="bottom"
+              >
+                <div className="flex flex-col items-center">
+                  <div className="bg-primary rounded-full p-2 shadow-lg">
+                    <MapPin className="text-primary-foreground h-6 w-6" />
+                  </div>
                 </div>
-              </div>
-            </Marker>
+              </Marker>
+            )}
           </Map>
         </div>
 

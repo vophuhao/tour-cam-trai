@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Lazy load map component to avoid SSR issues with mapbox-gl
 const CampsiteMap = dynamic(
@@ -42,6 +42,12 @@ export function CampsiteList({
     null,
   );
   const [hoveredCampsite, setHoveredCampsite] = useState<Campsite | null>(null);
+  const [mapKey, setMapKey] = useState(0);
+
+  // Force remount map when campsites change significantly
+  useEffect(() => {
+    setMapKey(prev => prev + 1);
+  }, [initialCampsites.length]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -138,6 +144,7 @@ export function CampsiteList({
       <div className="hidden lg:block lg:w-[400px] xl:w-[500px]">
         <div className="sticky top-0 h-[calc(100vh-64px)] overflow-hidden">
           <CampsiteMap
+            key={mapKey}
             campsites={initialCampsites}
             selectedCampsite={selectedCampsite}
             hoveredCampsite={hoveredCampsite}
