@@ -35,7 +35,7 @@ const DEFAULT_VERIFY_OPTIONS: VerifyOptions = {
 };
 
 const ACCESS_TOKEN_OPTIONS: SignOptionsWithSecret = {
-  expiresIn: "15m",
+  expiresIn: "1d",
   secret: JWT_SECRET,
 };
 

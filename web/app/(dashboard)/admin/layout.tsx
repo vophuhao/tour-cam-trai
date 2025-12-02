@@ -3,6 +3,7 @@
 import AdminSidebar from '@/components/admin/admin-sidebar';
 import { useAuthStore } from '@/store/auth.store';
 import Link from 'next/link';
+import { useState } from 'react';
 
 export default function AdminLayout({
   children,
@@ -11,7 +12,7 @@ export default function AdminLayout({
 }) {
   const { user } = useAuthStore();
   const role = user?.role;
-
+   const [collapsed, setCollapsed] = useState(false);
   if (role != 'admin' || !user) {
     return (
       <div className="flex h-screen flex-col items-center justify-center bg-gray-50">
@@ -33,10 +34,15 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex">
-      <AdminSidebar />
+    <div className="flex h-screen">
+      {/* Sidebar */}
+      <AdminSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
-      <main className="ml-45 min-h-screen flex-1 bg-gray-50 p-6">
+      {/* Content */}
+      <main
+        className={`flex-1 transition-all duration-300 p-4`}
+        style={{ marginLeft: collapsed ? '4rem' : '11rem' }}
+      >
         {children}
       </main>
     </div>

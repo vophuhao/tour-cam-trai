@@ -113,11 +113,10 @@ export default function PaymentPage() {
       });
     },
     onSuccess: data => {
-      // Extract booking ID from response
       const bookingId =
         (data?.data as { _id?: string; id?: string })?._id ||
         (data?.data as { _id?: string; id?: string })?.id;
-      router.replace(`/bookings/${bookingId}/confirmation`);
+      router.replace(data.data.payOSCheckoutUrl);
     },
   });
 

@@ -12,8 +12,6 @@ export { default as ProductModel, type ProductDocument } from "./product.model";
 
 export { default as TourModel, type TourDocument } from "./tour.model";
 
-export { default as CommentModel, type CommentDocument } from "./comment.model";
-
 // Hipcamp-style models
 export { CampsiteModel, type CampsiteDocument } from "./campsite.model";
 export { BookingModel, type BookingDocument } from "./booking.model";

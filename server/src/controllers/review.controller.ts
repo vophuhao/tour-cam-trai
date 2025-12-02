@@ -87,6 +87,7 @@ export default class ReviewController {
     const { id } = req.params;
     const hostId = mongoIdSchema.parse(req.userId);
     const input = hostResponseSchema.parse(req.body);
+    
 
     const review = await this.reviewService.addHostResponse(id || "", hostId, input);
 
@@ -138,5 +139,16 @@ export default class ReviewController {
       review,
       isFeatured ? "Feature review thành công" : "Unfeature review thành công"
     );
+  });
+
+  getMyCampsitesReview = catchErrors(async (req, res) => {
+    const userId = mongoIdSchema.parse(req.userId);
+    const { page = 1, limit = 20 } = req.query as { page?: string; limit?: string };
+    const { data, pagination } = await this.reviewService.getMyCampsitesReview(
+      userId,
+      Number(page),
+      Number(limit)
+    );
+    return ResponseUtil.paginated(res, data, pagination, "Lấy review campsite của tôi thành công");
   });
 }

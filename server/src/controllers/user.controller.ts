@@ -47,4 +47,27 @@ export default class UserController {
 
     return ResponseUtil.success(res, updatedUser.omitPassword(), "Cập nhật thông tin thành công");
   });
+
+  searchUsers = catchErrors(async (req, res) => {
+    const userId = req.userId;
+    appAssert(userId, ErrorFactory.invalidCredentials('Người dùng chưa đăng nhập'));
+
+    const { q } = req.query;
+    appAssert(q, ErrorFactory.badRequest('Thiếu từ khóa tìm kiếm'));
+
+    const query = String(q).trim();
+    
+    // Tìm kiếm theo username, full_name, email
+    const users = await UserModel.find({
+      _id: { $ne: userId }, // Không bao gồm chính mình
+      $or: [
+        { username: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } },
+      ],
+    })
+      .select('username  avatar email')
+      .limit(10);
+
+    return ResponseUtil.success(res, users, 'Search results');
+  });
 }

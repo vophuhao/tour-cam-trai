@@ -86,6 +86,7 @@ declare interface Product {
 }
 
 declare interface ProductDetail extends Product {
+  slug: string;
   rating: {
     average: number;
     count: number;
@@ -275,9 +276,10 @@ declare interface PaginatedResponse<T = unknown> {
 declare interface OrderItem {
   product: string;
   name: string;
-  price: number;
+  totalPrice: number;
   quantity: number;
   image?: string;
+  _id?: string;
 }
 
 declare interface OrderAddress {
@@ -290,10 +292,11 @@ declare interface OrderAddress {
 
 declare interface Order {
   _id: string;
-  user: string | { name: string; email: string };
-  Code?: string;
+  user: string | { username: string; email: string };
+  code?: string;
   items: OrderItem[];
   shippingAddress: OrderAddress;
+  product : Product;
   paymentMethod: 'cod' | 'card';
   shippingMethod: 'standard' | 'express';
   itemsTotal: number;
@@ -302,6 +305,7 @@ declare interface Order {
   discount: number;
   grandTotal: number;
   promoCode?: string;
+  hasRated: boolean;
   orderNote?: string;
   paymentStatus: 'pending' | 'paid' | 'failed';
   orderStatus:
@@ -309,6 +313,8 @@ declare interface Order {
     | 'processing'
     | 'confirmed'
     | 'shipping'
+    | 'delivered'
+    | 'cancel_request'
     | 'completed'
     | 'cancelled';
   payOSOrderCode?: number;
@@ -316,3 +322,91 @@ declare interface Order {
   createdAt: string;
   updatedAt: string;
 }
+
+
+declare interface Location {
+  _id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+declare interface Amenity {
+  _id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  category: 'basic' | 'comfort' | 'safety' | 'outdoor' | 'special';
+  isActive: boolean;
+}
+
+declare interface Activity {
+  _id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  category: 'water' | 'hiking' | 'wildlife' | 'winter' | 'adventure' | 'relaxation' | 'other';
+  isActive: boolean;
+}
+
+
+declare interface Reviews {
+  _id: string;
+  campsite: {
+    _id: string;
+    name: string;
+    slug: string;
+    images: string[];
+  };
+  guest: {
+    _id: string;  
+    username: string;
+    avatarUrl?: string;
+  };
+  ratings: {
+    overall: number;
+    cleanliness: number;
+    accuracy: number;
+    location: number;
+    value: number;
+    communication: number;
+  };
+  title?: string;
+  comment: string;
+  pros?: string[];
+  cons?: string[];
+  images?: string[];
+  hostResponse?: {
+    comment: string;
+    createdAt: string;
+  };
+}
+
+declare interface Booking {
+  _id: string;
+  campsite: { 
+    _id: string;
+    name: string;
+    slug: string;
+    images: string[];
+  };
+  guest: {
+    _id: string;
+    username: string;
+    avatarUrl?: string;
+  };
+  host: {
+    _id: string;
+    username: string;
+    avatarUrl?: string;
+  };
+  checkInDate: string;
+  checkOutDate: string;
+  guestsCount: number;
+  totalPrice: number;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  createdAt: string;
+  updatedAt: string;
+}
+// Amenity model - Tiện ích có tại campsite

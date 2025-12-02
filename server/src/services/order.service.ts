@@ -1,3 +1,5 @@
+
+
 import { CLIENT_URL, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY, PAYOS_CLIENT_ID } from "@/constants";
 import { OrderModel } from "@/models/order.model";
 import ProductModel from "@/models/product.model";
@@ -42,6 +44,7 @@ export default class OrderService {
       let payOSCheckoutUrl: string | null = null;
       const paymentStatus = "pending";
       let orderStatus = "pending";
+      const orderCode = generateOrderCode();
 
       if (data.paymentMethod === "cod") {
         orderStatus = "processing";
@@ -57,7 +60,7 @@ export default class OrderService {
           const paymentLink = await payos.paymentRequests.create({
             orderCode: payOSOrderCode,
             amount,
-            description: "Thanh toán đơn hàng",
+            description: `ORDER`, 
             returnUrl: `${CLIENT_URL}/cart/payment/success`,
             cancelUrl: `${CLIENT_URL}/cart/payment/cancel`,
           });
@@ -83,6 +86,7 @@ export default class OrderService {
         [
           {
             user: userId,
+            code: orderCode,
             items: data.items,
             shippingAddress: data.shippingAddress,
             paymentMethod: data.paymentMethod,
@@ -191,21 +195,27 @@ export default class OrderService {
   }
 
   /** ⏰ Hủy đơn COD quá hạn (cron job) */
-  async cancelExpiredCODOrders(timeoutMinutes = 15) {
-    const expireTime = new Date(Date.now() - timeoutMinutes * 60 * 1000);
+  async cancelExpiredOrders() {
 
-    const expiredOrders = await OrderModel.find({
-      paymentMethod: "cod",
+
+    // 2) HỦY ĐƠN CARD (12 giờ)
+    const CARD_TIMEOUT_HOURS = 12;
+
+    const cardExpireTime = new Date(Date.now() - CARD_TIMEOUT_HOURS * 60 * 60 * 1000);
+
+    const expiredCardOrders = await OrderModel.find({
+      paymentMethod: "card",
       paymentStatus: "pending",
       orderStatus: "pending",
-      createdAt: { $lt: expireTime },
+      createdAt: { $lt: cardExpireTime },
     });
 
-    for (const order of expiredOrders) {
+    for (const order of expiredCardOrders) {
       const session = await mongoose.startSession();
       session.startTransaction();
 
       try {
+        // Hoàn lại stock
         for (const item of order.items) {
           await ProductModel.updateOne(
             { _id: item.product },
@@ -214,24 +224,164 @@ export default class OrderService {
           );
         }
 
-        await OrderModel.deleteOne({ _id: order._id }, { session });
+        // Cập nhật trạng thái đơn → cancel
+        await OrderModel.updateOne(
+          { _id: order._id },
+          {
+            orderStatus: "cancelled",
+            paymentStatus: "failed", // optional
+            cancelledAt: new Date(),
+          },
+          { session }
+        );
 
         await session.commitTransaction();
         session.endSession();
-        console.log(`🗑️ Đã xóa đơn COD quá hạn: ${order._id}`);
+
+        console.log(`⛔ Đã hủy đơn card quá hạn 12h: ${order._id}`);
       } catch (err) {
         await session.abortTransaction();
         session.endSession();
-        console.error(`❌ Lỗi khi xóa đơn COD ${order._id}:`, err);
+        console.error(`❌ Lỗi khi hủy đơn card ${order._id}:`, err);
       }
     }
   }
 
-  /** 📋 Lấy tất cả đơn hàng (Admin) */
+
   async getAllOrders() {
     return await OrderModel.find()
-      .populate("user", "name email")
-      .populate("items.product", "name images")
+      .populate("user", "username email")
       .sort({ createdAt: -1 });
   }
+  async getOrdersByUser(userId: string) {
+    const orders = await OrderModel.find({ user: userId })
+      .populate("items.product")
+      .sort({ createdAt: -1 });
+    return orders;
+  }
+
+
+  async updateStatusOrder(orderId: string) {
+    const order = await OrderModel.findById(orderId);
+    if (!order) {
+      return { success: false, message: "Đơn hàng không tồn tại" };
+    }
+
+    type OrderStatus =
+      | "pending"
+      | "processing"
+      | "confirmed"
+      | "shipping"
+      | "completed"
+      | "cancelled";
+
+    const nextStatusMap: Record<OrderStatus, OrderStatus | null> = {
+      pending: "processing",
+      processing: "confirmed",
+      confirmed: "shipping",
+      shipping: "completed",
+      completed: null,
+      cancelled: null,
+    };
+
+    const current = order.orderStatus as OrderStatus;
+    const next = nextStatusMap[current];
+
+    if (!next) {
+      return {
+        success: false,
+        message: `Không thể cập nhật trạng thái từ "${current}".`,
+      };
+    }
+
+    order.orderStatus = next;
+    await order.save();
+
+    return {
+      success: true,
+      message: `Cập nhật trạng thái đơn hàng thành "${next}" thành công.`,
+      order,
+    };
+  }
+
+  async getOrderById(orderId: string) {
+    const order = await OrderModel.findById(orderId)
+    return order;
+  }
+
+  async cancelOrder(orderId: string) {
+    const order = await OrderModel.findById(orderId);
+    if (!order) {
+      return { success: false, message: "Đơn hàng không tồn tại" };
+    }
+    if (order.orderStatus === "cancelled") {
+      return { success: false, message: "Đơn hàng đã bị hủy" };
+    }
+
+    order.orderStatus = "cancelled";
+    await order.save();
+
+    return { success: true, message: "Hủy đơn hàng thành công", order };
+  }
+
+  async updateOrderStatus(
+    orderId: string,
+    status: "pending" | "processing" | "confirmed" | "shipping" | "delivered" | "completed" | "cancelled" | "cancel_request") {
+    const order = await OrderModel.findById(orderId);
+    if (!order) {
+      return { success: false, message: "Đơn hàng không tồn tại" };
+    }
+
+    // Validate status transition
+    const validTransitions: Record<string, Array<"pending" | "processing" | "confirmed" | "shipping" | "delivered" | "completed" | "cancelled" | "cancel_request">> = {
+      pending: ["processing", "cancelled"],
+      processing: ["confirmed", "cancelled"],
+      confirmed: ["shipping", "cancelled"],
+      shipping: ["delivered", "cancelled"],
+      delivered: ["completed"],
+      cancel_request: ["cancelled"],
+    };
+
+    const currentStatus = order.orderStatus;
+    const allowedStatuses = validTransitions[currentStatus] || [];
+
+    if (!allowedStatuses.includes(status)) {
+      return {
+        success: false,
+        message: `Không thể chuyển từ trạng thái "${currentStatus}" sang "${status}"`,
+      };
+    }
+
+    // Update status
+    order.orderStatus = status;
+
+    // Add to history
+    order.history.push({
+      status: status,
+      date: new Date(),
+    });
+
+    await order.save();
+
+    return {
+      success: true,
+      message: "Cập nhật trạng thái đơn hàng thành công",
+      order,
+    };
+  }
+
+}
+
+function generateOrderCode(): string {
+  const now = new Date();
+
+  // Lấy ngày/tháng/năm dạng ddMMyy
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0'); // Tháng 0-based
+  const year = String(now.getFullYear()).slice(-2);
+
+  // Sinh 3 số ngẫu nhiên để tránh trùng
+  const random = Math.floor(Math.random() * 900) + 100; // 100 - 999
+
+  return `HD${day}${month}${year}${random}`;
 }

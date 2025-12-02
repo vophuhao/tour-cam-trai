@@ -45,6 +45,7 @@ export function DataTable<TData, TValue>({
   searchKey,
   searchPlaceholder = 'Tìm kiếm...',
   createButton,
+ 
   meta,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -99,9 +100,12 @@ export function DataTable<TData, TValue>({
               {createButton.label}
             </Button>
           )}
+      
           <DataTableViewOptions table={table} />
         </div>
       </div>
+      
+      
 
       {/* Table Body */}
       <div className="bg-card rounded-lg border shadow-sm">

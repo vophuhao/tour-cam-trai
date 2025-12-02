@@ -79,7 +79,7 @@ export default function FeaturedProducts() {
                         </p>
                       )}
                     </div>
-                    <Link href={`/product/${product._id}`}>
+                    <Link href={`/products/${product.slug}`}>
                       <Button size="sm" variant="outline">
                         Mua ngay
                       </Button>

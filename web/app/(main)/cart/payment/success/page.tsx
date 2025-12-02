@@ -1,32 +1,29 @@
-'use client';
+"use client";
 
-import { CheckCircle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
+import { CheckCircle } from "lucide-react";
 
 export default function PaymentSuccessPage() {
   const router = useRouter();
 
   return (
-    <div className="flex min-h-[80vh] flex-col items-center justify-center bg-linear-to-b from-green-50 to-white px-6 text-center">
-      <CheckCircle className="mb-4 h-20 w-20 text-green-600" />
-      <h1 className="mb-2 text-2xl font-bold text-green-700">
-        Thanh toán thành công!
-      </h1>
-      <p className="mb-6 text-gray-600">
-        Cảm ơn bạn đã mua hàng. Đơn hàng của bạn đang được xử lý và sẽ sớm được
-        xác nhận.
+    <div className="flex flex-col items-center justify-center min-h-[80vh] bg-gradient-to-b from-green-50 to-white text-center px-6">
+      <CheckCircle className="w-20 h-20 text-green-600 mb-4" />
+      <h1 className="text-2xl font-bold text-green-700 mb-2">Thanh toán thành công!</h1>
+      <p className="text-gray-600 mb-6">
+        Cảm ơn bạn đã mua hàng. Đơn hàng của bạn đang được xử lý và sẽ sớm được xác nhận.
       </p>
 
       <div className="flex gap-3">
         <button
-          onClick={() => router.push('/orders')}
-          className="rounded-lg bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-3 text-white hover:opacity-95"
+          onClick={() => router.push("/order")}
+          className="px-6 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:opacity-95"
         >
           Xem đơn hàng
         </button>
         <button
-          onClick={() => router.push('/cart')}
-          className="rounded-lg border border-gray-300 px-6 py-3 text-gray-700 hover:bg-gray-50"
+          onClick={() => router.push("/cart")}
+          className="px-6 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
         >
           Tiếp tục mua sắm
         </button>

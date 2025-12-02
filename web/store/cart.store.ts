@@ -16,6 +16,7 @@ type CartState = {
   clearAll: () => void;
 };
 
+
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
@@ -64,7 +65,7 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: "cart-storage", // key in localStorage
-      partialize: (state) => ({ items: state.items, selectedIds: state.selectedIds }),
+      partialize: (state) => ({ items: state.items, selectedIds: state.selectedIds  }),
     }
   )
 );

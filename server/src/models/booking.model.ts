@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 // Booking/Reservation model
 export interface BookingDocument extends mongoose.Document {
   // Reference
+  code ?: string; // mã đặt chỗ
   campsite: mongoose.Types.ObjectId;
   guest: mongoose.Types.ObjectId; // user đặt chỗ
   host: mongoose.Types.ObjectId; // chủ campsite
@@ -35,7 +36,7 @@ export interface BookingDocument extends mongoose.Document {
 
   // Payment
   paymentStatus: "pending" | "paid" | "refunded" | "failed";
-  paymentMethod?: "card" | "bank_transfer" | "cash" | "momo" | "zalopay";
+  paymentMethod?: "card" ;
   transactionId?: string;
   paidAt?: Date;
 
@@ -57,6 +58,9 @@ export interface BookingDocument extends mongoose.Document {
   createdAt: Date;
   updatedAt: Date;
 
+  payOSOrderCode?: Number,
+  payOSCheckoutUrl?: String,
+
   // Methods
   confirm(): Promise<BookingDocument>;
   cancel(userId: mongoose.Types.ObjectId, reason?: string): Promise<BookingDocument>;
@@ -72,6 +76,7 @@ const bookingSchema = new mongoose.Schema<BookingDocument>(
       required: true,
       index: true,
     },
+    code: { type: String, index: true, unique: true },
     guest: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     host: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
 
@@ -110,8 +115,11 @@ const bookingSchema = new mongoose.Schema<BookingDocument>(
     },
     paymentMethod: {
       type: String,
-      enum: ["card", "bank_transfer", "cash", "momo", "zalopay"],
+      enum: ["card"],
     },
+    payOSOrderCode: { type: Number },
+    payOSCheckoutUrl: { type: String },
+
     transactionId: { type: String, index: true },
     paidAt: { type: Date },
 

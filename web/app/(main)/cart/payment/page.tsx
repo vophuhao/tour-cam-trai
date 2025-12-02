@@ -1,102 +1,89 @@
-'use client';
+"use client";
 
-import AddressList from '@/components/AddressList';
-import AddressModal from '@/components/modals/AddressModal';
-import { useAddressActions, useAddresses } from '@/hooks/useAddress';
-import { useCreateOrder } from '@/hooks/useOrder';
-import { useCartStore } from '@/store/cart.store';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { useCartStore } from "@/store/cart.store";
+import { useRouter } from "next/navigation";
+import { useAddresses, useAddressActions } from "@/hooks/useAddress";
+import AddressModal from "@/components/modals/AddressModal";
+import { useCreateOrder } from "@/hooks/useOrder";
+import AddressList from "@/components/AddressList";
+import { 
+  MapPin, 
+  Truck, 
+  CreditCard, 
+  Tag, 
+  FileText,
+  CheckCircle2,
+  Tent,
+  Package
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-    value,
-  );
+  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
 
 export default function PaymentPage() {
   const router = useRouter();
-  const items = useCartStore(s => s.items);
-  const selectedIds = useCartStore(s => s.selectedIds);
-  const removeItem = useCartStore(s => s.removeItem);
-  const clearSelected = useCartStore(s => s.clearSelected);
+  const items = useCartStore((s) => s.items);
+  const selectedIds = useCartStore((s) => s.selectedIds);
+  const removeItem = useCartStore((s) => s.removeItem);
+  const clearSelected = useCartStore((s) => s.clearSelected);
   const createOrderMutation = useCreateOrder();
 
-  // address hooks
   const { data: addressesRes } = useAddresses();
   const { addAddress, removeAddress } = useAddressActions();
   const addresses: Address[] = addressesRes?.data || [];
 
-  // modal / address state
-  const [selectedAddressIndex, setSelectedAddressIndex] = useState<
-    number | null
-  >(addresses.length ? 0 : null);
+  const [selectedAddressIndex, setSelectedAddressIndex] = useState<number | null>(
+    addresses.length ? 0 : null
+  );
   const [showModal, setShowModal] = useState(false);
   const [addrError, setAddrError] = useState<string | null>(null);
 
-  // shipping / payment / placing / extra UI state
-  const [shipping, setShipping] = useState<'standard' | 'express'>('standard');
-  const [payment, setPayment] = useState<'cod' | 'card' | 'momo'>('cod');
+  const [shipping, setShipping] = useState<"standard" | "express">("standard");
+  const [payment, setPayment] = useState<"cod" | "card" | "momo">("cod");
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // promo / invoice / notes
-  const [promo, setPromo] = useState('');
-  const [promoApplied, setPromoApplied] = useState<{
-    code: string;
-    amount: number;
-  } | null>(null);
-  const [orderNote, setOrderNote] = useState('');
+  const [promo, setPromo] = useState("");
+  const [promoApplied, setPromoApplied] = useState<{ code: string; amount: number } | null>(null);
+  const [orderNote, setOrderNote] = useState("");
 
-  const selectedItems = items.filter(it =>
-    selectedIds.includes(it.product._id),
-  );
+  const selectedItems = items.filter((it) => selectedIds.includes(it.product._id));
   const itemsTotal = selectedItems.reduce(
-    (s: number, it) => s + it.product.price * it.quantity,
-    0,
+    (s: number, it) => s + (it.product.deal ?? it.product.price) * it.quantity,
+    0
   );
-  const shippingFee = shipping === 'express' ? 45000 : 25000;
+  const shippingFee = shipping === "express" ? 45000 : 25000;
   const promoDiscount = promoApplied ? promoApplied.amount : 0;
-  const tax = Math.round((itemsTotal - promoDiscount) * 0.05); // simple 5% VAT example
-  const grandTotal = Math.max(
-    0,
-    itemsTotal - promoDiscount + shippingFee + tax,
-  );
+  const tax = Math.round((itemsTotal - promoDiscount) * 0.05);
+  const grandTotal = Math.max(0, itemsTotal - promoDiscount + shippingFee + tax);
 
-  // UX: delivery ETA text
-  const deliveryETA = shipping === 'express' ? '1-2 ngày' : '2-4 ngày';
+  const deliveryETA = shipping === "express" ? "1-2 ngày" : "2-4 ngày";
 
-  // keep selectedAddressIndex in sync when addresses change
   useEffect(() => {
-    // compute the target index without calling setState synchronously
     let targetIndex: number | null = selectedAddressIndex;
 
     if (addresses.length && selectedAddressIndex === null) {
       targetIndex = 0;
     }
-
     if (!addresses.length) {
       targetIndex = null;
     }
-
-    if (
-      addresses.length &&
-      selectedAddressIndex !== null &&
-      selectedAddressIndex >= addresses.length
-    ) {
+    if (addresses.length && selectedAddressIndex !== null && selectedAddressIndex >= addresses.length) {
       targetIndex = addresses.length - 1;
     }
 
     if (targetIndex !== selectedAddressIndex) {
-      // defer the state update to avoid calling setState synchronously within the effect
       const t = setTimeout(() => setSelectedAddressIndex(targetIndex), 0);
       return () => clearTimeout(t);
     }
-    // no-op cleanup if nothing scheduled
     return;
   }, [addresses, selectedAddressIndex]);
 
-  const canPlace =
-    selectedItems.length > 0 && selectedAddressIndex !== null && !placing;
+  const canPlace = selectedItems.length > 0 && selectedAddressIndex !== null && !placing;
 
   const handlePlaceOrder = async () => {
     if (!canPlace) return;
@@ -106,15 +93,13 @@ export default function PaymentPage() {
       const addr = addresses[selectedAddressIndex!];
 
       const payload = {
-        // ✅ user backend nhận từ token, không cần truyền
-        items: selectedItems.map(it => ({
+        items: selectedItems.map((it) => ({
           product: it.product._id,
           name: it.product.name,
-          price: it.product.price,
+          totalPrice: it.product.deal ?? it.product.price,
           quantity: it.quantity,
-          image: it.product.images?.[0] || '',
+          image: it.product.images?.[0] || "",
         })),
-
         shippingAddress: {
           fullName: addr.fullName,
           phone: addr.phone,
@@ -122,8 +107,7 @@ export default function PaymentPage() {
           province: addr.city,
           district: addr.district,
         },
-
-        paymentMethod: payment === 'cod' ? 'cod' : 'card',
+        paymentMethod: payment === "cod" ? "cod" : "card",
         shippingMethod: shipping,
         itemsTotal,
         discount: promoDiscount,
@@ -135,30 +119,24 @@ export default function PaymentPage() {
       };
 
       const res = await createOrderMutation.mutateAsync(payload);
-      console.log('create order res', res);
-      if (res.data === 'OUT_OF_STOCK') {
-        alert('Đặt hàng thất bại: Sản phẩm không còn đủ hàng.');
+      console.log("Order response:", res);
+
+      if (res.message === "OUT_OF_STOCK") {
+        toast.error("Đặt hàng thất bại: Sản phẩm không còn đủ hàng.");
         setPlacing(false);
-        // toast.error("Đặt hàng thất bại: Sản phẩm không còn đủ hàng.");
         return;
       }
-
       const order = res.data;
 
-      // ✅ CASE 1: COD → thành công → thông báo → clear cart → chuyển /orders
-      if (payment === 'cod') {
-        selectedItems.forEach(it => removeItem(it.product._id));
+      if (payment === "cod") {
+        selectedItems.forEach((it) => removeItem(it.product._id));
         clearSelected();
-
-        setSuccess('Đặt hàng thành công!');
-        // setTimeout(() => router.push("/orders"), 1000);
+        setSuccess("Đặt hàng thành công!");
+        setTimeout(() => router.push("/order"), 1000);
         return;
-      }
-
-      // ✅ CASE 2: PayOS → redirect sang checkoutUrl
-      else {
+      } else {
         if (!order.payOSCheckoutUrl) {
-          alert('Lỗi: Không nhận được PayOS checkout URL');
+          alert("Lỗi: Không nhận được PayOS checkout URL");
           return;
         }
         window.location.assign(order.payOSCheckoutUrl);
@@ -170,7 +148,6 @@ export default function PaymentPage() {
     setPlacing(false);
   };
 
-  // onSave from modal: call addAddress then close modal
   const handleSaveAddress = async (addr: {
     fullName: string;
     phone: string;
@@ -192,283 +169,341 @@ export default function PaymentPage() {
 
   const handleRemoveAddress = async (index: number) => {
     setAddrError(null);
-    // prevent removing currently selected address
     if (selectedAddressIndex !== null && index === selectedAddressIndex) {
-      setAddrError(
-        'Không thể xóa địa chỉ đang được chọn. Vui lòng chọn địa chỉ khác trước khi xóa.',
-      );
+      setAddrError("Không thể xóa địa chỉ đang được chọn. Vui lòng chọn địa chỉ khác trước khi xóa.");
       return;
     }
 
-    const ok = confirm('Bạn có chắc muốn xóa địa chỉ này?');
+    const ok = confirm("Bạn có chắc muốn xóa địa chỉ này?");
     if (!ok) return;
 
     try {
       await removeAddress(index);
-      // if removing an address before the selected index, shift selected index left
       if (selectedAddressIndex !== null && index < selectedAddressIndex) {
         setSelectedAddressIndex(selectedAddressIndex - 1);
       }
-      // if there are no addresses left, clear selection
       if (addresses.length - 1 === 0) setSelectedAddressIndex(null);
     } catch (err) {
       console.error(err);
-      setAddrError('Xóa địa chỉ thất bại. Vui lòng thử lại.');
+      setAddrError("Xóa địa chỉ thất bại. Vui lòng thử lại.");
     }
   };
 
   const applyPromo = () => {
-    // simple demo: "SALE50" -> 50k off, "SAVE10" -> 10% off (capped)
     if (!promo) return;
     const code = promo.trim().toUpperCase();
-    if (code === 'SALE50') {
+    if (code === "SALE50") {
       setPromoApplied({ code, amount: 50000 });
-    } else if (code === 'SAVE10') {
+    } else if (code === "SAVE10") {
       const amount = Math.round(itemsTotal * 0.1);
       setPromoApplied({ code, amount });
     } else {
       setPromoApplied(null);
-      // in real app show error toast
     }
   };
 
-  // compute human-readable estimated delivery only on the client to avoid SSR/client date/locale mismatch
   const estimatedDelivery =
-    typeof window !== 'undefined'
+    typeof window !== "undefined"
       ? (() => {
           const now = new Date();
-          const days = shipping === 'express' ? 2 : 4;
+          const days = shipping === "express" ? 2 : 4;
           const end = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-          // format using client's locale
           return `${deliveryETA} — khoảng ${now.toLocaleDateString()} đến ${end.toLocaleDateString()}`;
         })()
-      : '';
+      : "";
+
   return (
-    <div className="mx-auto mt-12 max-w-7xl rounded-3xl bg-linear-to-b from-white to-gray-50 p-6 shadow-xl">
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* LEFT: Checkout form */}
-        <div className="space-y-6 lg:col-span-2">
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-xl font-semibold">Thông tin nhận hàng</h2>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <Tent className="w-8 h-8 text-emerald-600" />
+            Thanh toán đặt tour
+          </h1>
+          <p className="text-gray-600 mt-1">Hoàn tất thông tin để đặt tour của bạn</p>
+        </div>
 
-            <AddressList
-              addresses={addresses}
-              selectedAddressIndex={selectedAddressIndex}
-              setSelectedAddressIndex={setSelectedAddressIndex}
-              handleRemoveAddress={handleRemoveAddress}
-              setShowModal={setShowModal}
-              addrError={addrError}
-            />
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* LEFT: Checkout form */}
+          <div className="lg:col-span-2 space-y-5">
+            {/* Địa chỉ */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-lg shadow-sm p-6 border"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <MapPin className="w-5 h-5 text-emerald-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Thông tin liên hệ</h2>
+              </div>
+              <AddressList
+                addresses={addresses}
+                selectedAddressIndex={selectedAddressIndex}
+                setSelectedAddressIndex={setSelectedAddressIndex}
+                handleRemoveAddress={handleRemoveAddress}
+                setShowModal={setShowModal}
+                addrError={addrError}
+              />
+            </motion.div>
 
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-xl font-semibold">
-              Phương thức vận chuyển
-            </h2>
-            <div className="grid gap-3 md:grid-cols-2">
-              <label
-                className={`rounded-lg border p-4 ${shipping === 'standard' ? 'border-blue-400 bg-blue-50' : 'border-gray-100'}`}
-              >
-                <input
-                  type="radio"
-                  name="ship"
-                  checked={shipping === 'standard'}
-                  onChange={() => setShipping('standard')}
-                  className="mr-2"
-                />
-                Giao tiêu chuẩn
-                <div className="mt-1 text-sm text-gray-500">
-                  {formatCurrency(25000)} — {deliveryETA}
-                </div>
-              </label>
-              <label
-                className={`rounded-lg border p-4 ${shipping === 'express' ? 'border-blue-400 bg-blue-50' : 'border-gray-100'}`}
-              >
-                <input
-                  type="radio"
-                  name="ship"
-                  checked={shipping === 'express'}
-                  onChange={() => setShipping('express')}
-                  className="mr-2"
-                />
-                Giao nhanh
-                <div className="mt-1 text-sm text-gray-500">
-                  {formatCurrency(45000)} — {deliveryETA}
-                </div>
-              </label>
-            </div>
-            <div className="mt-3 text-xs text-gray-500">
-              Ước tính giao hàng: {estimatedDelivery}
-            </div>
-          </div>
+            {/* Vận chuyển */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white rounded-lg shadow-sm p-6 border"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Truck className="w-5 h-5 text-emerald-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Phương thức giao hàng</h2>
+              </div>
+              <div className="grid md:grid-cols-2 gap-3">
+                <label
+                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    shipping === "standard"
+                      ? "border-emerald-500 bg-emerald-50"
+                      : "border-gray-200 hover:border-emerald-200"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="ship"
+                    checked={shipping === "standard"}
+                    onChange={() => setShipping("standard")}
+                    className="mr-2 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="font-medium">Giao tiêu chuẩn</span>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {formatCurrency(25000)} — {deliveryETA}
+                  </div>
+                </label>
+                <label
+                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    shipping === "express"
+                      ? "border-emerald-500 bg-emerald-50"
+                      : "border-gray-200 hover:border-emerald-200"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="ship"
+                    checked={shipping === "express"}
+                    onChange={() => setShipping("express")}
+                    className="mr-2 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="font-medium">Giao nhanh</span>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {formatCurrency(45000)} — {deliveryETA}
+                  </div>
+                </label>
+              </div>
+              <div className="text-xs text-gray-500 mt-3 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" />
+                Ước tính giao hàng: {estimatedDelivery}
+              </div>
+            </motion.div>
 
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-xl font-semibold">
-              Phương thức thanh toán
-            </h2>
-            <div className="grid gap-3 md:grid-cols-3">
-              <label
-                className={`rounded-lg border p-3 ${payment === 'cod' ? 'border-blue-400 bg-blue-50' : 'border-gray-100'}`}
-              >
-                <input
-                  type="radio"
-                  name="pay"
-                  checked={payment === 'cod'}
-                  onChange={() => setPayment('cod')}
-                  className="mr-2"
-                />
-                Thanh toán khi nhận (COD)
-              </label>
-              <label
-                className={`rounded-lg border p-3 ${payment === 'card' ? 'border-blue-400 bg-blue-50' : 'border-gray-100'}`}
-              >
-                <input
-                  type="radio"
-                  name="pay"
-                  checked={payment === 'card'}
-                  onChange={() => setPayment('card')}
-                  className="mr-2"
-                />
-                Thẻ nội địa/quốc tế
-              </label>
-            </div>
+            {/* Thanh toán */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white rounded-lg shadow-sm p-6 border"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <CreditCard className="w-5 h-5 text-emerald-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Phương thức thanh toán</h2>
+              </div>
+              <div className="grid md:grid-cols-2 gap-3 mb-4">
+                <label
+                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    payment === "cod"
+                      ? "border-emerald-500 bg-emerald-50"
+                      : "border-gray-200 hover:border-emerald-200"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="pay"
+                    checked={payment === "cod"}
+                    onChange={() => setPayment("cod")}
+                    className="mr-2 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="font-medium">COD</span>
+                  <div className="text-xs text-gray-500">Thanh toán khi nhận hàng</div>
+                </label>
+                <label
+                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    payment === "card"
+                      ? "border-emerald-500 bg-emerald-50"
+                      : "border-gray-200 hover:border-emerald-200"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="pay"
+                    checked={payment === "card"}
+                    onChange={() => setPayment("card")}
+                    className="mr-2 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="font-medium">Thẻ</span>
+                  <div className="text-xs text-gray-500">Thẻ nội địa/quốc tế</div>
+                </label>
+              </div>
 
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <div>
-                <label className="text-sm text-gray-500">Mã khuyến mãi</label>
-                <div className="mt-2 flex gap-2">
+              {/* Mã giảm giá */}
+              <div className="mb-4">
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-1 mb-2">
+                  <Tag className="w-4 h-4" />
+                  Mã khuyến mãi
+                </label>
+                <div className="flex gap-2">
                   <input
                     value={promo}
-                    onChange={e => setPromo(e.target.value)}
-                    placeholder="Nhập mã (ví dụ SALE50)"
-                    className="flex-1 rounded-lg border p-2"
+                    onChange={(e) => setPromo(e.target.value)}
+                    placeholder="Nhập mã (VD: SALE50)"
+                    className="p-2.5 border rounded-lg flex-1 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   />
                   <button
                     onClick={applyPromo}
-                    className="rounded-lg bg-green-500 px-4 py-2 text-white"
+                    className="px-5 py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-medium"
                   >
                     Áp dụng
                   </button>
                 </div>
-                {promoApplied ? (
-                  <div className="mt-2 text-sm text-green-600">
-                    Đã áp dụng: {promoApplied.code} —{' '}
-                    {formatCurrency(promoApplied.amount)}
+                {promoApplied && (
+                  <div className="text-sm text-emerald-600 mt-2 flex items-center gap-1">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Đã áp dụng: {promoApplied.code} — {formatCurrency(promoApplied.amount)}
                   </div>
-                ) : null}
+                )}
               </div>
-            </div>
 
-            <div className="mt-4">
-              <label className="text-sm text-gray-500">Ghi chú đơn hàng</label>
-              <textarea
-                value={orderNote}
-                onChange={e => setOrderNote(e.target.value)}
-                placeholder="Ghi chú cho người giao hàng..."
-                className="mt-2 w-full rounded-lg border p-3"
-                rows={3}
-              />
-            </div>
+              {/* Ghi chú */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-1 mb-2">
+                  <FileText className="w-4 h-4" />
+                  Ghi chú đơn hàng
+                </label>
+                <textarea
+                  value={orderNote}
+                  onChange={(e) => setOrderNote(e.target.value)}
+                  placeholder="Thông tin bổ sung (nếu có)..."
+                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  rows={3}
+                />
+              </div>
+            </motion.div>
+          </div>
+
+          {/* RIGHT: Order summary */}
+          <div className="lg:col-span-1">
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="sticky top-24 bg-white rounded-lg shadow-sm border p-6"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Package className="w-5 h-5 text-emerald-600" />
+                <h3 className="text-lg font-semibold text-gray-900">Đơn hàng</h3>
+              </div>
+
+              <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto mb-4">
+                {selectedItems.length === 0 ? (
+                  <div className="text-gray-500 text-sm py-4">Không có sản phẩm được chọn.</div>
+                ) : (
+                  selectedItems.map((it) => (
+                    <div key={it.product._id} className="flex items-center gap-3 py-3">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                        {it.product.images?.[0] ? (
+                          <img
+                            src={it.product.images[0]}
+                            alt={it.product.name}
+                            className="object-cover w-full h-full"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Tent className="w-8 h-8 text-gray-300" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">{it.product.name}</div>
+                        <div className="text-xs text-gray-500">
+                          {it.quantity} × {formatCurrency(it.product.price)}
+                        </div>
+                      </div>
+                      <div className="text-sm font-semibold">
+                        {formatCurrency(it.product.price * it.quantity)}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="space-y-2 text-sm pb-4 border-b">
+                <div className="flex justify-between text-gray-600">
+                  <span>Tạm tính</span>
+                  <span>{formatCurrency(itemsTotal)}</span>
+                </div>
+                {promoDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-600">
+                    <span>Giảm giá</span>
+                    <span>-{formatCurrency(promoDiscount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-gray-600">
+                  <span>Thuế (VAT 5%)</span>
+                  <span>{formatCurrency(tax)}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Phí vận chuyển</span>
+                  <span>{formatCurrency(shippingFee)}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-between font-bold text-lg py-4 border-b">
+                <span>Tổng thanh toán</span>
+                <span className="text-emerald-600">{formatCurrency(grandTotal)}</span>
+              </div>
+
+              <button
+                onClick={handlePlaceOrder}
+                disabled={!canPlace}
+                className={`mt-4 w-full py-3 rounded-lg text-white font-semibold transition-all ${
+                  canPlace
+                    ? "bg-emerald-600 hover:bg-emerald-700 hover:shadow-lg"
+                    : "bg-gray-300 cursor-not-allowed"
+                }`}
+              >
+                {placing ? "Đang xử lý..." : `Đặt hàng ${formatCurrency(grandTotal)}`}
+              </button>
+
+              <div className="text-xs text-gray-500 mt-3 text-center">
+                Bằng việc đặt hàng bạn đồng ý với Điều khoản của chúng tôi.
+              </div>
+
+              <AnimatePresence>
+                {success && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="mt-3 p-3 bg-emerald-50 text-emerald-800 rounded-lg text-sm flex items-center gap-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {success}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           </div>
         </div>
-
-        {/* RIGHT: Order summary */}
-        <aside className="rounded-2xl bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-semibold">Tóm tắt đơn hàng</h3>
-
-          <div className="max-h-72 space-y-4 divide-y divide-gray-100 overflow-y-auto pb-4">
-            {selectedItems.length === 0 ? (
-              <div className="text-gray-500">Không có sản phẩm được chọn.</div>
-            ) : (
-              selectedItems.map(it => (
-                <div
-                  key={it.product._id}
-                  className="flex items-center gap-3 py-3"
-                >
-                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md bg-gray-100">
-                    {it.product.images?.[0] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={it.product.images[0]}
-                        alt={it.product.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="px-2 text-center text-xs text-gray-400">
-                        No image
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">
-                      {it.product.name}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {it.quantity} × {formatCurrency(it.product.price)}
-                    </div>
-                  </div>
-                  <div className="text-sm font-semibold">
-                    {formatCurrency(it.product.price * it.quantity)}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="mt-4 space-y-2 text-sm text-gray-700">
-            <div className="flex justify-between">
-              <span>Tạm tính</span>
-              <span>{formatCurrency(itemsTotal)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Giảm</span>
-              <span className="text-green-600">
-                - {formatCurrency(promoDiscount)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Thuế (VAT 5%)</span>
-              <span>{formatCurrency(tax)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Phí vận chuyển</span>
-              <span>{formatCurrency(shippingFee)}</span>
-            </div>
-            <div className="mt-2 flex justify-between text-lg font-bold">
-              <span>Tổng thanh toán</span>
-              <span>{formatCurrency(grandTotal)}</span>
-            </div>
-          </div>
-
-          <button
-            onClick={handlePlaceOrder}
-            disabled={!canPlace}
-            className={`mt-5 w-full rounded-xl py-3 font-semibold text-white ${canPlace ? 'bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700' : 'cursor-not-allowed bg-gray-300'}`}
-          >
-            {placing
-              ? 'Đang xử lý...'
-              : `Thanh toán ${formatCurrency(grandTotal)}`}
-          </button>
-
-          <div className="mt-3 text-xs text-gray-400">
-            Bằng việc thanh toán bạn đồng ý với Điều khoản & Chính sách của
-            chúng tôi.
-          </div>
-
-          {success && (
-            <div className="mt-3 rounded-md bg-green-50 p-3 text-sm text-green-800">
-              {success}
-            </div>
-          )}
-        </aside>
       </div>
 
       {showModal && (
-        <AddressModal
-          initial={undefined}
-          onSave={handleSaveAddress}
-          onClose={() => setShowModal(false)}
-        />
+        <AddressModal initial={undefined} onSave={handleSaveAddress} onClose={() => setShowModal(false)} />
       )}
     </div>
   );

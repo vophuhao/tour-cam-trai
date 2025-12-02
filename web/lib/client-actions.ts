@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import apiClient from './api-client';
 
 export async function login(data: {
@@ -57,7 +58,7 @@ export const searchUsers = async (
   limit = 20,
 ): Promise<ApiResponse> =>
   apiClient.get(
-    `/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
+    `/users/search?q=${encodeURIComponent(query)}`,
   );
 
 export async function uploadMedia(formData: FormData): Promise<ApiResponse> {
@@ -401,6 +402,10 @@ export async function getBooking(id: string): Promise<ApiResponse> {
   return apiClient.get(`/bookings/${id}`);
 }
 
+export async function getBookingByCode(code: string): Promise<ApiResponse> {
+  return apiClient.post(`/bookings/${code}/code`);
+}
+
 export async function getUserBookings(params?: {
   status?: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded';
   role?: 'guest' | 'host';
@@ -408,4 +413,95 @@ export async function getUserBookings(params?: {
   limit?: number;
 }): Promise<ApiResponse> {
   return apiClient.get('/bookings', { params });
+}
+
+
+
+export async function getAllAmenities(): Promise<ApiResponse<Amenity[]>> {
+  return apiClient.get('/amenities');
+}
+
+export async function getAllActivities(): Promise<ApiResponse<Activity[]>> {
+  return apiClient.get('/activities');
+}
+
+
+
+export async function getMyBookings(): Promise<ApiResponse<Booking[]>> {
+  return apiClient.get('/bookings/my/list');
+}
+
+
+
+
+export async function getMyCampsitesReview(): Promise<ApiResponse<Reviews[]>> {
+  return apiClient.get('/reviews/my');
+}
+
+export async function addHostResponse(reviewId: string, comment: string): Promise<ApiResponse> {
+  return apiClient.post(`/reviews/${reviewId}/response`, { comment });
+}
+
+/**
+ * Lấy hoặc tạo cuộc trò chuyện với 1 user khác
+ */
+export async function getOrCreateConversation(userId: string): Promise<ApiResponse> {
+  return apiClient.post(`/messages/conversations`, { userId });
+}
+
+/**
+ * Lấy danh sách conversation của user hiện tại
+ */
+export async function getUserConversations(): Promise<ApiResponse> {
+  return apiClient.get(`/messages/conversations`);
+}
+
+/**
+ * Xoá 1 conversation
+ */
+export async function deleteConversation(conversationId: string): Promise<ApiResponse> {
+  return apiClient.delete(`/messages/${conversationId}`);
+}
+
+/**
+ * Lưu trữ (archive) 1 conversation
+ */
+export async function archiveConversation(conversationId: string): Promise<ApiResponse> {
+  return apiClient.put(`/messages/${conversationId}/archive`);
+}
+
+// =============================
+// Messages
+// =============================
+
+/**
+ * Gửi tin nhắn trong 1 conversation
+ */
+export async function sendMessageUser(conversationId: string, payload : any ): Promise<ApiResponse> {
+  return apiClient.post(`/messages/${conversationId}`, { payload });
+}
+
+/**
+ * Lấy message trong 1 conversation
+ */
+export async function getMessages(conversationId: string): Promise<ApiResponse> {
+  return apiClient.get(`/messages/${conversationId}`);
+}
+
+/**
+ * Đánh dấu toàn bộ tin nhắn trong 1 conversation là đã đọc
+ */
+export async function markAsRead(conversationId: string): Promise<ApiResponse> {
+  return apiClient.put(`/messages/${conversationId}/read`);
+}
+
+// =============================
+// Unread global count
+// =============================
+
+/**
+ * Lấy tổng số tin nhắn chưa đọc
+ */
+export async function getUnreadCount(): Promise<ApiResponse<{ count: number }>> {
+  return apiClient.get(`/messages/unread-count`);
 }

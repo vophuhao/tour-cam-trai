@@ -14,7 +14,7 @@ import {
  * @route POST /products
  */
 export default class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(private readonly productService: ProductService) { }
 
   createProduct = catchErrors(async (req, res) => {
     const {
@@ -152,4 +152,55 @@ export default class ProductController {
     const result = await this.productService.getProductBySlug(slug);
     return ResponseUtil.success(res, result);
   });
+
+  /**
+   * Search products fuzzy
+   * @route GET /products/search
+   * query: key, page, limit
+   */
+  searchProductsFuzzy = catchErrors(async (req, res) => {
+    const key = (req.query.key as string) || (req.query.q as string) || "";
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    const result = await this.productService.searchProductsFuzzy(key, page, limit);
+    return ResponseUtil.success(res, result, "Kết quả tìm kiếm fuzzy");
+  });
+
+  /**
+   * Get products by category name
+   * @route GET /products/category/:name
+   */
+  getProductsByCategoryName = catchErrors(async (req, res) => {
+    const name = (req.params.name as string) || "";
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    const result = await this.productService.getProductsByCategoryName(name, page, limit);
+    return ResponseUtil.success(res, result, `Sản phẩm theo danh mục: ${name}`);
+  });
+
+  /**
+ * Get products by price range
+ * @route GET /products/price-range
+ * query: minPrice, maxPrice, category, page, limit
+ */
+  getProductsByPriceRange = catchErrors(async (req, res) => {
+    const minPrice = parseInt(req.query.minPrice as string) || 0;
+    const maxPrice = parseInt(req.query.maxPrice as string) || 1000000000; // default max
+    const category = (req.query.category as string) || undefined;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    const result = await this.productService.getProductsByPriceRange(
+      minPrice,
+      maxPrice,
+      category,
+      page,
+      limit
+    );
+
+    return ResponseUtil.success(res, result, `Sản phẩm theo khoảng giá ${minPrice} - ${maxPrice}`);
+  });
+
 }

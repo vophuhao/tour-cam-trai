@@ -3,62 +3,60 @@ import { z } from "zod";
 // Validator cho tạo/update campsite
 export const createCampsiteSchema = z.object({
   name: z.string().min(3).max(200),
-  slug: z.string().min(3).max(200).optional(), // auto-generate if not provided
+  slug: z.string().min(3).max(200).optional(),
   tagline: z.string().min(10).max(200).optional(),
-  description: z.string().min(50).max(5000),
+  description: z.string().min(0).max(5000),
 
-  // Location
+  // Location - MATCH MONGOOSE MODEL
   location: z.object({
     address: z.string().min(5).max(500),
     city: z.string().min(2).max(100),
     state: z.string().min(2).max(100),
     country: z.string().default("Vietnam"),
-    zipCode: z.string().max(20).optional(),
     coordinates: z.object({
-      lat: z.number().min(-90).max(90),
-      lng: z.number().min(-180).max(180),
+      type: z.literal("Point").default("Point"),
+      coordinates: z.tuple([z.number(), z.number()]), // ✅ [lng, lat]
     }),
     accessInstructions: z.string().max(1000).optional(),
   }),
 
-  // Property details
   propertyType: z.enum(["tent", "rv", "cabin", "glamping", "treehouse", "yurt", "other"]),
+
   capacity: z.object({
     maxGuests: z.number().int().min(1).max(50),
     maxVehicles: z.number().int().min(0).max(20).optional(),
     maxPets: z.number().int().min(0).max(10).optional(),
   }),
 
-  // Pricing
   pricing: z.object({
     basePrice: z.number().min(0),
     weekendPrice: z.number().min(0).optional(),
     cleaningFee: z.number().min(0).optional(),
     petFee: z.number().min(0).optional(),
     extraGuestFee: z.number().min(0).optional(),
+    currency: z.string().default("VND"),
   }),
 
-  // Amenities & Activities
-  amenities: z.array(z.string()).optional(), // array of amenity IDs
-  activities: z.array(z.string()).optional(), // array of activity IDs
+  amenities: z.array(z.string()).optional(),
+  activities: z.array(z.string()).optional(),
 
-  // Rules
+  // Rules - MATCH MONGOOSE MODEL
   rules: z.object({
-    checkInTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/), // HH:mm format
-    checkOutTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+    checkIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/), // ✅ checkIn (not checkInTime)
+    checkOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/), // ✅ checkOut (not checkOutTime)
     minNights: z.number().int().min(1).default(1),
     maxNights: z.number().int().min(1).optional(),
     allowPets: z.boolean().default(false),
     allowChildren: z.boolean().default(true),
     allowSmoking: z.boolean().default(false),
+    quietHours: z.string().optional(),
     customRules: z.array(z.string()).optional(),
   }),
 
-  // Media
   images: z.array(z.string()).min(1).max(50).optional(),
   videos: z.array(z.string()).max(10).optional(),
 
-  // Settings
+  isActive: z.boolean().default(true),
   isInstantBook: z.boolean().default(false),
 });
 

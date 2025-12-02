@@ -10,6 +10,8 @@ const reviewService = container.resolve<ReviewService>(TOKENS.ReviewService);
 const reviewController = new ReviewController(reviewService);
 
 // Public routes
+
+reviewRoutes.get("/my", authenticate, reviewController.getMyCampsitesReview);
 reviewRoutes.get("/", reviewController.searchReviews);
 reviewRoutes.get("/:id", reviewController.getReview);
 
@@ -21,5 +23,7 @@ reviewRoutes.post("/:id/vote", reviewController.voteReview); // public or authen
 // Admin routes
 reviewRoutes.patch("/:id/publish", requireAdmin, reviewController.togglePublish);
 reviewRoutes.patch("/:id/feature", requireAdmin, reviewController.toggleFeature);
+
+
 
 export default reviewRoutes;

@@ -55,6 +55,7 @@ export class CampsiteService {
     input: UpdateCampsiteInput
   ): Promise<CampsiteDocument> {
     const campsite = await CampsiteModel.findById(campsiteId);
+    console.log('Updating campsite:', campsiteId, 'with input:', input);
     appAssert(campsite, ErrorFactory.resourceNotFound("Campsite"));
     appAssert(
       campsite!.host.toString() === hostId,

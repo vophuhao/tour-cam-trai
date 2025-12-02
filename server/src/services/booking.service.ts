@@ -1,5 +1,7 @@
+
 import { ErrorFactory } from "@/errors";
 import { AvailabilityModel, BookingModel, CampsiteModel, type BookingDocument } from "@/models";
+import { CLIENT_URL, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY, PAYOS_CLIENT_ID } from "@/constants";
 import appAssert from "@/utils/app-assert";
 import type {
   CancelBookingInput,
@@ -7,6 +9,15 @@ import type {
   SearchBookingInput,
 } from "@/validators/booking.validator";
 import mongoose from "mongoose";
+
+
+const { PayOS } = require("@payos/node");
+
+const payos = new PayOS({
+  clientId: PAYOS_CLIENT_ID,
+  apiKey: PAYOS_API_KEY,
+  checksumKey: PAYOS_CHECKSUM_KEY,
+});
 
 export class BookingService {
   /**
@@ -77,14 +88,44 @@ export class BookingService {
     }
 
     // Check availability in calendar
-    const isAvailable = await this.checkAvailability(campsiteId, checkIn, checkOut);
-    appAssert(isAvailable, ErrorFactory.conflict("Campsite không có sẵn trong thời gian này"));
+    //  const isAvailable = await this.checkAvailability(campsiteId, checkIn, checkOut);
+    //  appAssert(isAvailable, ErrorFactory.conflict("Campsite không có sẵn trong thời gian này"));
 
     // Calculate pricing
     const pricing = this.calculatePricing(campsite, nights, numberOfGuests, numberOfPets);
 
+    let payOSOrderCode: number | null = null;
+    let payOSCheckoutUrl: string | null = null;
+    const code = this.generateBookingCode();
+    payOSOrderCode = Math.floor(Date.now() / 1000);
+    const amount = 2000; // TODO: TESTING ONLY
+
+    try {
+      const paymentLink = await payos.paymentRequests.create({
+        orderCode: payOSOrderCode,
+        amount,
+        description: `BOOKING`, 
+        returnUrl: `${CLIENT_URL}/bookings/${code}/success`,
+        cancelUrl: `${CLIENT_URL}/bookings/cancel`,
+      });
+
+      payOSCheckoutUrl =
+        paymentLink?.checkoutUrl ||
+        paymentLink?.url ||
+        paymentLink?.redirectUrl ||
+        paymentLink?.data?.checkoutUrl ||
+        null;
+    } catch (err: any) {
+
+      console.error("Error creating PayOS payment link:", err.message);
+    }
+
+
     // Create booking
     const booking = await BookingModel.create({
+      code,
+      payOSOrderCode,
+      payOSCheckoutUrl,
       campsite: campsiteId,
       guest: guestId,
       host: campsite.host,
@@ -103,10 +144,8 @@ export class BookingService {
 
     // Calculate total
     await booking.calculateTotal();
-
     // Block dates in availability calendar
     await this.blockDatesForBooking(campsiteId, checkInDate, checkOutDate);
-
     // Auto-confirm if instant book
     if (campsite.isInstantBook) {
       await booking.confirm();
@@ -115,6 +154,54 @@ export class BookingService {
     return booking;
   }
 
+  async getBookingByCode(code: string): Promise<BookingDocument> {
+    const booking = await BookingModel.findOne({ code })
+      .populate("campsite")
+      .populate("guest", "username email avatarUrl")
+      .populate("host", "username email avatarUrl");
+
+    appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
+
+    return booking;
+  }
+
+  async handlePayOSWebhook(data: any) {
+
+    try {
+      const orderCode = data.data?.code;
+      const success = data.data?.status === "PAID" || data.success;
+
+
+      const booking = await BookingModel.findOne({ payOSOrderCode: orderCode })
+      appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
+
+      if (success) {
+        booking.paymentStatus = "paid";
+        await booking.save();
+        return { success: true, code: "PAYMENT_SUCCESS", message: "Thanh toán thành công", booking };
+      } else {
+        booking.paymentStatus = "failed";
+        await booking.save();
+
+
+        return { success: false, code: "PAYMENT_FAILED", message: "Thanh toán thất bại", booking };
+      }
+    } catch (err: any) {
+      console.error("Error handling PayOS webhook:", err.message);
+      return { success: false, code: "WEBHOOK_ERROR", message: err.message };
+    }
+  }
+  private generateBookingCode(): string {
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, "0");
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const year = String(now.getFullYear()).slice(-2);
+
+    // 5 random digits
+    const random = Math.floor(10000 + Math.random() * 90000);
+
+    return `HDB${day}${month}${year}${random}`;
+  }
   /**
    * Get booking by ID
    */
@@ -407,4 +494,30 @@ export class BookingService {
       blockType: "booked",
     });
   }
+
+  async getMyBookings(userId: string) {
+    const query = {
+      $or: [{ host: userId }],
+    };
+    const bookings = await BookingModel.find(query)
+      .populate("campsite", "name slug images location")
+      .populate("guest", "name email avatar")
+      .populate("host", "name email avatar")
+      .sort({ createdAt: -1 })
+      .lean();
+    const total = await BookingModel.countDocuments(query);
+
+    return {
+      data: bookings,
+      pagination: {
+        page: 1,
+        limit: total,
+        total,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      },
+    };
+  }
+
 }

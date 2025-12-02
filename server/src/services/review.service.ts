@@ -74,13 +74,14 @@ export class ReviewService {
     hostId: string,
     input: HostResponseInput
   ): Promise<ReviewDocument> {
+    
     const review = await ReviewModel.findById(reviewId);
     appAssert(review, ErrorFactory.resourceNotFound("Review"));
     appAssert(
       review!.host.toString() === hostId,
       ErrorFactory.forbidden("Bạn không phải host của review này")
     );
-    appAssert(!review!.hostResponse, ErrorFactory.conflict("Review này đã có response"));
+    appAssert(review!.hostResponse != null, ErrorFactory.conflict("Review này đã có response"));
 
     await review!.addHostResponse(input.comment);
     return review!;
@@ -291,4 +292,33 @@ export class ReviewService {
       },
     };
   }
+
+ async getMyCampsitesReview(hostId: string, page: number = 1, limit: number = 20) {
+  // Build query
+  const query = { host: hostId };
+
+  // Execute query with pagination
+  const skip = (page - 1) * limit;
+  const [reviews, total] = await Promise.all([
+    ReviewModel.find(query)
+      .populate("campsite", "name slug images")
+      .populate("guest", "username avatarUrl")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    ReviewModel.countDocuments(query),
+  ]);
+
+  return {
+    data: reviews as any[],
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasNext: page < Math.ceil(total / limit),
+      hasPrev: page > 1,
+    },
+  };
+}
 }

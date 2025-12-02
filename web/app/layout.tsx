@@ -1,4 +1,4 @@
-import { Providers } from '@/components/providers';
+import { Providers } from '@/components/Providers';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'Campo',
-  description: 'Rời phố về rừng thôi!',
+  description: 'R?i ph? v? r?ng th�i!',
 };
 
 export default function RootLayout({
