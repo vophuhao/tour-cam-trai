@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { logout } from '@/lib/client-actions';
 import { useAuthStore } from '@/store/auth.store';
+import { useCartCount } from '@/hooks/useCartCount';
 import {
   LayoutDashboard,
   LogOut,
@@ -29,6 +30,7 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAuthenticated, setUser } = useAuthStore();
+  const cartCount = useCartCount(); // ✅ Use socket-based cart count
 
   const handleLogout = async () => {
     const res = await logout();
@@ -72,11 +74,18 @@ export default function Header() {
           {/* Desktop Actions */}
           <div className="hidden items-center gap-3 md:flex">
             {/* Shopping Cart */}
-            <Button variant="ghost" size="icon" className="relative">
+            <Button
+              onClick={() => router.push('/cart')}
+              variant="ghost"
+              size="icon"
+              className="relative cursor-pointer"
+            >
               <ShoppingCart className="h-5 w-5" />
-              <span className="bg-primary flex-center absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs text-white">
-                0
-              </span>
+              {cartCount > 0 && (
+                <span className="bg-primary flex-center absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs text-white">
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              )}
             </Button>
 
             {/* User Menu */}
@@ -90,9 +99,17 @@ export default function Header() {
                     </Button>
                   </Link>
                 )}
-                <div className="flex items-center gap-2 rounded-md border px-3 py-2">
+                {user.role === 'host' && (
+                  <Link href="/host">
+                    <Button variant="outline" size="sm">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Host
+                    </Button>
+                  </Link>
+                )}
+                <div onClick={() => router.push(`/u/${user.username}`)} className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer">
                   <User className="h-4 w-4" />
-                  <span className="text-sm font-medium">{user.username}</span>
+                  {/* <span className="text-sm font-medium">{user.username}</span> */}
                 </div>
                 <Button
                   variant="ghost"
@@ -156,6 +173,25 @@ export default function Header() {
               );
             })}
 
+            {/* Mobile Cart Button */}
+            <button
+              onClick={() => {
+                router.push('/cart');
+                setMobileMenuOpen(false);
+              }}
+              className="flex w-full items-center justify-between rounded-md px-3 py-2 text-base font-medium text-foreground/60 hover:bg-gray-100 hover:text-primary"
+            >
+              <span className="flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5" />
+                Giỏ hàng
+              </span>
+              {cartCount > 0 && (
+                <span className="bg-primary flex h-6 w-6 items-center justify-center rounded-full text-xs text-white">
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              )}
+            </button>
+
             <div className="border-t pt-4">
               {isAuthenticated && user ? (
                 <div className="space-y-2">
@@ -170,6 +206,20 @@ export default function Header() {
                       >
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         Admin Panel
+                      </Button>
+                    </Link>
+                  )}
+                  {user.role === 'host' && (
+                    <Link
+                      href="/host"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                      >
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Host Panel
                       </Button>
                     </Link>
                   )}

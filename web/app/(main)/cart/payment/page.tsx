@@ -15,10 +15,8 @@ import {
   Tag, 
   FileText,
   CheckCircle2,
-  Tent,
   Package
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
 const formatCurrency = (value: number) =>
@@ -43,7 +41,7 @@ export default function PaymentPage() {
   const [addrError, setAddrError] = useState<string | null>(null);
 
   const [shipping, setShipping] = useState<"standard" | "express">("standard");
-  const [payment, setPayment] = useState<"cod" | "card" | "momo">("cod");
+  const [payment, setPayment] = useState<"cod" | "card">("cod");
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -119,7 +117,6 @@ export default function PaymentPage() {
       };
 
       const res = await createOrderMutation.mutateAsync(payload);
-      console.log("Order response:", res);
 
       if (res.message === "OUT_OF_STOCK") {
         toast.error("Đặt hàng thất bại: Sản phẩm không còn đủ hàng.");
@@ -153,9 +150,7 @@ export default function PaymentPage() {
     phone: string;
     addressLine: string;
     province: string;
-    provinceCode?: number;
     district?: string;
-    districtCode?: number;
   }) => {
     await addAddress({
       fullName: addr.fullName,
@@ -194,47 +189,33 @@ export default function PaymentPage() {
     const code = promo.trim().toUpperCase();
     if (code === "SALE50") {
       setPromoApplied({ code, amount: 50000 });
+      toast.success("Đã áp dụng mã giảm giá!");
     } else if (code === "SAVE10") {
       const amount = Math.round(itemsTotal * 0.1);
       setPromoApplied({ code, amount });
+      toast.success("Đã áp dụng mã giảm giá!");
     } else {
       setPromoApplied(null);
+      toast.error("Mã không hợp lệ!");
     }
   };
-
-  const estimatedDelivery =
-    typeof window !== "undefined"
-      ? (() => {
-          const now = new Date();
-          const days = shipping === "express" ? 2 : 4;
-          const end = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-          return `${deliveryETA} — khoảng ${now.toLocaleDateString()} đến ${end.toLocaleDateString()}`;
-        })()
-      : "";
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Tent className="w-8 h-8 text-emerald-600" />
-            Thanh toán đặt tour
-          </h1>
-          <p className="text-gray-600 mt-1">Hoàn tất thông tin để đặt tour của bạn</p>
+          <h1 className="text-3xl font-bold text-gray-900">Thanh toán</h1>
+          <p className="text-gray-600 mt-1">Hoàn tất thông tin đặt hàng</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT: Checkout form */}
-          <div className="lg:col-span-2 space-y-5">
+          {/* LEFT */}
+          <div className="lg:col-span-2 space-y-6">
             {/* Địa chỉ */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-lg shadow-sm p-6 border"
-            >
+            <div className="bg-white rounded-lg shadow-sm p-6 border">
               <div className="flex items-center gap-2 mb-4">
-                <MapPin className="w-5 h-5 text-emerald-600" />
+                <MapPin className="w-5 h-5 text-gray-700" />
                 <h2 className="text-lg font-semibold text-gray-900">Thông tin liên hệ</h2>
               </div>
               <AddressList
@@ -245,25 +226,20 @@ export default function PaymentPage() {
                 setShowModal={setShowModal}
                 addrError={addrError}
               />
-            </motion.div>
+            </div>
 
             {/* Vận chuyển */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white rounded-lg shadow-sm p-6 border"
-            >
+            <div className="bg-white rounded-lg shadow-sm p-6 border">
               <div className="flex items-center gap-2 mb-4">
-                <Truck className="w-5 h-5 text-emerald-600" />
+                <Truck className="w-5 h-5 text-gray-700" />
                 <h2 className="text-lg font-semibold text-gray-900">Phương thức giao hàng</h2>
               </div>
               <div className="grid md:grid-cols-2 gap-3">
                 <label
-                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                  className={`p-4 border-2 rounded-lg cursor-pointer ${
                     shipping === "standard"
-                      ? "border-emerald-500 bg-emerald-50"
-                      : "border-gray-200 hover:border-emerald-200"
+                      ? "border-gray-900 bg-gray-50"
+                      : "border-gray-200"
                   }`}
                 >
                   <input
@@ -271,18 +247,18 @@ export default function PaymentPage() {
                     name="ship"
                     checked={shipping === "standard"}
                     onChange={() => setShipping("standard")}
-                    className="mr-2 text-emerald-600 focus:ring-emerald-500"
+                    className="mr-2"
                   />
                   <span className="font-medium">Giao tiêu chuẩn</span>
                   <div className="text-sm text-gray-600 mt-1">
-                    {formatCurrency(25000)} — {deliveryETA}
+                    {formatCurrency(25000)} — 2-4 ngày
                   </div>
                 </label>
                 <label
-                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                  className={`p-4 border-2 rounded-lg cursor-pointer ${
                     shipping === "express"
-                      ? "border-emerald-500 bg-emerald-50"
-                      : "border-gray-200 hover:border-emerald-200"
+                      ? "border-gray-900 bg-gray-50"
+                      : "border-gray-200"
                   }`}
                 >
                   <input
@@ -290,37 +266,28 @@ export default function PaymentPage() {
                     name="ship"
                     checked={shipping === "express"}
                     onChange={() => setShipping("express")}
-                    className="mr-2 text-emerald-600 focus:ring-emerald-500"
+                    className="mr-2"
                   />
                   <span className="font-medium">Giao nhanh</span>
                   <div className="text-sm text-gray-600 mt-1">
-                    {formatCurrency(45000)} — {deliveryETA}
+                    {formatCurrency(45000)} — 1-2 ngày
                   </div>
                 </label>
               </div>
-              <div className="text-xs text-gray-500 mt-3 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" />
-                Ước tính giao hàng: {estimatedDelivery}
-              </div>
-            </motion.div>
+            </div>
 
             {/* Thanh toán */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-white rounded-lg shadow-sm p-6 border"
-            >
+            <div className="bg-white rounded-lg shadow-sm p-6 border">
               <div className="flex items-center gap-2 mb-4">
-                <CreditCard className="w-5 h-5 text-emerald-600" />
+                <CreditCard className="w-5 h-5 text-gray-700" />
                 <h2 className="text-lg font-semibold text-gray-900">Phương thức thanh toán</h2>
               </div>
               <div className="grid md:grid-cols-2 gap-3 mb-4">
                 <label
-                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                  className={`p-4 border-2 rounded-lg cursor-pointer ${
                     payment === "cod"
-                      ? "border-emerald-500 bg-emerald-50"
-                      : "border-gray-200 hover:border-emerald-200"
+                      ? "border-gray-900 bg-gray-50"
+                      : "border-gray-200"
                   }`}
                 >
                   <input
@@ -328,16 +295,16 @@ export default function PaymentPage() {
                     name="pay"
                     checked={payment === "cod"}
                     onChange={() => setPayment("cod")}
-                    className="mr-2 text-emerald-600 focus:ring-emerald-500"
+                    className="mr-2"
                   />
                   <span className="font-medium">COD</span>
                   <div className="text-xs text-gray-500">Thanh toán khi nhận hàng</div>
                 </label>
                 <label
-                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                  className={`p-4 border-2 rounded-lg cursor-pointer ${
                     payment === "card"
-                      ? "border-emerald-500 bg-emerald-50"
-                      : "border-gray-200 hover:border-emerald-200"
+                      ? "border-gray-900 bg-gray-50"
+                      : "border-gray-200"
                   }`}
                 >
                   <input
@@ -345,10 +312,10 @@ export default function PaymentPage() {
                     name="pay"
                     checked={payment === "card"}
                     onChange={() => setPayment("card")}
-                    className="mr-2 text-emerald-600 focus:ring-emerald-500"
+                    className="mr-2"
                   />
-                  <span className="font-medium">Thẻ</span>
-                  <div className="text-xs text-gray-500">Thẻ nội địa/quốc tế</div>
+                  <span className="font-medium">Thẻ/Chuyển khoản</span>
+                  <div className="text-xs text-gray-500">Thanh toán online</div>
                 </label>
               </div>
 
@@ -363,17 +330,17 @@ export default function PaymentPage() {
                     value={promo}
                     onChange={(e) => setPromo(e.target.value)}
                     placeholder="Nhập mã (VD: SALE50)"
-                    className="p-2.5 border rounded-lg flex-1 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="p-2.5 border rounded-lg flex-1 focus:outline-none focus:ring-2 focus:ring-gray-900"
                   />
                   <button
                     onClick={applyPromo}
-                    className="px-5 py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-medium"
+                    className="px-5 py-2.5 rounded-lg bg-gray-900 text-white hover:bg-gray-800 font-medium"
                   >
                     Áp dụng
                   </button>
                 </div>
                 {promoApplied && (
-                  <div className="text-sm text-emerald-600 mt-2 flex items-center gap-1">
+                  <div className="text-sm text-green-600 mt-2 flex items-center gap-1">
                     <CheckCircle2 className="w-4 h-4" />
                     Đã áp dụng: {promoApplied.code} — {formatCurrency(promoApplied.amount)}
                   </div>
@@ -390,22 +357,18 @@ export default function PaymentPage() {
                   value={orderNote}
                   onChange={(e) => setOrderNote(e.target.value)}
                   placeholder="Thông tin bổ sung (nếu có)..."
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
                   rows={3}
                 />
               </div>
-            </motion.div>
+            </div>
           </div>
 
-          {/* RIGHT: Order summary */}
+          {/* RIGHT */}
           <div className="lg:col-span-1">
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="sticky top-24 bg-white rounded-lg shadow-sm border p-6"
-            >
+            <div className="sticky top-24 bg-white rounded-lg shadow-sm border p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Package className="w-5 h-5 text-emerald-600" />
+                <Package className="w-5 h-5 text-gray-700" />
                 <h3 className="text-lg font-semibold text-gray-900">Đơn hàng</h3>
               </div>
 
@@ -423,9 +386,7 @@ export default function PaymentPage() {
                             className="object-cover w-full h-full"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Tent className="w-8 h-8 text-gray-300" />
-                          </div>
+                          <div className="w-full h-full bg-gray-200" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -443,61 +404,54 @@ export default function PaymentPage() {
               </div>
 
               <div className="space-y-2 text-sm pb-4 border-b">
-                <div className="flex justify-between text-gray-600">
-                  <span>Tạm tính</span>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tạm tính</span>
                   <span>{formatCurrency(itemsTotal)}</span>
                 </div>
                 {promoDiscount > 0 && (
-                  <div className="flex justify-between text-emerald-600">
+                  <div className="flex justify-between text-green-600">
                     <span>Giảm giá</span>
                     <span>-{formatCurrency(promoDiscount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-gray-600">
-                  <span>Thuế (VAT 5%)</span>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Thuế (5%)</span>
                   <span>{formatCurrency(tax)}</span>
                 </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>Phí vận chuyển</span>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Phí vận chuyển</span>
                   <span>{formatCurrency(shippingFee)}</span>
                 </div>
               </div>
 
               <div className="flex justify-between font-bold text-lg py-4 border-b">
                 <span>Tổng thanh toán</span>
-                <span className="text-emerald-600">{formatCurrency(grandTotal)}</span>
+                <span>{formatCurrency(grandTotal)}</span>
               </div>
 
               <button
                 onClick={handlePlaceOrder}
                 disabled={!canPlace}
-                className={`mt-4 w-full py-3 rounded-lg text-white font-semibold transition-all ${
+                className={`mt-4 w-full py-3 rounded-lg text-white font-semibold ${
                   canPlace
-                    ? "bg-emerald-600 hover:bg-emerald-700 hover:shadow-lg"
+                    ? "bg-gray-900 hover:bg-gray-800"
                     : "bg-gray-300 cursor-not-allowed"
                 }`}
               >
                 {placing ? "Đang xử lý..." : `Đặt hàng ${formatCurrency(grandTotal)}`}
               </button>
 
-              <div className="text-xs text-gray-500 mt-3 text-center">
-                Bằng việc đặt hàng bạn đồng ý với Điều khoản của chúng tôi.
-              </div>
+              {success && (
+                <div className="mt-3 p-3 bg-green-50 text-green-800 rounded-lg text-sm flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  {success}
+                </div>
+              )}
 
-              <AnimatePresence>
-                {success && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="mt-3 p-3 bg-emerald-50 text-emerald-800 rounded-lg text-sm flex items-center gap-2"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    {success}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
+              <div className="text-xs text-gray-500 mt-3 text-center">
+                Bằng việc đặt hàng bạn đồng ý với Điều khoản của chúng tôi
+              </div>
+            </div>
           </div>
         </div>
       </div>

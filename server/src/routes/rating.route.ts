@@ -14,5 +14,6 @@ ratingRoutes.get("/product/:productId", ratingController.getRatingsByProductId);
 ratingRoutes.get("/user/:userId", ratingController.getRatingsByUserId);
 ratingRoutes.put("/:id", ratingController.updateRating);
 ratingRoutes.delete("/:id", ratingController.deleteRating);
-
+ratingRoutes.get("/all", ratingController.getAllRatings);
+ratingRoutes.post("/admin/reply/:id", ratingController.adminReplyToRating);
 export default ratingRoutes;

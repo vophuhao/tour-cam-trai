@@ -1,5 +1,7 @@
 'use client';
 
+import SimilarProducts from '@/components/home/list-product';
+import ProductReviewsSection from '@/components/rating/ProductReviewsSection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +24,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProductBySlug } from '@/hooks/useProduct';
+import { addToCart, getProductsByCategoryName } from '@/lib/api';
 import {
   AlertCircle,
   ChevronLeft,
@@ -36,18 +39,43 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 export default function ProductDetailPage() {
   const { slug } = useParams() as { slug?: string };
   const router = useRouter();
 
   const { data, isLoading, error } = useProductBySlug(slug || '');
-
+  const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState<number>(0);
+  const [ListProduct, setListProduct] = useState<Product[]>([]);
 
-  // Derive product and error from query data
+  useEffect(() => {
+    const fetchProducts = async () => {
+      const categoryName = data?.data.category?.name || '';
+      if (!categoryName) {
+        setListProduct([]);
+        return;
+      }
+      try {
+        const res = await getProductsByCategoryName(categoryName, 1, 8);
+        if (res.success) {
+          // Ensure res.data is an array and cast to Product[] for the state setter
+          const products = Array.isArray(res.data) ? (res.data as Product[]) : [];
+          setListProduct(products);
+        }
+      } catch (e) {
+        setListProduct([]);
+      }
+    };
+    fetchProducts();
+  }, [data?.data.category?.name]);
+
+
+
+
   const product = useMemo(() => {
     if (data?.success && data.data) {
       return data.data as ProductDetail;
@@ -130,13 +158,22 @@ export default function ProductDetailPage() {
       </div>
     );
   }
+  const handleAddToCart = () => {
+    if (!product?._id) return;
+    addToCart({
+      productId: product._id,
+      quantity,
+    });
+    toast.success('Đã thêm vào giỏ hàng');
+
+  };
 
   const images = product.images || [];
   const priceFinal = product.deal
     ? Math.round(product.price * (1 - product.deal / 100))
     : product.price;
   const hasDiscount = product.deal && product.deal > 0;
-
+  console.log(product)
   return (
     <div className="container mx-auto max-w-7xl p-6">
       {/* Breadcrumb */}
@@ -157,21 +194,7 @@ export default function ProductDetailPage() {
           </Badge>
         </div>
 
-        <div className="hidden items-center gap-3 sm:flex">
-          <div className="flex items-center gap-1">
-            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-            <span className="font-medium">
-              {product.rating?.average ?? '—'}
-            </span>
-            <span className="text-muted-foreground text-sm">
-              ({product.rating?.count ?? 0})
-            </span>
-          </div>
-          <Separator orientation="vertical" className="h-4" />
-          <span className="text-muted-foreground text-sm">
-            SKU: {product._id?.slice(-8)}
-          </span>
-        </div>
+
       </div>
 
       <div className="grid gap-8 lg:grid-cols-12">
@@ -230,11 +253,10 @@ export default function ProductDetailPage() {
                     <button
                       key={i}
                       onClick={() => setSelectedImageIndex(i)}
-                      className={`shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
-                        i === selectedImageIndex
-                          ? 'border-primary ring-primary/20 ring-2'
-                          : 'hover:border-primary/50 border-transparent'
-                      }`}
+                      className={`shrink-0 overflow-hidden rounded-lg border-2 transition-all ${i === selectedImageIndex
+                        ? 'border-primary ring-primary/20 ring-2'
+                        : 'hover:border-primary/50 border-transparent'
+                        }`}
                     >
                       <Image
                         src={src}
@@ -278,7 +300,7 @@ export default function ProductDetailPage() {
                 </CardHeader>
                 <CardContent>
                   {product.specifications &&
-                  product.specifications.length > 0 ? (
+                    product.specifications.length > 0 ? (
                     <Table>
                       <TableBody>
                         {product.specifications.map((spec, i) => (
@@ -442,27 +464,27 @@ export default function ProductDetailPage() {
                 {/* Price */}
                 <div>
                   <div className="flex items-baseline gap-3">
-                    <span className="text-primary text-3xl font-bold">
-                      {priceFinal.toLocaleString()}₫
-                    </span>
-                    {hasDiscount && (
+                    {product.deal > 0 ? (
                       <>
-                        <span className="text-muted-foreground text-xl line-through">
-                          {product.price.toLocaleString()}₫
-                        </span>
-                        <Badge variant="destructive">-{product.deal}%</Badge>
+                        <p className="text-muted-foreground text-sm line-through">
+                          {product.price.toLocaleString('vi-VN')}đ
+                        </p>
+                        <p className="text-primary text-2xl font-bold">
+                          {product.deal.toLocaleString('vi-VN')}đ
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="h-5" />
+                        <p className="text-primary text-2xl font-bold">
+                          {product.price.toLocaleString('vi-VN')}đ
+                        </p>
                       </>
                     )}
                   </div>
-                  {hasDiscount && (
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      Tiết kiệm {(product.price - priceFinal).toLocaleString()}₫
-                    </p>
-                  )}
                 </div>
 
                 <Separator />
-
                 {/* Info */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -480,38 +502,42 @@ export default function ProductDetailPage() {
                     </p>
                   </div>
                 </div>
-
-                {/* Variant Selector */}
-                {product.variants && product.variants.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <label className="mb-3 block text-sm font-medium">
-                        Chọn biến thể
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {product.variants.map((v, i) => (
-                          <Button
-                            key={i}
-                            variant={
-                              selectedVariant === i ? 'default' : 'outline'
-                            }
-                            size="sm"
-                            onClick={() => setSelectedVariant(i)}
-                          >
-                            {v.size || `Loại ${i + 1}`}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-
                 <Separator />
+                <div>
+                  <label className="mb-3 block text-sm font-medium text-gray-700">
+                    Số lượng
+                  </label>
+                  <div className="inline-flex items-center overflow-hidden rounded-md border-2 border-gray-200">
+                    <button
+                      onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                      className="flex h-10 w-10 items-center justify-center bg-gray-50 text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200"
+                      aria-label="Giảm số lượng"
+                    >
+                      <span className="text-lg font-semibold">−</span>
+                    </button>
+                    <div className="flex h-10 w-16 items-center justify-center bg-white">
+                      <span className="text-base font-semibold text-gray-900">{quantity}</span>
+                    </div>
+                    <button
+                      onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
+                      className="flex h-10 w-10 items-center justify-center bg-gray-50 text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200"
+                      aria-label="Tăng số lượng"
+                      disabled={quantity >= product.stock}
+                    >
+                      <span className="text-lg font-semibold">+</span>
+                    </button>
+                  </div>
+                  {product.stock > 0 && quantity >= product.stock && (
+                    <p className="mt-2 text-xs text-amber-600">
+                      Đã đạt số lượng tối đa trong kho
+                    </p>
+                  )}
+                </div>
 
                 {/* Actions */}
                 <div className="space-y-2">
                   <Button
+                    onClick={handleAddToCart}
                     className="w-full"
                     size="lg"
                     disabled={product.stock === 0}
@@ -585,6 +611,16 @@ export default function ProductDetailPage() {
           </div>
         </aside>
       </div>
+
+      <div className="mt-12">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Đánh giá sản phẩm</h2>
+        <ProductReviewsSection productId={product._id} />
+      </div>
+
+      <SimilarProducts
+        categoryName={product.category.name}
+        currentProductId={product._id}
+      />
     </div>
   );
 }

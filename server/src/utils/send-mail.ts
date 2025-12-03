@@ -3,14 +3,14 @@ import { transporter } from "@/config";
 type Params = {
   to: string;
   subject: string;
-  text: string;
+  text?: string;
   html: string;
 };
 
 export const sendMail = async ({ to, subject, text, html }: Params) => {
   try {
     const info = await transporter.sendMail({
-      from: "My App",
+      from: "HipCamp <noreply@hipcamp.vn>",
       to,
       subject,
       text,

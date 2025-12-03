@@ -158,7 +158,7 @@ export default function TripsPage() {
       <section>
         <h2 className="mb-4 text-xl font-semibold">Chuyến đi sắp tới</h2>
         {upcomingTrips.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-3">
             {upcomingTrips.map(booking => (
               <TripCard key={booking._id} booking={booking} />
             ))}
