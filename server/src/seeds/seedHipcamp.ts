@@ -2,7 +2,6 @@ import "dotenv/config";
 
 import { MONGO_URI } from "@/constants/env";
 import {
-  ActivityModel,
   AmenityModel,
   AvailabilityModel,
   BookingModel,
@@ -64,46 +63,6 @@ const amenities = [
   },
   { name: "Hồ bơi", description: "Bể bơi", icon: "🏊", category: "special" },
   { name: "Spa/Jacuzzi", description: "Bồn tắm nước nóng", icon: "♨️", category: "special" },
-];
-
-// ===== ACTIVITIES DATA =====
-const activities = [
-  // Water
-  { name: "Bơi lội", description: "Hồ bơi hoặc suối", icon: "🏊", category: "water" },
-  { name: "Câu cá", description: "Khu vực câu cá", icon: "🎣", category: "water" },
-  { name: "Chèo thuyền", description: "Cho thuê thuyền kayak", icon: "🛶", category: "water" },
-  { name: "Lặn biển", description: "Snorkeling", icon: "🤿", category: "water" },
-
-  // Hiking
-  { name: "Leo núi", description: "Đường mòn leo núi", icon: "🧗", category: "hiking" },
-  { name: "Trekking", description: "Đường mòn đi bộ đường dài", icon: "🥾", category: "hiking" },
-  { name: "Đi bộ ngắn", description: "Đường mòn dễ", icon: "🚶", category: "hiking" },
-  { name: "Xe đạp địa hình", description: "Đường mòn xe đạp", icon: "🚵", category: "hiking" },
-
-  // Wildlife
-  { name: "Ngắm chim", description: "Khu vực quan sát chim", icon: "🦅", category: "wildlife" },
-  { name: "Safari", description: "Xem động vật hoang dã", icon: "🦁", category: "wildlife" },
-  { name: "Ngắm sao", description: "Trời đêm trong trẻo", icon: "⭐", category: "wildlife" },
-
-  // Adventure
-  { name: "Zipline", description: "Trò chơi mạo hiểm", icon: "🎢", category: "adventure" },
-  { name: "Rock climbing", description: "Leo núi đá", icon: "🧗", category: "adventure" },
-  { name: "ATV", description: "Xe địa hình", icon: "🏍️", category: "adventure" },
-  { name: "Horse riding", description: "Cưỡi ngựa", icon: "🐎", category: "adventure" },
-
-  // Relaxation
-  { name: "Yoga", description: "Khu vực tập yoga", icon: "🧘", category: "relaxation" },
-  { name: "Thiền", description: "Không gian thiền định", icon: "🕉️", category: "relaxation" },
-  { name: "Spa", description: "Dịch vụ spa", icon: "💆", category: "relaxation" },
-  { name: "Massage", description: "Massage trị liệu", icon: "💆", category: "relaxation" },
-
-  // Winter (optional)
-  { name: "Trượt tuyết", description: "Trượt tuyết", icon: "⛷️", category: "winter" },
-
-  // Other
-  { name: "Chụp ảnh", description: "Địa điểm chụp ảnh đẹp", icon: "📸", category: "other" },
-  { name: "Văn hóa địa phương", description: "Trải nghiệm văn hóa", icon: "🎭", category: "other" },
-  { name: "Nông trại", description: "Trải nghiệm nông trại", icon: "🌾", category: "other" },
 ];
 
 // ===== USERS DATA =====
@@ -1076,7 +1035,6 @@ async function seedDatabase() {
       .drop()
       .catch(() => {});
     await AmenityModel.deleteMany({});
-    await ActivityModel.deleteMany({});
     await ReviewModel.deleteMany({});
     await BookingModel.deleteMany({});
     await AvailabilityModel.deleteMany({});
@@ -1089,11 +1047,6 @@ async function seedDatabase() {
     console.log("🏕️  Seeding amenities...");
     const createdAmenities = await AmenityModel.insertMany(amenities);
     console.log(`✅ Created ${createdAmenities.length} amenities`);
-
-    // ===== SEED ACTIVITIES =====
-    console.log("🎯 Seeding activities...");
-    const createdActivities = await ActivityModel.insertMany(activities);
-    console.log(`✅ Created ${createdActivities.length} activities`);
 
     // ===== SEED USERS =====
     console.log("👤 Seeding users...");
@@ -1133,11 +1086,6 @@ async function seedDatabase() {
         name: { $in: data.amenityNames },
       }).select("_id");
 
-      // Find activity IDs
-      const activityIds = await ActivityModel.find({
-        name: { $in: data.activityNames },
-      }).select("_id");
-
       // Create Property
       const property = await PropertyModel.create({
         name: data.name,
@@ -1170,31 +1118,6 @@ async function seedDatabase() {
           value: Math.floor(Math.random() * 200) + 50, // 50-250 acres
           unit: "acres" as const,
         },
-        lodgingType:
-          data.propertyType === "tent" || data.propertyType === "rv"
-            ? "bring_your_own"
-            : "structure_provided",
-        sharedAmenities: {
-          toilets: {
-            type: amenityIds.some((a: any) => ["Toilet"].includes(a.name)) ? "flush" : "none",
-            count: 2,
-            isShared: true,
-          },
-          showers: {
-            type: amenityIds.some((a: any) => ["Tắm nước nóng"].includes(a.name)) ? "hot" : "none",
-            count: 2,
-            isShared: true,
-          },
-          potableWater: amenityIds.some((a: any) => ["Nước"].includes(a.name)),
-          parkingType: amenityIds.some((a: any) => ["Bãi đỗ xe"].includes(a.name))
-            ? "drive_in"
-            : undefined,
-          parkingSpaces: amenityIds.some((a: any) => ["Bãi đỗ xe"].includes(a.name)) ? 10 : 0,
-          laundry: false,
-          wifi: amenityIds.some((a: any) => ["Wifi"].includes(a.name)),
-          electricityAvailable: amenityIds.some((a: any) => ["Điện"].includes(a.name)),
-        },
-        activities: activityIds.map((a) => a._id),
         rules: [
           {
             text: data.rules.allowPets ? "Cho phép thú cưng" : "Không cho phép thú cưng",
@@ -1208,11 +1131,6 @@ async function seedDatabase() {
             order: 3,
           },
         ],
-        policies: {
-          checkInTime: data.rules.checkIn,
-          checkOutTime: data.rules.checkOut,
-          cancellationPolicy: "flexible",
-        },
         photos: data.images.map((url: string, idx: number) => ({
           url,
           isCover: idx === 0,
@@ -1232,9 +1150,6 @@ async function seedDatabase() {
 
       const accommodationType =
         data.propertyType === "glamping" ? "safari_tent" : data.propertyType;
-
-      // For undesignated properties, create a group ID
-      const groupId = isUndesignated ? new mongoose.Types.ObjectId() : undefined;
 
       // Site names for variety
       const siteNames = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"];
@@ -1282,7 +1197,6 @@ async function seedDatabase() {
           property: property._id,
           accommodationType,
           lodgingProvided: data.propertyType === "tent" ? "bring_your_own" : "structure_provided",
-          siteType: isUndesignated ? "undesignated" : "designated",
           siteLocation: {
             coordinates: {
               type: "Point",
@@ -1311,19 +1225,7 @@ async function seedDatabase() {
             weekendPrice: siteWeekendPrice,
             seasonalPricing: [],
           },
-          amenities: {
-            electrical: {
-              available: amenityIds.some((a: any) => ["Điện"].includes(a.name)),
-              amperage: 30,
-            },
-            water: {
-              available: amenityIds.some((a: any) => ["Nước"].includes(a.name)),
-              drinkable: true,
-            },
-            sewer: { available: false, type: "dump_station" },
-            firePit: amenityIds.some((a: any) => ["Lửa trại", "Lò nướng BBQ"].includes(a.name)),
-            picnicTable: amenityIds.some((a: any) => ["Bàn ghế ngoài trời"].includes(a.name)),
-          },
+          amenities: amenityIds.map((a: any) => a._id), // Array of Amenity ObjectIds
           bookingSettings: {
             minimumNights: data.rules.minNights,
             maximumNights: data.rules.maxNights,
@@ -1339,16 +1241,6 @@ async function seedDatabase() {
             isCover: idx === 0,
             order: idx,
           })),
-          // Grouped site info for undesignated sites
-          groupedSiteInfo: isUndesignated
-            ? {
-                isGrouped: true,
-                groupId: groupId,
-                totalSitesInGroup: numSites,
-              }
-            : {
-                isGrouped: false,
-              },
           isActive: true,
         });
 
@@ -1792,7 +1684,6 @@ async function seedDatabase() {
     console.log("\n🎉 Database seeded successfully!");
     console.log("📊 Summary:");
     console.log(`   - Amenities: ${createdAmenities.length}`);
-    console.log(`   - Activities: ${createdActivities.length}`);
     console.log(`   - Users: ${createdUsers.length}`);
     console.log(`   - Properties: ${createdProperties.length}`);
     console.log(`   - Sites: ${createdSites.length}`);

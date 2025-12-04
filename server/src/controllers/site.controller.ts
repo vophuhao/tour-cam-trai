@@ -163,19 +163,6 @@ export default class SiteController {
   });
 
   /**
-   * Check group availability for undesignated sites
-   * @route GET /api/sites/group/:groupId/availability
-   */
-  checkGroupAvailability = catchErrors(async (req, res) => {
-    const { groupId } = req.params;
-    const { checkIn, checkOut } = req.query as { checkIn: string; checkOut: string };
-
-    const result = await this.siteService.checkGroupAvailability(groupId || "", checkIn, checkOut);
-
-    return ResponseUtil.success(res, result, "Kiểm tra lịch trống group thành công");
-  });
-
-  /**
    * Calculate pricing for site in date range
    * @route GET /api/sites/:id/calculate-pricing
    */

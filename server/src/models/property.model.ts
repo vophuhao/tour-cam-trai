@@ -31,7 +31,6 @@ export interface PropertyDocument extends mongoose.Document {
     value: number;
     unit: "acres" | "hectares" | "square_meters";
   };
-  terrain?: string; // "forest", "beach", "mountain", "desert", "farm"
   propertyType: string; // "private_land", "farm", "ranch", "campground"
 
   // Property-wide Photos
@@ -43,31 +42,6 @@ export interface PropertyDocument extends mongoose.Document {
     uploadedAt?: Date;
   }>;
 
-  // Shared Amenities (property-wide)
-  sharedAmenities: {
-    toilets?: {
-      type: "none" | "portable" | "flush" | "vault" | "composting";
-      count: number;
-      isShared: boolean;
-    };
-    showers?: {
-      type: "none" | "outdoor" | "indoor" | "hot" | "cold";
-      count: number;
-      isShared: boolean;
-    };
-    potableWater: boolean;
-    waterSource?: "tap" | "well" | "stream" | "none";
-    parkingType?: "drive_in" | "walk_in" | "nearby";
-    parkingSpaces?: number;
-    commonAreas?: string[]; // ["fire_pit_area", "picnic_area", "kitchen"]
-    laundry: boolean;
-    wifi: boolean;
-    cellService?: "excellent" | "good" | "limited" | "none";
-    electricityAvailable: boolean;
-  };
-
-  // Property-wide Activities
-  activities: mongoose.Types.ObjectId[]; // References to Activity model
   nearbyAttractions?: Array<{
     name: string;
     distance: number; // km
@@ -75,7 +49,7 @@ export interface PropertyDocument extends mongoose.Document {
   }>;
 
   // Property Rules & Policies
-  rules: Array<{
+  rules?: Array<{
     text: string;
     category: "pets" | "noise" | "fire" | "general";
     order: number;
@@ -83,11 +57,6 @@ export interface PropertyDocument extends mongoose.Document {
 
   checkInInstructions?: string;
   checkOutInstructions?: string;
-  emergencyContact?: {
-    name: string;
-    phone: string;
-    instructions?: string;
-  };
 
   // Policies
   cancellationPolicy: {
@@ -97,18 +66,6 @@ export interface PropertyDocument extends mongoose.Document {
       daysBeforeCheckIn: number;
       refundPercentage: number; // 0-100
     }>;
-  };
-
-  petPolicy: {
-    allowed: boolean;
-    maxPets?: number;
-    fee?: number;
-    rules?: string;
-  };
-
-  childrenPolicy: {
-    allowed: boolean;
-    ageRestrictions?: string;
   };
 
   // Stats (aggregated from sites)
@@ -154,13 +111,6 @@ export interface PropertyDocument extends mongoose.Document {
     minimumAdvanceNotice: number; // hours
     bookingWindow: number; // days in advance
     allowWholePropertyBooking: boolean;
-  };
-
-  // SEO
-  seo?: {
-    metaTitle?: string;
-    metaDescription?: string;
-    keywords?: string[];
   };
 
   // Timestamps
@@ -212,7 +162,7 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
       value: { type: Number, min: 0 },
       unit: { type: String, enum: ["acres", "hectares", "square_meters"] },
     },
-    terrain: { type: String, maxlength: 100 },
+
     propertyType: {
       type: String,
       required: true,
@@ -231,31 +181,6 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
       },
     ],
 
-    // Shared Amenities
-    sharedAmenities: {
-      toilets: {
-        type: { type: String, enum: ["none", "portable", "flush", "vault", "composting"] },
-        count: { type: Number, min: 0, default: 0 },
-        isShared: { type: Boolean, default: true },
-      },
-      showers: {
-        type: { type: String, enum: ["none", "outdoor", "indoor", "hot", "cold"] },
-        count: { type: Number, min: 0, default: 0 },
-        isShared: { type: Boolean, default: true },
-      },
-      potableWater: { type: Boolean, default: false },
-      waterSource: { type: String, enum: ["tap", "well", "stream", "none"] },
-      parkingType: { type: String, enum: ["drive_in", "walk_in", "nearby"] },
-      parkingSpaces: { type: Number, min: 0 },
-      commonAreas: [{ type: String }],
-      laundry: { type: Boolean, default: false },
-      wifi: { type: Boolean, default: false },
-      cellService: { type: String, enum: ["excellent", "good", "limited", "none"] },
-      electricityAvailable: { type: Boolean, default: false },
-    },
-
-    // Activities
-    activities: [{ type: mongoose.Schema.Types.ObjectId, ref: "Activity" }],
     nearbyAttractions: [
       {
         name: { type: String, required: true },
@@ -275,11 +200,6 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
 
     checkInInstructions: { type: String, maxlength: 2000 },
     checkOutInstructions: { type: String, maxlength: 2000 },
-    emergencyContact: {
-      name: { type: String },
-      phone: { type: String },
-      instructions: { type: String, maxlength: 500 },
-    },
 
     // Policies
     cancellationPolicy: {
@@ -295,18 +215,6 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
           refundPercentage: { type: Number, required: true, min: 0, max: 100 },
         },
       ],
-    },
-
-    petPolicy: {
-      allowed: { type: Boolean, default: false },
-      maxPets: { type: Number, min: 0 },
-      fee: { type: Number, min: 0 },
-      rules: { type: String, maxlength: 500 },
-    },
-
-    childrenPolicy: {
-      allowed: { type: Boolean, default: true },
-      ageRestrictions: { type: String, maxlength: 200 },
     },
 
     // Stats
@@ -357,13 +265,6 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
       minimumAdvanceNotice: { type: Number, default: 24, min: 0 }, // hours
       bookingWindow: { type: Number, default: 365, min: 1 }, // days
       allowWholePropertyBooking: { type: Boolean, default: false },
-    },
-
-    // SEO
-    seo: {
-      metaTitle: { type: String, maxlength: 100 },
-      metaDescription: { type: String, maxlength: 200 },
-      keywords: [{ type: String }],
     },
 
     // Timestamps

@@ -62,14 +62,14 @@ export class SiteService {
       query = { slug: idOrSlug, property: propertyId };
     }
 
-    const site = await SiteModel.findOne(query).populate("property", "name host location").lean();
+    const site = await SiteModel.findOne(query).populate("property", "name host location");
 
     appAssert(site, ErrorFactory.resourceNotFound("Site"));
 
     // Increment view count
-    await SiteModel.findByIdAndUpdate(site!._id, { $inc: { "stats.views": 1 } });
+    await SiteModel.findByIdAndUpdate(site._id, { $inc: { "stats.viewCount": 1 } });
 
-    return site!;
+    return site;
   }
 
   /**
@@ -182,15 +182,7 @@ export class SiteService {
       allowRVs,
       minPrice,
       maxPrice,
-      hasElectrical,
-      hasWaterHookup,
-      hasSewerHookup,
-      hasFirePit,
-      hasBedding,
-      hasKitchen,
-      hasPrivateBathroom,
-      hasWifi,
-      wheelchairAccessible,
+      amenities, // Now expects array of amenity IDs
       checkIn,
       checkOut,
       instantBookOnly,
@@ -232,23 +224,18 @@ export class SiteService {
       };
     }
 
-    // Amenity filters
-    if (hasElectrical) query["amenities.electrical.available"] = true;
-    if (hasWaterHookup) query["amenities.waterHookup.available"] = true;
-    if (hasSewerHookup) query["amenities.sewerHookup.available"] = true;
-    if (hasFirePit) query["amenities.firePit.available"] = true;
-    if (hasBedding) query["amenities.bedding.available"] = true;
-    if (hasKitchen) query["amenities.kitchen.available"] = true;
-    if (hasPrivateBathroom) query["amenities.privateBathroom.available"] = true;
-    if (hasWifi) query["amenities.wifi"] = true;
-    if (wheelchairAccessible) query["amenities.accessibility.wheelchairAccessible"] = true;
+    // Amenity filters - Now uses ObjectId[] refs to Amenity model
+    // Filter by amenity IDs array
+    if (amenities && amenities.length > 0) {
+      query.amenities = { $in: amenities };
+    }
 
     // Booking settings
-    if (instantBookOnly) query["bookingSettings.allowInstantBook"] = true;
+    if (instantBookOnly) query["bookingSettings.instantBook"] = true;
 
     // Status filters
     if (isActive !== undefined) query.isActive = isActive;
-    if (isAvailable !== undefined) query.isAvailable = isAvailable;
+    if (isAvailable !== undefined) query.isAvailableForBooking = isAvailable;
 
     // Rating filter
     if (minRating) query["rating.average"] = { $gte: minRating };
@@ -296,6 +283,7 @@ export class SiteService {
         .skip(skip)
         .limit(limit)
         .populate("property", "name host location")
+        .populate("amenities", "name icon category")
         .lean(),
       SiteModel.countDocuments(query),
     ]);
@@ -552,19 +540,19 @@ export class SiteService {
 
     // Apply discounts
     let discount = 0;
-    if (nights >= 28 && site!.pricing.discounts?.monthly) {
-      discount = (subtotal * site!.pricing.discounts.monthly) / 100;
-    } else if (nights >= 7 && site!.pricing.discounts?.weekly) {
-      discount = (subtotal * site!.pricing.discounts.weekly) / 100;
+    if (nights >= 28 && site!.pricing.monthlyDiscount) {
+      discount = (subtotal * site!.pricing.monthlyDiscount) / 100;
+    } else if (nights >= 7 && site!.pricing.weeklyDiscount) {
+      discount = (subtotal * site!.pricing.weeklyDiscount) / 100;
     }
 
     // Calculate fees
-    const fees = site!.pricing.fees || {};
-    const cleaningFee = fees.cleaningFee || 0;
-    const petFee = fees.petFee || 0;
+    const cleaningFee = site!.pricing.cleaningFee || 0;
+    const petFee = site!.pricing.petFee || 0;
+    const additionalGuestFee = site!.pricing.additionalGuestFee || 0;
     const extraGuestFee =
       guestCount > site!.capacity.maxGuests
-        ? (guestCount - site!.capacity.maxGuests) * (fees.extraGuestFee || 0)
+        ? (guestCount - site!.capacity.maxGuests) * additionalGuestFee
         : 0;
 
     const total = subtotal - discount + cleaningFee + petFee + extraGuestFee;
