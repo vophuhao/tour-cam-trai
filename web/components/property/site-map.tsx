@@ -5,7 +5,7 @@ import type { Property, Site } from '@/types/property-site';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import Map, { MapRef, Marker, NavigationControl, Popup } from 'react-map-gl';
 
 // Helper to extract lat/lng from Site siteLocation (GeoJSON format)
@@ -55,7 +55,6 @@ export function SiteMap({
   onSiteSelect,
 }: SiteMapProps) {
   const mapRef = useRef<MapRef>(null);
-  const isMounted = useRef(false);
   const propertyCenter = getPropertyCoordinates(property.location.coordinates);
 
   const [viewState, setViewState] = useState({
@@ -66,46 +65,10 @@ export function SiteMap({
   const [popupInfo, setPopupInfo] = useState<Site | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
 
-  // Initialize and cleanup map state properly
-  useEffect(() => {
-    let mounted = true;
-    isMounted.current = true;
-
-    const checkMapLoaded = () => {
-      if (!mounted) return;
-
-      if (mapRef.current?.getMap) {
-        try {
-          const map = mapRef.current.getMap();
-          if (map?.loaded()) {
-            setMapLoaded(true);
-          }
-        } catch {
-          // Map not ready
-        }
-      }
-    };
-
-    // Check immediately
-    checkMapLoaded();
-
-    // Also check after a short delay in case map loads asynchronously
-    const timer = setTimeout(checkMapLoaded, 100);
-
-    return () => {
-      mounted = false;
-      isMounted.current = false;
-      clearTimeout(timer);
-      // Full state cleanup on unmount
-      setPopupInfo(null);
-      setMapLoaded(false);
-    };
-  }, []);
-
   const handleMarkerClick = useCallback(
     (site: Site) => {
-      // Guard: don't execute if component unmounted or map not loaded
-      if (!mapLoaded || !isMounted.current) return;
+      // Guard: don't execute if map not loaded
+      if (!mapLoaded) return;
 
       setPopupInfo(site);
       onSiteSelect?.(site);
@@ -144,24 +107,8 @@ export function SiteMap({
 
   // Memoize markers to prevent unnecessary rerenders
   const markers = useMemo(() => {
-    // Don't render markers until map is fully loaded AND component is mounted
-    if (!mapLoaded || !isMounted.current) return null;
-
-    // Verify map container exists in DOM before rendering markers
-    if (!mapRef.current?.getMap) return null;
-
-    try {
-      const map = mapRef.current.getMap();
-      const container = map.getContainer();
-
-      // Critical check: ensure container is still in DOM
-      if (!container || !document.body.contains(container)) {
-        return null;
-      }
-    } catch {
-      // Map not ready or already unmounted
-      return null;
-    }
+    // Don't render markers until map is fully loaded
+    if (!mapLoaded) return null;
 
     // Safely create markers with error boundary
     try {
@@ -228,6 +175,8 @@ export function SiteMap({
 
   return (
     <Map
+      key={property._id}
+      id="site-map"
       ref={mapRef}
       {...viewState}
       onMove={evt => setViewState(evt.viewState)}
