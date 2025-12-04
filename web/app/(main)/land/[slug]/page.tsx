@@ -103,9 +103,8 @@ export default async function PropertyPage({
 
   const { property, sites } = response;
 
-  // Check if property is undesignated (all sites are undesignated)
-  const isUndesignatedProperty =
-    sites.length > 0 && sites.every(site => site.siteType === 'undesignated');
+  // Filter active sites only
+  const activeSites = sites.filter(site => site.isActive);
 
   // Fetch similar properties if location available
   const similarProperties = property.location?.city
@@ -150,12 +149,11 @@ export default async function PropertyPage({
               {/* Booking Card */}
               <PropertyBookingCard
                 property={property}
-                sites={sites}
+                sites={activeSites}
                 initialGuests={guests}
                 initialPets={pets}
                 checkIn={search.checkIn}
                 checkOut={search.checkOut}
-                isUndesignated={isUndesignatedProperty}
               />
             </div>
           </div>
@@ -163,11 +161,11 @@ export default async function PropertyPage({
 
         <Separator className="my-8" />
 
-        {/* Available Sites - Only show for designated properties */}
-        {!isUndesignatedProperty && (
+        {/* Available Sites - Only show if there are multiple sites */}
+        {activeSites.length > 1 && (
           <>
             <SitesListSection
-              sites={sites}
+              sites={activeSites}
               property={property}
               propertySlug={property.slug}
               initialCheckIn={search.checkIn}

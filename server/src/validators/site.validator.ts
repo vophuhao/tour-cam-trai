@@ -83,6 +83,11 @@ const capacitySchema = z.object({
   maxTents: z.number().int().min(0).optional(),
   maxRVs: z.number().int().min(0).optional(),
   rvMaxLength: z.number().min(0).optional(), // feet
+
+  // Concurrent Bookings (designated vs undesignated)
+  // 1 = designated (only 1 booking at a time)
+  // 2+ = undesignated (multiple concurrent bookings, "X sites left")
+  maxConcurrentBookings: z.number().int().min(1).max(100).default(1),
 });
 
 // Dimensions sub-schema
@@ -145,9 +150,6 @@ export const createSiteSchema = z.object({
   name: z.string().min(2).max(200),
   slug: z.string().min(2).max(200).optional(),
   description: z.string().min(20).max(3000).optional(),
-
-  // Site Type
-  siteType: z.enum(["designated", "undesignated"]).default("designated"),
 
   // Accommodation Type
   accommodationType: z.enum([
@@ -225,18 +227,6 @@ export const searchSiteSchema = z.object({
 
   // Search
   search: z.string().optional(),
-
-  // Site type filter
-  siteType: z
-    .union([
-      z.enum(["designated", "undesignated"]),
-      z.array(z.enum(["designated", "undesignated"])),
-    ])
-    .optional()
-    .transform((val) => {
-      if (typeof val === "string") return [val];
-      return val;
-    }),
 
   // Accommodation type filter
   accommodationType: z

@@ -1,23 +1,16 @@
 'use client';
 
-import {
-  DateRangePicker,
-  type DateRangeType,
-} from '@/components/search/date-range-picker';
+import { type DateRangeType } from '@/components/search/date-range-picker';
+import { DateRangePopover } from '@/components/search/date-range-popover';
+import { GuestPopover } from '@/components/search/guest-popover';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { getBlockedDates } from '@/lib/client-actions';
 import type { Property, Site } from '@/types/property-site';
 import { useQuery } from '@tanstack/react-query';
-import { differenceInDays, format } from 'date-fns';
-import { vi } from 'date-fns/locale';
-import { CalendarIcon, Minus, Plus, Star, Users } from 'lucide-react';
+import { differenceInDays } from 'date-fns';
+import { Star } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
@@ -28,7 +21,6 @@ interface PropertyBookingCardProps {
   initialPets?: number;
   checkIn?: string;
   checkOut?: string;
-  isUndesignated?: boolean; // New prop to handle undesignated properties
   onSearch?: (params: {
     checkIn: string;
     checkOut: string;
@@ -44,9 +36,16 @@ export function PropertyBookingCard({
   initialPets = 0,
   checkIn,
   checkOut,
-  isUndesignated = false,
   onSearch,
 }: PropertyBookingCardProps) {
+  // Auto-detect if this is undesignated property
+  // Undesignated = any site with maxConcurrentBookings > 1
+  const isUndesignated = useMemo(() => {
+    return sites.some(site => (site.capacity.maxConcurrentBookings ?? 1) > 1);
+  }, [sites]);
+
+  // Check if property has only one site (for maximumNights check)
+  const isSingleSiteProperty = sites.length === 1;
   const [dateRange, setDateRange] = useState<DateRangeType | undefined>(() => {
     if (checkIn && checkOut) {
       return {
@@ -110,34 +109,54 @@ export function PropertyBookingCard({
     if (!siteAvailabilities || siteAvailabilities.length === 0) return [];
 
     if (isUndesignated) {
-      // For UNDESIGNATED: Block dates only when ALL sites are blocked
-      // (same logic as designated - only block if no sites available)
+      // For UNDESIGNATED: Find the undesignated site(s) and merge their blocked dates
+      // An undesignated site has maxConcurrentBookings > 1
+      const undesignatedIndices: number[] = [];
+      sites.forEach((site, index) => {
+        if ((site.capacity.maxConcurrentBookings ?? 1) > 1) {
+          undesignatedIndices.push(index);
+        }
+      });
+
+      if (undesignatedIndices.length === 0) return [];
+
+      // If there's only one undesignated site, use its blocked dates directly
+      if (undesignatedIndices.length === 1) {
+        const result = siteAvailabilities[undesignatedIndices[0]];
+        if (result?.data?.blockedDates) {
+          return result.data.blockedDates.map(
+            (dateStr: string) => new Date(dateStr),
+          );
+        }
+        return [];
+      }
+
+      // If multiple undesignated sites, block only when ALL are blocked
       const dateBlockedCount = new Map<string, number>();
+      undesignatedIndices.forEach(index => {
+        const result = siteAvailabilities[index];
+        if (result?.data?.blockedDates) {
+          result.data.blockedDates.forEach((dateStr: string) => {
+            dateBlockedCount.set(
+              dateStr,
+              (dateBlockedCount.get(dateStr) || 0) + 1,
+            );
+          });
+        }
+      });
 
-      siteAvailabilities.forEach(
-        (result: { data?: { blockedDates?: string[] } }) => {
-          if (result.data?.blockedDates) {
-            result.data.blockedDates.forEach((dateStr: string) => {
-              dateBlockedCount.set(
-                dateStr,
-                (dateBlockedCount.get(dateStr) || 0) + 1,
-              );
-            });
-          }
-        },
-      );
-
-      // Only block dates that are blocked in ALL sites
+      // Only block dates that are blocked in ALL undesignated sites
       const fullyBlockedDates: string[] = [];
       dateBlockedCount.forEach((count, dateStr) => {
-        if (count === siteAvailabilities.length) {
+        if (count === undesignatedIndices.length) {
           fullyBlockedDates.push(dateStr);
         }
       });
 
       return fullyBlockedDates.map(dateStr => new Date(dateStr));
     } else {
-      // For DESIGNATED: Block dates only when ALL sites are blocked
+      // For DESIGNATED (all sites with capacity = 1):
+      // Block dates only when ALL sites are blocked (no availability across all sites)
       const dateBlockedCount = new Map<string, number>();
 
       siteAvailabilities.forEach(
@@ -163,7 +182,7 @@ export function PropertyBookingCard({
 
       return fullyBlockedDates.map(dateStr => new Date(dateStr));
     }
-  }, [siteAvailabilities, isUndesignated]);
+  }, [siteAvailabilities, isUndesignated, sites]);
 
   // Calculate pricing range from available sites
   const prices = sites
@@ -178,33 +197,30 @@ export function PropertyBookingCard({
       ? differenceInDays(dateRange.to, dateRange.from)
       : 1;
 
-  // Get maximumNights from sites (for undesignated)
+  // Get maximumNights from sites (for single site properties)
   const maximumNights = useMemo(() => {
-    if (!isUndesignated || sites.length === 0) return undefined;
-    // All sites in undesignated group should have same maximumNights
+    if (!isSingleSiteProperty || sites.length === 0) return undefined;
+    // Single site properties may have maximumNights restriction
     return sites[0]?.bookingSettings?.maximumNights;
-  }, [isUndesignated, sites]);
+  }, [isSingleSiteProperty, sites]);
 
-  // Check if selected nights exceed maximum for undesignated
+  // Check if selected nights exceed maximum for single site properties
   const exceedsMaxNights = useMemo(() => {
-    if (!isUndesignated || !maximumNights || !dateRange?.from || !dateRange?.to)
+    if (
+      !isSingleSiteProperty ||
+      !maximumNights ||
+      !dateRange?.from ||
+      !dateRange?.to
+    )
       return false;
     return nights > maximumNights;
-  }, [isUndesignated, maximumNights, nights, dateRange]);
+  }, [isSingleSiteProperty, maximumNights, nights, dateRange]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND',
     }).format(price);
-  };
-
-  const handleDateChange = (newDateRange?: DateRangeType) => {
-    setDateRange(newDateRange);
-    // Auto-close popover when both dates are selected
-    if (newDateRange?.from && newDateRange?.to) {
-      setDatePopoverOpen(false);
-    }
   };
 
   // Get max capacity from sites
@@ -214,30 +230,6 @@ export function PropertyBookingCard({
     const maxPets = Math.max(...sites.map(s => s.capacity.maxPets || 5));
     return { maxGuests, maxPets };
   }, [sites]);
-
-  const handleGuestChange = (
-    type: 'adults' | 'children' | 'pets',
-    delta: number,
-  ) => {
-    if (type === 'adults') {
-      const newValue = Math.max(1, adults + delta);
-      // Check if total guests would exceed capacity
-      if (newValue + children <= maxCapacity.maxGuests) {
-        setAdults(newValue);
-      }
-    } else if (type === 'children') {
-      const newValue = Math.max(0, children + delta);
-      // Check if total guests would exceed capacity
-      if (adults + newValue <= maxCapacity.maxGuests) {
-        setChildren(newValue);
-      }
-    } else {
-      const newValue = Math.max(0, pets + delta);
-      if (newValue <= maxCapacity.maxPets) {
-        setPets(newValue);
-      }
-    }
-  };
 
   const handleSearch = () => {
     // Validation: Check if dates are selected
@@ -266,46 +258,44 @@ export function PropertyBookingCard({
     }
   };
 
-  // Build checkout URL for undesignated booking
+  // Build checkout URL for single site property booking
   const buildUndesignatedCheckoutUrl = () => {
-    if (!dateRange?.from || !dateRange?.to || sites.length === 0) return '#';
+    if (
+      !dateRange?.from ||
+      !dateRange?.to ||
+      !isSingleSiteProperty ||
+      sites.length === 0
+    )
+      return '#';
 
-    // Get first site (all sites in group have same pricing)
-    const representativeSite = sites[0];
-    const groupId = representativeSite.groupedSiteInfo?.groupId;
-
-    if (!groupId) return '#';
-
-    const totalPrice = representativeSite.pricing.basePrice * nights;
+    // For single site properties, use the site directly
+    const site = sites[0];
+    const totalPrice = site.pricing.basePrice * nights;
 
     return (
       `/checkouts/payment?` +
       new URLSearchParams({
-        groupId, // Pass groupId instead of siteId
+        siteId: site._id, // Use siteId for undesignated (single site with maxConcurrentBookings > 1)
         propertyId:
-          typeof representativeSite.property === 'string'
-            ? representativeSite.property
-            : representativeSite.property._id,
-        name: property.name, // Use property name for undesignated
+          typeof site.property === 'string' ? site.property : site.property._id,
+        name: site.name || property.name, // Use site name if available, fallback to property name
         location: `${property.location.city}, ${property.location.state}`,
         image: property.photos?.[0]?.url || '',
         checkIn: dateRange.from.toISOString(),
         checkOut: dateRange.to.toISOString(),
-        basePrice: representativeSite.pricing.basePrice.toString(),
+        basePrice: site.pricing.basePrice.toString(),
         nights: nights.toString(),
-        cleaningFee: (representativeSite.pricing.cleaningFee || 0).toString(),
-        petFee: pets
-          ? ((representativeSite.pricing.petFee || 0) * pets).toString()
-          : '0',
+        cleaningFee: (site.pricing.cleaningFee || 0).toString(),
+        petFee: pets ? ((site.pricing.petFee || 0) * pets).toString() : '0',
         additionalGuestFee:
-          guests > representativeSite.capacity.maxGuests
+          guests > site.capacity.maxGuests
             ? (
-                (representativeSite.pricing.additionalGuestFee || 0) *
-                (guests - representativeSite.capacity.maxGuests)
+                (site.pricing.additionalGuestFee || 0) *
+                (guests - site.capacity.maxGuests)
               ).toString()
             : '0',
         total: totalPrice.toString(),
-        currency: representativeSite.pricing.currency || 'VND',
+        currency: site.pricing.currency || 'VND',
         guests: guests.toString(),
         pets: pets.toString(),
         vehicles: '1',
@@ -358,157 +348,45 @@ export function PropertyBookingCard({
         {/* Date Range Popover */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Ngày</label>
-          <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full justify-start text-left font-normal"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    <>
-                      {format(dateRange.from, 'dd MMM', { locale: vi })} -{' '}
-                      {format(dateRange.to, 'dd MMM yyyy', { locale: vi })}
-                    </>
-                  ) : (
-                    format(dateRange.from, 'dd MMM yyyy', { locale: vi })
-                  )
-                ) : (
-                  <span className="text-muted-foreground">Chọn ngày</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-5" align="start">
-              <DateRangePicker
-                date={dateRange}
-                onDateChange={handleDateChange}
-                disabledDates={blockedDates}
-              />
-            </PopoverContent>
-          </Popover>
+          <DateRangePopover
+            dateRange={dateRange}
+            onDateChange={setDateRange}
+            disabledDates={blockedDates}
+            open={datePopoverOpen}
+            onOpenChange={setDatePopoverOpen}
+            placeholder="Chọn ngày"
+            buttonClassName="w-full"
+            align="start"
+          />
         </div>
 
         {/* Guests Popover */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Khách</label>
-          <Popover open={guestPopoverOpen} onOpenChange={setGuestPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full justify-start text-left font-normal"
-              >
-                <Users className="mr-2 h-4 w-4" />
-                <span>
-                  {guests} khách
-                  {children > 0 && ` (${children} trẻ em)`}
-                  {pets > 0 && `, ${pets} thú cưng`}
-                </span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80" align="start">
-              <div className="space-y-4">
-                {/* Adults */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Người lớn</p>
-                    <p className="text-muted-foreground text-xs">
-                      Từ 13 tuổi trở lên
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 rounded-full"
-                      onClick={() => handleGuestChange('adults', -1)}
-                      disabled={adults <= 1}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                    <span className="w-8 text-center">{adults}</span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 rounded-full"
-                      onClick={() => handleGuestChange('adults', 1)}
-                      disabled={adults + children >= maxCapacity.maxGuests}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Children */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Trẻ em</p>
-                    <p className="text-muted-foreground text-xs">
-                      Dưới 13 tuổi
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 rounded-full"
-                      onClick={() => handleGuestChange('children', -1)}
-                      disabled={children <= 0}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                    <span className="w-8 text-center">{children}</span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 rounded-full"
-                      onClick={() => handleGuestChange('children', 1)}
-                      disabled={adults + children >= maxCapacity.maxGuests}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Pets */}
-                {property.petPolicy?.allowed && (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Thú cưng</p>
-                      <p className="text-muted-foreground text-xs">
-                        Tối đa {maxCapacity.maxPets}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 rounded-full"
-                        onClick={() => handleGuestChange('pets', -1)}
-                        disabled={pets <= 0}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <span className="w-8 text-center">{pets}</span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 rounded-full"
-                        onClick={() => handleGuestChange('pets', 1)}
-                        disabled={pets >= maxCapacity.maxPets}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
+          <GuestPopover
+            adults={adults}
+            childrenCount={children}
+            pets={pets}
+            onAdultsChange={setAdults}
+            onChildrenChange={setChildren}
+            onPetsChange={setPets}
+            open={guestPopoverOpen}
+            onOpenChange={setGuestPopoverOpen}
+            maxGuests={maxCapacity.maxGuests}
+            maxPets={maxCapacity.maxPets}
+            showPets={property.petPolicy?.allowed ?? false}
+            buttonClassName="w-full"
+            align="start"
+            labels={{
+              adultsSubtext: 'Từ 13 tuổi trở lên',
+              childrenSubtext: 'Dưới 13 tuổi',
+            }}
+          />
         </div>
 
         {/* CTA Button - Different for designated vs undesignated */}
-        {isUndesignated ? (
+        {isSingleSiteProperty ? (
+          // Single site property (designated or undesignated)
           <div className="space-y-2">
             {/* Maximum nights warning */}
             {exceedsMaxNights && maximumNights && (
@@ -516,7 +394,6 @@ export function PropertyBookingCard({
                 Tối đa {maximumNights} đêm
               </p>
             )}
-            {/* Undesignated: Direct booking button */}
             <Button
               className="w-full"
               size="lg"
@@ -540,7 +417,7 @@ export function PropertyBookingCard({
             </Button>
           </div>
         ) : (
-          // Designated: Search for available sites
+          // Multiple sites property: Search for available sites
           <Button className="w-full" size="lg" onClick={handleSearch}>
             Tìm vị trí cắm trại phù hợp
           </Button>
@@ -554,9 +431,11 @@ export function PropertyBookingCard({
               {children > 0 && ` (${children} trẻ em)`}
               {pets > 0 && ` · ${pets} thú cưng`}
             </p>
-            {isUndesignated ? (
+            {isSingleSiteProperty ? (
               <p className="text-muted-foreground mt-1 text-xs">
-                Vị trí cụ thể sẽ được chọn khi check-in
+                {isUndesignated
+                  ? 'Vị trí cụ thể sẽ được chọn khi check-in'
+                  : 'Xác nhận để hoàn tất đặt chỗ'}
               </p>
             ) : (
               <p className="text-muted-foreground mt-1 text-xs">

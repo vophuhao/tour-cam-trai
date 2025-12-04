@@ -1,5 +1,3 @@
-
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import apiClient from './api-client';
 
@@ -48,8 +46,8 @@ export async function refreshToken(): Promise<ApiResponse> {
 }
 
 // ================== USER API ==================
-export const getAllUsers = async (): Promise<ApiResponse> => apiClient.get('/users');
-
+export const getAllUsers = async (): Promise<ApiResponse> =>
+  apiClient.get('/users');
 
 export const updateProfile = async (
   data: Partial<{ username: string; bio: string; avatar: string }>,
@@ -171,10 +169,17 @@ export async function deleteProduct(id: string): Promise<ApiResponse> {
   return apiClient.delete(`/products/${id}`);
 }
 
-export async function getProductsByCategoryName(categoryName: string, page = 1, limit = 10): Promise<ApiResponse<Product[]>> {
-  return apiClient.get(`/products/category/${encodeURIComponent(categoryName)}`, {
-    params: { page, limit },
-  });
+export async function getProductsByCategoryName(
+  categoryName: string,
+  page = 1,
+  limit = 10,
+): Promise<ApiResponse<Product[]>> {
+  return apiClient.get(
+    `/products/category/${encodeURIComponent(categoryName)}`,
+    {
+      params: { page, limit },
+    },
+  );
 }
 
 // ================== REVIEW API ==================
@@ -397,12 +402,9 @@ export async function getAllOrders(): Promise<ApiResponse<Order[]>> {
 
 // ================== BOOKING API ==================
 export async function createBooking(data: {
-  // NEW: Property-Site architecture
-  site?: string;
-  property?: string;
-
-  // UNDESIGNATED: Group booking
-  groupId?: string;
+  // NEW: Property-Site architecture (site is required)
+  site: string;
+  property: string;
 
   // LEGACY: Old campsite (backward compatible)
   campsite?: string;
@@ -477,23 +479,6 @@ export async function getSiteAvailability(
 > {
   const params = checkIn && checkOut ? { checkIn, checkOut } : {};
   return apiClient.get(`/sites/${siteId}/availability`, { params });
-}
-
-export async function checkGroupAvailability(
-  groupId: string,
-  checkIn: string,
-  checkOut: string,
-): Promise<
-  ApiResponse<{
-    isAvailable: boolean;
-    availableSiteIds?: string[];
-    totalAvailable?: number;
-    reason?: string;
-  }>
-> {
-  return apiClient.get(`/sites/group/${groupId}/availability`, {
-    params: { checkIn, checkOut },
-  });
 }
 
 export async function getMyCampsitesReview(): Promise<ApiResponse<Reviews[]>> {
@@ -622,8 +607,9 @@ export async function getUnreadCount(): Promise<
   return apiClient.get(`/messages/unread-count`);
 }
 
-
-export async function getRatingsByProductId( productId: string): Promise<ApiResponse> {
+export async function getRatingsByProductId(
+  productId: string,
+): Promise<ApiResponse> {
   return apiClient.get(`/rating/product/${productId}`);
 }
 
@@ -631,20 +617,25 @@ export async function getAllRatings(): Promise<ApiResponse> {
   return apiClient.get(`/rating/all`);
 }
 
-export async function adminReplyToRating( id: string, message: string): Promise<ApiResponse> {
+export async function adminReplyToRating(
+  id: string,
+  message: string,
+): Promise<ApiResponse> {
   return apiClient.post(`/rating/admin/reply/${id}`, { message });
 }
 
 export async function becomeHost(data: any): Promise<ApiResponse> {
   return apiClient.post(`/users/become-host`, data);
-
 }
 
 export async function getAllHostRequests(): Promise<ApiResponse> {
   return apiClient.get(`/users/become-host`);
 }
 
-export async function updateHostRequestStatus(id: string, status: 'pending' | 'approved' | 'rejected'): Promise<ApiResponse> {
+export async function updateHostRequestStatus(
+  id: string,
+  status: 'pending' | 'approved' | 'rejected',
+): Promise<ApiResponse> {
   return apiClient.post(`/users/update-status-host/${id}`, { status });
 }
 

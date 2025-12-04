@@ -32,9 +32,6 @@ interface BookingSummaryData {
   siteName?: string;
   propertyName?: string;
 
-  // UNDESIGNATED: Group booking
-  groupId?: string;
-
   // LEGACY: Old campsite support (for backward compatibility)
   campsiteId?: string;
   campsiteName?: string;
@@ -68,9 +65,6 @@ export default function PaymentPage() {
     propertyId: searchParams.get('propertyId') || undefined,
     siteName: searchParams.get('name') || undefined,
 
-    // UNDESIGNATED: Group booking params
-    groupId: searchParams.get('groupId') || undefined,
-
     // LEGACY: Campsite params (for backward compatibility)
     campsiteId: searchParams.get('campsiteId') || undefined,
     campsiteName: searchParams.get('name') || undefined,
@@ -93,9 +87,8 @@ export default function PaymentPage() {
   };
 
   // Determine which architecture we're using
-  const isUndesignatedBooking = !!bookingData.groupId;
   const isPropertySiteBooking =
-    (!!bookingData.siteId || isUndesignatedBooking) && !!bookingData.propertyId;
+    !!bookingData.siteId && !!bookingData.propertyId;
   const displayName = isPropertySiteBooking
     ? bookingData.siteName
     : bookingData.campsiteName || 'Site Name';
@@ -144,44 +137,20 @@ export default function PaymentPage() {
   // Booking mutation (supports both Property-Site and legacy Campsite)
   const bookingMutation = useMutation({
     mutationFn: async () => {
-      // NEW: Property-Site booking
-      if (isPropertySiteBooking) {
-        // Undesignated booking (groupId provided)
-        if (isUndesignatedBooking) {
-          return createBooking({
-            groupId: bookingData.groupId!, // Pass groupId for undesignated
-            property: bookingData.propertyId!,
-            checkIn: bookingData.checkIn,
-            checkOut: bookingData.checkOut,
-            numberOfGuests: bookingData.guests,
-            numberOfPets: bookingData.pets,
-            numberOfVehicles: bookingData.vehicles,
-            guestMessage: guestMessage || undefined,
-            paymentMethod,
-          });
-        }
-
-        // Designated booking (siteId provided)
-        return createBooking({
-          site: bookingData.siteId!,
-          property: bookingData.propertyId!,
-          checkIn: bookingData.checkIn,
-          checkOut: bookingData.checkOut,
-          numberOfGuests: bookingData.guests,
-          numberOfPets: bookingData.pets,
-          numberOfVehicles: bookingData.vehicles,
-          guestMessage: guestMessage || undefined,
-          paymentMethod,
-        });
+      // Ensure we have site and property IDs (required for new architecture)
+      if (!bookingData.siteId || !bookingData.propertyId) {
+        throw new Error('Missing site or property ID');
       }
 
-      // LEGACY: Old campsite booking (backward compatibility)
+      // Property-Site booking (site + property required)
       return createBooking({
-        campsite: bookingData.campsiteId!,
+        site: bookingData.siteId,
+        property: bookingData.propertyId,
         checkIn: bookingData.checkIn,
         checkOut: bookingData.checkOut,
         numberOfGuests: bookingData.guests,
         numberOfPets: bookingData.pets,
+        numberOfVehicles: bookingData.vehicles,
         guestMessage: guestMessage || undefined,
         paymentMethod,
       });
@@ -191,9 +160,10 @@ export default function PaymentPage() {
         (data?.data as { _id?: string; id?: string })?._id ||
         (data?.data as { _id?: string; id?: string })?.id;
 
-      // If payment URL is provided, redirect to PayOS
-      if (data.data.payOSCheckoutUrl) {
-        router.replace(data.data.payOSCheckoutUrl);
+      // Check if response has payOSCheckoutUrl for payment redirect
+      const responseData = data?.data as { payOSCheckoutUrl?: string };
+      if (responseData?.payOSCheckoutUrl) {
+        router.replace(responseData.payOSCheckoutUrl);
       } else if (bookingId) {
         // Otherwise, redirect to booking confirmation page
         router.replace(`/bookings/${bookingId}`);

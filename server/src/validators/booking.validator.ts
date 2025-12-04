@@ -5,17 +5,8 @@ export const createBookingSchema = z
   .object({
     property: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid property ID"),
 
-    // Designated booking: site ID provided
-    site: z
-      .string()
-      .regex(/^[0-9a-fA-F]{24}$/, "Invalid site ID")
-      .optional(),
-
-    // Undesignated booking: groupId provided instead of site
-    groupId: z
-      .string()
-      .regex(/^[0-9a-fA-F]{24}$/, "Invalid group ID")
-      .optional(),
+    // Site ID (required)
+    site: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid site ID"),
 
     // Legacy support
     campsite: z
@@ -51,16 +42,6 @@ export const createBookingSchema = z
     {
       message: "Check-out date must be after check-in date",
       path: ["checkOut"],
-    }
-  )
-  .refine(
-    (data) => {
-      // Must have either site, groupId, or campsite
-      return data.site || data.groupId || data.campsite;
-    },
-    {
-      message: "Either site, groupId, or campsite must be provided",
-      path: ["site"],
     }
   );
 

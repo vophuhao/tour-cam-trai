@@ -153,16 +153,13 @@ bookingSchema.index({ guest: 1, status: 1, createdAt: -1 });
 bookingSchema.index({ host: 1, status: 1, createdAt: -1 });
 bookingSchema.index({ site: 1, checkIn: 1, checkOut: 1 });
 
-// Prevent overlapping bookings
-bookingSchema.index(
-  { site: 1, checkIn: 1, checkOut: 1, status: 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      status: { $in: ["pending", "confirmed"] },
-    },
-  }
-);
+// NOTE: Removed unique index on { site, checkIn, checkOut, status }
+// This index prevented undesignated sites (maxConcurrentBookings > 1) from accepting
+// multiple concurrent bookings for the same dates.
+// Overlapping booking prevention is now handled by:
+// - For designated sites (maxConcurrentBookings = 1): checkAvailability() in SiteService
+// - For undesignated sites (maxConcurrentBookings > 1): Count-based capacity check
+// The non-unique index above (site + checkIn + checkOut) is sufficient for query performance.
 
 // Methods
 bookingSchema.methods.confirm = async function (this: BookingDocument) {

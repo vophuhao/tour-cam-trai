@@ -1,7 +1,5 @@
 'use client';
 
-import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
 import { Calendar, MapPin, Search, Users } from 'lucide-react';
 import { useState } from 'react';
 
@@ -13,8 +11,9 @@ import {
 } from '@/components/ui/popover';
 
 import { cn } from '@/lib/utils';
-import { DateRangePicker, type DateRangeType } from './date-range-picker';
-import { GuestSelector } from './guest-selector';
+import { type DateRangeType } from './date-range-picker';
+import { DateRangePopover } from './date-range-popover';
+import { GuestPopover } from './guest-popover';
 import { LocationSearch } from './location-search';
 
 interface SearchBarProps {
@@ -60,20 +59,6 @@ export function SearchBar({
   const [locationOpen, setLocationOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
   const [guestOpen, setGuestOpen] = useState(false);
-
-  const formatDateRange = () => {
-    if (!dateRange?.from) return 'Thêm ngày';
-    if (!dateRange?.to) {
-      return format(dateRange.from, 'd MMM', { locale: vi });
-    }
-    return `${format(dateRange.from, 'd MMM', { locale: vi })} - ${format(dateRange.to, 'd MMM', { locale: vi })}`;
-  };
-
-  const formatGuests = () => {
-    const total = guests + childrenCount;
-    if (total === 0) return 'Thêm khách';
-    return `${total} khách${pets > 0 ? `, ${pets} thú cưng` : ''}`;
-  };
 
   return (
     <div className="w-full max-w-6xl">
@@ -126,62 +111,45 @@ export function SearchBar({
         </Popover>
 
         {/* Date Popover */}
-        <Popover open={dateOpen} onOpenChange={setDateOpen}>
-          <PopoverTrigger asChild>
-            <button
-              className={cn(
-                'flex flex-1 cursor-pointer items-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-left shadow-sm transition-all hover:shadow-md',
-                dateOpen && 'border-gray-900 ring-2 ring-gray-900',
-              )}
-            >
-              <Calendar className="h-5 w-5 shrink-0 text-gray-700" />
-              <span className="truncate text-base text-gray-900">
-                {formatDateRange()}
-              </span>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-8" align="center" sideOffset={8}>
-            <DateRangePicker
-              date={dateRange}
-              onDateChange={date => {
-                onDateChange(date);
-                if (date?.from && date?.to) {
-                  setDateOpen(false);
-                }
-              }}
-            />
-          </PopoverContent>
-        </Popover>
+        <DateRangePopover
+          dateRange={dateRange}
+          onDateChange={onDateChange}
+          open={dateOpen}
+          onOpenChange={setDateOpen}
+          placeholder="Thêm ngày"
+          buttonClassName={cn(
+            'h-auto flex-1 gap-3 rounded-lg border-gray-300 px-4 py-3 shadow-sm hover:shadow-md',
+            dateOpen && 'border-gray-900 ring-2 ring-gray-900',
+          )}
+          align="center"
+          dateFormat="d MMM"
+          icon={<Calendar className="h-5 w-5 shrink-0 text-gray-700" />}
+        />
 
         {/* Guest Popover */}
-        <Popover open={guestOpen} onOpenChange={setGuestOpen}>
-          <PopoverTrigger asChild>
-            <button
-              className={cn(
-                'flex flex-1 cursor-pointer items-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-left shadow-sm transition-all hover:shadow-md',
-                guestOpen && 'border-gray-900 ring-2 ring-gray-900',
-              )}
-            >
-              <Users className="h-5 w-5 shrink-0 text-gray-700" />
-              <span className="truncate text-base text-gray-900">
-                {formatGuests()}
-              </span>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[340px] p-6" align="end" sideOffset={8}>
-            <div>
-              <h3 className="mb-4 text-lg font-semibold">Số lượng khách</h3>
-              <GuestSelector
-                guests={guests}
-                childrenCount={childrenCount}
-                pets={pets}
-                onGuestsChange={onGuestsChange}
-                onChildrenChange={onChildrenChange}
-                onPetsChange={onPetsChange}
-              />
-            </div>
-          </PopoverContent>
-        </Popover>
+        <GuestPopover
+          adults={guests}
+          childrenCount={childrenCount}
+          pets={pets}
+          onAdultsChange={onGuestsChange}
+          onChildrenChange={onChildrenChange}
+          onPetsChange={onPetsChange}
+          open={guestOpen}
+          onOpenChange={setGuestOpen}
+          buttonClassName={cn(
+            'h-auto flex-1 gap-3 rounded-lg border-gray-300 px-4 py-3 shadow-sm hover:shadow-md',
+            guestOpen && 'border-gray-900 ring-2 ring-gray-900',
+          )}
+          align="end"
+          icon={<Users className="h-5 w-5 shrink-0 text-gray-700" />}
+          labels={{
+            guestsText: guests => {
+              const total = guests;
+              if (total === 0) return 'Thêm khách';
+              return `${total} khách`;
+            },
+          }}
+        />
 
         {/* Search Button */}
         <Button

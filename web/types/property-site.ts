@@ -172,13 +172,6 @@ export type AccommodationType =
   | 'glamping'
   | 'vehicle';
 
-export type SiteType =
-  | 'designated'
-  | 'undesignated'
-  | 'dispersed'
-  | 'walk_in'
-  | 'group';
-
 export interface SiteCapacity {
   maxGuests: number;
   maxAdults?: number;
@@ -188,6 +181,11 @@ export interface SiteCapacity {
   maxTents?: number;
   maxRVs?: number;
   rvMaxLength?: number; // feet
+
+  // Concurrent Bookings (Hipcamp-style designated/undesignated)
+  // 1 = designated (only 1 booking at a time)
+  // 2+ = undesignated (multiple concurrent bookings, "X sites left")
+  maxConcurrentBookings: number;
 }
 
 export interface SitePricing {
@@ -265,7 +263,6 @@ export interface Site {
   description?: string;
 
   accommodationType: AccommodationType;
-  siteType: SiteType;
   lodgingProvided: 'bring_your_own' | 'structure_provided' | 'vehicle_provided';
 
   // Site-specific Location (matches backend siteLocation field)
@@ -305,13 +302,6 @@ export interface Site {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-
-  // Grouped Sites (for undesignated)
-  groupedSiteInfo?: {
-    isGrouped: boolean;
-    groupId?: string;
-    totalSitesInGroup?: number;
-  };
 }
 
 /**
@@ -452,7 +442,6 @@ export interface SiteSearchFilters {
   query?: string;
   propertyId?: string;
   accommodationType?: AccommodationType[];
-  siteType?: SiteType[];
   minPrice?: number;
   maxPrice?: number;
   checkIn?: string;
@@ -528,6 +517,7 @@ export interface PricingCalculation {
 export interface AvailabilityCheck {
   available: boolean;
   unavailableDates?: string[];
+  spotsLeft?: number; // How many concurrent bookings still available
   reasons?: Array<{
     date: string;
     reason: 'booked' | 'blocked' | 'maintenance';
