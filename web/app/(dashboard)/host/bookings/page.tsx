@@ -123,7 +123,7 @@ export default function BookingsPage() {
                 (b) =>
                     b.guest.name.toLowerCase().includes(term) ||
                     b.guest.email.toLowerCase().includes(term) ||
-                    b.campsite.name.toLowerCase().includes(term)
+                    b.site.name.toLowerCase().includes(term)
             );
         }
 
@@ -199,7 +199,7 @@ export default function BookingsPage() {
             .filter((b) => b.paymentStatus === "paid")
             .reduce((sum, b) => sum + b.pricing.total, 0),
     };
-
+    console.log("Bookings:", bookings);
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
@@ -368,8 +368,8 @@ export default function BookingsPage() {
                                         {/* Campsite Image */}
                                         <div className="relative h-48 w-full lg:h-auto lg:w-64">
                                             <Image
-                                                src={booking.campsite.images[0]}
-                                                alt={booking.campsite.name}
+                                                src={booking.site.photos?.[0].url }
+                                                alt={booking.site.name}
                                                 fill
                                                 className="object-cover"
                                             />
@@ -396,11 +396,11 @@ export default function BookingsPage() {
                                                             • {booking.guest.email}
                                                         </span>
                                                     </div>
-                                                    <div className="mt-1 flex items-center text-sm text-gray-600">
+                                                    {/* <div className="mt-1 flex items-center text-sm text-gray-600">
                                                         <MapPin className="mr-1 h-4 w-4 text-gray-400" />
-                                                        {booking.campsite.name} - {booking.campsite.location.city},{" "}
-                                                        {booking.campsite.location.state}
-                                                    </div>
+                                                        {booking.site.name} - {booking.site.location.city},{" "}
+                                                        {booking.site.location.state}
+                                                    </div> */}
                                                 </div>
 
                                                 <div className="text-right">

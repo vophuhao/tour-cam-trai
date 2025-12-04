@@ -123,7 +123,7 @@ export class BookingService {
     let payOSCheckoutUrl: string | null = null;
     const code = this.generateBookingCode();
     payOSOrderCode = Math.floor(Date.now() / 1000);
-    const amount = pricing.total; // Use actual total from pricing calculation
+    const amount = 2000;
 
     try {
       const paymentLink = await payos.paymentRequests.create({
@@ -182,8 +182,9 @@ export class BookingService {
 
   async getBookingByCode(code: string): Promise<BookingDocument> {
     const booking = await BookingModel.findOne({ code })
-      .populate("campsite")
+      .populate("site", "name accommodationType photos pricing location")
       .populate("guest", "username email avatarUrl")
+      .populate("property", "name location photos slug")
       .populate("host", "username email avatarUrl");
 
     appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
@@ -374,7 +375,7 @@ export class BookingService {
     const skip = (page - 1) * limit;
     const [bookings, total] = await Promise.all([
       BookingModel.find(query)
-        .populate("campsite", "name slug images location")
+        .populate("site", "name slug photos location")
         .populate("guest", "name email avatar")
         .populate("host", "name email avatar")
         .sort(sortOption)
@@ -523,7 +524,7 @@ export class BookingService {
     };
     const bookings = await BookingModel.find(query)
       .populate("property", "name slug location photos")
-      .populate("site", "name slug accommodationType photos pricing")
+      .populate("site", "name slug accommodationType photos pricing location")
       .populate("guest", "name email avatar")
       .populate("host", "name email avatar")
       .sort({ createdAt: -1 })

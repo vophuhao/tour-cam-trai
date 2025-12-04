@@ -175,10 +175,10 @@ export default function BookingDetailPage() {
       y += 6;
       doc.text("ĐỊA ĐIỂM", 20, y);
       y += 8;
-      doc.text(`Tên: ${booking.campsite.name}`, 20, y);
+      doc.text(`Tên: ${booking.property.name}`, 20, y);
       y += 6;
 
-      const address = `Địa chỉ: ${booking.campsite.location.address}, ${booking.campsite.location.district}, ${booking.campsite.location.province}`;
+      const address = `Địa chỉ: ${booking.property.location.address}, ${booking.property.location.district}, ${booking.property.location.province}`;
       const splitAddress = doc.splitTextToSize(address, 170);
       doc.text(splitAddress, 20, y);
       y += splitAddress.length * 6;
@@ -476,23 +476,23 @@ export default function BookingDetailPage() {
                 <div className="flex gap-4">
                   <div className="relative h-32 w-32 flex-shrink-0 overflow-hidden rounded-lg">
                     <Image
-                      src={booking.campsite.images?.[0] || "/placeholder.jpg"}
-                      alt={booking.campsite.name}
+                      src={booking.site.photos?.[0].url || "/placeholder.jpg"}
+                      alt={booking.site.name}
                       fill
                       className="object-cover"
                     />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold">{booking.campsite.name}</h3>
+                    <h3 className="text-lg font-semibold">{booking.site.name}</h3>
                     <div className="mt-2 flex items-start gap-2 text-sm text-gray-600">
                       <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
                       <span>
-                        {booking.campsite.location.address}, {booking.campsite.location.commune},{" "}
-                        {booking.campsite.location.district}, {booking.campsite.location.province}
+                        {booking.property.location.address}, {booking.property.location.commune},{" "}
+                        {booking.property.location.district}, {booking.property.location.province}
                       </span>
                     </div>
                     <Button variant="outline" size="sm" className="mt-3" asChild>
-                      <Link href={`/campsites/${booking.campsite.slug}`}>Xem chi tiết</Link>
+                      <Link href={`/land/${booking.property.slug}`}>Xem chi tiết</Link>
                     </Button>
                   </div>
                 </div>

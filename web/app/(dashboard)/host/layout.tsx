@@ -4,7 +4,7 @@ import AdminSidebar from '@/components/admin/admin-sidebar';
 import HostSidebar from '@/components/host/host-sidebar';
 import { useAuthStore } from '@/store/auth.store';
 import Link from 'next/link';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 
 export default function HostLayout({
   children,
@@ -37,7 +37,13 @@ export default function HostLayout({
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
-      <HostSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+      <Suspense fallback={<div className="w-64 bg-gray-100 animate-pulse" />}>
+        {role === 'admin' ? (
+          <AdminSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+        ) : (
+          <HostSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+        )}
+      </Suspense>
 
       {/* Content */}
       <main
