@@ -58,7 +58,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   { name: 'Bookings', href: '/host/bookings', icon: Calendar }, // ✅ Calendar thay BarChart
   { name: 'Campsites', href: '/host/campsites', icon: Tent }, // ✅ Giữ nguyên
   { name: 'Đánh giá', href: '/host/reviews', icon: Star }, // ✅ Star thay Users
-  { name: 'Liên hệ', href: '/admin/contact', icon: MessageSquare }, // ✅ MessageSquare thay Settings
+  { name: 'Hỗ trợ', href: '/host/support', icon: MessageSquare }, // ✅ MessageSquare thay Settings
   { name: 'Đăng xuất', icon: LogOut, action: handleLogout }, // ✅ Giữ nguyên
 ];
 

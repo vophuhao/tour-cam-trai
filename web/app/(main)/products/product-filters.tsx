@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ca } from 'date-fns/locale';
 import { Layers, Search } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState, useTransition } from 'react';
@@ -27,6 +28,7 @@ export default function ProductFilters({ categories }: ProductFiltersProps) {
   const [searchInput, setSearchInput] = useState(
     searchParams.get('search') || '',
   );
+  console.log(categories);
 
   // Get selected categories from URL params
   const selectedCategories = searchParams.getAll('categories');

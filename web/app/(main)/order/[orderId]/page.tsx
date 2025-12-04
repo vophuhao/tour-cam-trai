@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -107,10 +108,15 @@ export default function OrderDetail(): JSX.Element {
     }).format(new Date(d));
   };
 
-  const getStatusBadge = (status?: string) => {
-    const cfg = (status && statusConfig[status]) || { label: status ?? "Unknown", color: "text-gray-700", bgColor: "bg-gray-100" };
-    return <span className={`px-4 py-2 rounded-full text-sm font-medium ${cfg.bgColor} ${cfg.color}`}>{cfg.label}</span>;
-  };
+  const handleGoBack = () => {
+  // Kiểm tra xem có history không
+  if (window.history.length > 1) {
+    router.back();
+  } else {
+    // Nếu không có history (mở trực tiếp link), về trang orders
+    router.push("/u/orders");
+  }
+};
 
   const getPrimaryImage = (item: OrderItem) => {
     if (item.image) return item.image;
@@ -249,8 +255,8 @@ export default function OrderDetail(): JSX.Element {
   const statusHistory = getStatusHistory();
 
   return (
-    <main className="bg-gray-50 min-h-screen">
-      <section className="container mx-auto px-4 py-8">
+    <div className="bg-gray-50 min-h-screen ">
+      <div className=" mx-auto  max-w-[1200px] px-4 py-8">
         <div className="gap-6">
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-xl shadow-sm p-6">
@@ -259,7 +265,6 @@ export default function OrderDetail(): JSX.Element {
                   <h2 className="text-2xl font-bold text-gray-800">{order.code ?? order._id}</h2>
                   <p className="text-sm text-gray-500">Đặt lúc: {formatDate(order.createdAt)}</p>
                 </div>
-                {getStatusBadge(order.orderStatus)}
               </div>
 
               {cancelNote && (
@@ -278,22 +283,8 @@ export default function OrderDetail(): JSX.Element {
                     </div>
                   </div>
                 </div>
-              )}
-
-              {/* ✅ Sửa điều kiện để hiển thị button khi ở trạng thái delivered */}
-              {!["cancelled", "completed"].includes(order.orderStatus ?? "") && (
-                <div className="flex items-center gap-2">
-                  {getNextStatus(order.orderStatus) && (
-                    <button
-                      onClick={() => handleUpdateStatus(getNextStatus(order.orderStatus)!)}
-                      disabled={isUpdating}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition text-sm whitespace-nowrap"
-                    >
-                      {isUpdating ? "⏳ Đang cập nhật..." : `✓ ${getNextLabel(order.orderStatus)}`}
-                    </button>
-                  )}
-                </div>
-              )}
+              )}           
+              
             </div>
 
             {/* Lịch sử đơn hàng */}
@@ -394,7 +385,7 @@ export default function OrderDetail(): JSX.Element {
                       </p>
                     </div>
 
-                    <button onClick={() => router.push("/order")} className="w-full mt-6 bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition">
+                    <button onClick={handleGoBack} className="w-full mt-6 bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition">
                       Quay lại danh sách
                     </button>
                   </div>
@@ -422,7 +413,7 @@ export default function OrderDetail(): JSX.Element {
             </div>
           </div>
         </div>
-      </section>
-    </main>
+      </div>
+    </div>
   );
 }

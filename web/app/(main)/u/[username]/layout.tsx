@@ -17,6 +17,7 @@ import {
   Loader2,
   MapPin,
   Settings,
+  ShoppingBag,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
@@ -55,6 +56,7 @@ export default function UserProfileLayout({
   // Determine active tab
   const getActiveTab = () => {
     if (pathname.includes('/saves')) return 'saves';
+    if (pathname.includes('/orders')) return 'orders';
     return 'trips';
   };
 
@@ -90,94 +92,113 @@ export default function UserProfileLayout({
     locale: vi,
   });
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-3">
-          {/* Left Sidebar - Profile Info */}
-          <div className="space-y-6 lg:col-span-1">
+return (
+  <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="mx-auto max-w-[1400px] px-6 py-8 sm:px-8 lg:px-12">
+      <div className="grid gap-8 lg:grid-cols-4">
+        {/* Left Sidebar - Profile Info - STICKY */}
+        <div className="space-y-4 lg:col-span-1">
+          <div className="lg:sticky lg:top-8 space-y-4">
             {/* Profile Card */}
-            <Card>
+            <Card className="shadow-md hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
                 {/* Avatar */}
                 <div className="mb-4 flex flex-col items-center">
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage
-                      src={profile.avatarUrl}
-                      alt={profile.username}
-                    />
-                    <AvatarFallback className="text-2xl">
-                      {profile.username?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <h1 className="mt-3 text-xl font-bold">{profile.username}</h1>
+                  <div className="relative">
+                    <Avatar className="h-24 w-24 ring-4 ring-gray-100">
+                      <AvatarImage
+                        src={profile.avatarUrl}
+                        alt={profile.username}
+                      />
+                      <AvatarFallback className="text-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white">
+                        {profile.username?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    {profile.isVerified && (
+                      <div className="absolute bottom-0 right-0 rounded-full bg-white p-1">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      </div>
+                    )}
+                  </div>
+                  <h1 className="mt-3 text-xl font-bold text-gray-900">
+                    {profile.username}
+                  </h1>
                   {profile.role === 'host' && (
-                    <Badge className="mt-1 bg-emerald-100 text-emerald-800">
-                      Chủ nhà
+                    <Badge className="mt-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-0 text-xs">
+                      🏕️ Chủ nhà
                     </Badge>
                   )}
                 </div>
 
+                <Separator className="my-4" />
+
                 {/* Member Info */}
-                <div className="space-y-3 text-sm">
-                  <div className="text-muted-foreground flex items-center gap-2">
-                    <Heart className="h-4 w-4 text-rose-500" />
-                    <span>Camper từ {memberSince}</span>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Heart className="h-3.5 w-3.5 text-rose-500 flex-shrink-0" />
+                    <span className="text-xs">Camper từ {memberSince}</span>
                   </div>
                   {profile.location && (
-                    <div className="text-muted-foreground flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      <span>{profile.location}</span>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <MapPin className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                      <span className="text-xs">{profile.location}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Bio */}
                 {profile.bio ? (
-                  <p className="text-muted-foreground mt-4 text-sm">
+                  <p className="mt-3 text-xs text-gray-600 leading-relaxed">
                     {profile.bio}
                   </p>
                 ) : (
-                  <p className="text-muted-foreground mt-4 text-sm italic">
-                    Giới thiệu: Giới thiệu bản thân với cộng đồng! Thêm mô tả
-                    ngắn...
+                  <p className="mt-3 text-xs text-gray-400 italic">
+                    Chưa có giới thiệu
                   </p>
                 )}
 
                 {/* Manage Account Button */}
                 {isOwnProfile && (
-                  <Button asChild variant="outline" className="mt-4 w-full">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="mt-4 w-full border-2 hover:bg-gray-50"
+                  >
                     <Link href="/u/edit">
-                      <Settings className="mr-2 h-4 w-4" />
-                      Quản lý tài khoản
+                      <Settings className="mr-2 h-3.5 w-3.5" />
+                      <span className="text-xs">Quản lý tài khoản</span>
                     </Link>
                   </Button>
                 )}
 
-                {/* View on backcountry */}
+                {/* View on map */}
                 <Button
                   variant="ghost"
-                  className="text-muted-foreground mt-2 w-full"
+                  size="sm"
+                  className="mt-2 w-full text-gray-600 hover:text-gray-900"
                 >
-                  <Eye className="mr-2 h-4 w-4" />
-                  Xem trên bản đồ
+                  <Eye className="mr-2 h-3.5 w-3.5" />
+                  <span className="text-xs">Xem trên bản đồ</span>
                 </Button>
               </CardContent>
             </Card>
 
             {/* Trusted Camper Card */}
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="mb-4 font-semibold">Camper đáng tin cậy</h3>
-                <div className="space-y-3">
+            <Card className="shadow-md">
+              <CardContent className="p-4">
+                <h3 className="mb-3 font-semibold text-gray-900 text-sm">
+                  🌟 Camper đáng tin cậy
+                </h3>
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                      <span>Email đã xác thực</span>
+                    <div className="flex items-center gap-2 text-xs">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      <span className="text-gray-700">Email đã xác thực</span>
                     </div>
                   </div>
                   {!profile.isVerified && isOwnProfile && (
-                    <Button variant="outline" size="sm" className="w-full">
+                    <Button variant="outline" size="sm" className="w-full text-xs">
                       Xác thực email
                     </Button>
                   )}
@@ -187,63 +208,88 @@ export default function UserProfileLayout({
 
             {/* Balance Card */}
             {isOwnProfile && (
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-lg font-bold">0₫</span>
-                      <span className="text-muted-foreground ml-2 text-sm">
-                        Số dư
-                      </span>
+              <Card className="shadow-md bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+                <CardContent className="p-4">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-xl font-bold text-gray-900">0₫</div>
+                        <div className="text-xs text-gray-600">Số dư</div>
+                      </div>
+                      <div className="h-10 w-10 rounded-full bg-emerald-200 flex items-center justify-center">
+                        <span className="text-xl">💰</span>
+                      </div>
                     </div>
-                    <Button variant="link" className="text-emerald-600">
-                      Nhận điểm thưởng
+                    <Button
+                      variant="link"
+                      className="text-emerald-700 hover:text-emerald-800 p-0 h-auto justify-start text-xs"
+                    >
+                      → Nhận điểm thưởng
                     </Button>
                   </div>
                 </CardContent>
               </Card>
             )}
           </div>
+        </div>
 
-          {/* Right Content Area */}
-          <div className="lg:col-span-2">
-            {/* Stats Bar */}
-            <div className="mb-6 flex gap-8">
+        {/* Right Content Area */}
+        <div className="lg:col-span-3">
+          {/* Stats Bar */}
+          <div className="mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-8 gap-3">
               <Link
                 href={`/u/${username}/trips`}
-                className={`text-center transition-colors ${
+                className={`text-center py-3 px-2 rounded-lg transition-all ${
                   activeTab === 'trips'
-                    ? 'text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-gray-900 text-white shadow-md'
+                    : 'bg-white hover:bg-gray-50 text-gray-700 shadow-sm'
                 }`}
               >
-                <div className="text-2xl font-bold">0</div>
-                <div className="text-sm">Chuyến đi</div>
+                <div className="text-lg font-bold">0</div>
+                <div className="text-xs mt-1">Chuyến đi</div>
               </Link>
               <Link
                 href={`/u/${username}/saves`}
-                className={`text-center transition-colors ${
+                className={`text-center py-3 px-2 rounded-lg transition-all ${
                   activeTab === 'saves'
-                    ? 'text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-gray-900 text-white shadow-md'
+                    : 'bg-white hover:bg-gray-50 text-gray-700 shadow-sm'
                 }`}
               >
-                <div className="text-2xl font-bold">0</div>
-                <div className="text-sm">Đã lưu</div>
+                <div className="text-lg font-bold">0</div>
+                <div className="text-xs mt-1">Đã lưu</div>
               </Link>
-              <div className="text-muted-foreground text-center">
-                <div className="text-2xl font-bold">0</div>
-                <div className="text-sm">Đánh giá</div>
+              {isOwnProfile && (
+                <Link
+                  href={`/u/${username}/orders`}
+                  className={`text-center py-3 px-2 rounded-lg transition-all ${
+                    activeTab === 'orders'
+                      ? 'bg-gray-900 text-white shadow-md'
+                      : 'bg-white hover:bg-gray-50 text-gray-700 shadow-sm'
+                  }`}
+                >
+                  <div className="text-lg font-bold">0</div>
+                  <div className="text-xs mt-1 flex items-center justify-center gap-1">
+                    <ShoppingBag className="h-3 w-3" />
+                    Đơn hàng
+                  </div>
+                </Link>
+              )}
+              <div className="text-center py-3 px-2 rounded-lg bg-white text-gray-700 shadow-sm">
+                <div className="text-lg font-bold">0</div>
+                <div className="text-xs mt-1">Đánh giá</div>
               </div>
             </div>
+          </div>
 
-            <Separator className="mb-6" />
-
-            {/* Tab Content */}
+          {/* Tab Content */}
+          <div className="min-h-[400px]">
             {children}
           </div>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

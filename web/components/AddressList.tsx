@@ -36,9 +36,9 @@ export default function AddressList({
         addresses.map((addr, idx) => (
           <div
             key={idx}
-            className={`relative flex items-start justify-between rounded-xl border p-5 shadow-sm transition-all duration-200 hover:shadow-md ${
+            className={`relative flex items-start justify-between rounded-lg border-2 p-4 transition-all ${
               selectedAddressIndex === idx
-                ? 'border-blue-500 bg-blue-50'
+                ? 'border-gray-900 bg-gray-50'
                 : 'border-gray-200 bg-white'
             }`}
           >
@@ -49,14 +49,13 @@ export default function AddressList({
                 name="address"
                 checked={selectedAddressIndex === idx}
                 onChange={() => setSelectedAddressIndex(idx)}
-                className="mt-1 accent-blue-600"
+                className="mt-1"
               />
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-base text-gray-900">
-                    Tên người nhận : {addr.fullName}
+                  <span className="font-medium text-gray-900">
+                    {addr.fullName}
                   </span>
-
                   {addr.isDefault && (
                     <span className="flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-600">
                       <CheckCircle size={12} />
@@ -65,30 +64,29 @@ export default function AddressList({
                   )}
                 </div>
                 <div className="text-sm text-gray-600">
-                  Số điện thoại : {addr.phone}
+                  {addr.phone}
                 </div>
                 <div className="text-sm text-gray-600">
-                  Địa chỉ nhận hàng : {addr.addressLine}, {addr.district} , Tỉnh{' '}
-                  {addr.city}
+                  {addr.addressLine}, {addr.district}, {addr.city}
                 </div>
               </div>
             </label>
 
-            {/* Nút hành động (icon) */}
-            <div className="ml-4 flex items-center gap-3 text-gray-500">
+            {/* Nút hành động */}
+            <div className="ml-4 flex items-center gap-2">
               <button
-                className="cursor-pointer rounded-lg p-2 transition hover:bg-green-50 hover:text-green-600"
+                className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
                 title="Chỉnh sửa địa chỉ"
                 disabled
               >
-                <Edit2 color="green" size={18} className="opacity-70" />
+                <Edit2 className="text-green-500" size={18} />
               </button>
               <button
                 onClick={() => handleRemoveAddress(idx)}
-                className="rounded-lg p-2 transition hover:bg-red-50 hover:text-red-600"
+                className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-600"
                 title="Xóa địa chỉ"
               >
-                <Trash2 color="red" size={18} />
+                <Trash2  className="text-red-500" size={18} />
               </button>
             </div>
           </div>
@@ -99,11 +97,11 @@ export default function AddressList({
         </div>
       )}
 
-      {/* Buttons */}
-      <div className="flex flex-wrap gap-3 pt-2">
+      {/* Button thêm địa chỉ */}
+      <div className="pt-2">
         <button
           onClick={() => setShowModal(true)}
-          className="rounded-lg bg-linear-to-r from-blue-600 to-indigo-600 px-4 py-2.5 font-medium text-white shadow-sm hover:opacity-95"
+          className="rounded-lg bg-gray-900 px-4 py-2.5 font-medium text-white hover:bg-gray-800"
         >
           + Thêm địa chỉ mới
         </button>

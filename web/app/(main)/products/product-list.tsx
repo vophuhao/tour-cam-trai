@@ -39,7 +39,7 @@ export default async function ProductList({
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/products?${queryParams.toString()}`,
     {
-      next: { revalidate: 0 }, // Don't cache - always fetch fresh for dynamic filters
+      next: { revalidate: 0 },
       cache: 'no-store',
     },
   );
@@ -77,9 +77,9 @@ export default async function ProductList({
           {products.map(product => (
             <Card
               key={product._id}
-              className="group overflow-hidden border-0 shadow-lg transition-all hover:-translate-y-2 hover:shadow-2xl"
+              className="group flex flex-col overflow-hidden border-0 shadow-lg transition-all hover:-translate-y-2 hover:shadow-2xl"
             >
-              <div className="relative h-64">
+              <div className="relative h-64 flex-shrink-0">
                 <Image
                   src={product.images[0] || '/placeholder.jpg'}
                   alt={product.name}
@@ -90,7 +90,8 @@ export default async function ProductList({
                 {product.deal > 0 && (
                   <div className="absolute top-4 right-4">
                     <span className="flex items-center gap-1 rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white shadow-lg">
-                      <TrendingUp className="h-3 w-3" />-{product.deal}%
+                      <TrendingUp className="h-3 w-3" />
+                      {((product.price - product.deal) / product.price * 100).toFixed(0)}%
                     </span>
                   </div>
                 )}
@@ -103,36 +104,39 @@ export default async function ProductList({
                   </div>
                 )}
               </div>
-              <CardContent className="p-6">
-                <h3 className="mb-3 line-clamp-2 text-xl font-bold">
+
+              <CardContent className="flex flex-1 flex-col p-6">
+                {/* Title - Fixed height */}
+                <h3 className="mb-3 line-clamp-2 text-xl font-bold h-14">
                   {product.name}
                 </h3>
-                {product.description && (
-                  <p className="text-muted-foreground mb-4 line-clamp-2 text-sm">
+
+                {/* Description - Fixed height */}
+                {product.description ? (
+                  <p className="text-muted-foreground mb-4 line-clamp-2 text-sm h-10">
                     {product.description}
                   </p>
+                ) : (
+                  <div className="mb-4 h-10" />
                 )}
 
                 <Separator className="my-4" />
 
-                <div className="flex items-center justify-between">
-                  <div>
+                {/* Price & Button - Push to bottom */}
+                <div className="mt-auto flex items-end justify-between">
+                  <div className="flex flex-col">
                     {product.deal > 0 ? (
                       <>
                         <p className="text-muted-foreground text-sm line-through">
                           {product.price.toLocaleString('vi-VN')}đ
                         </p>
                         <p className="text-primary text-2xl font-bold">
-                          {(
-                            product.price *
-                            (1 - product.deal / 100)
-                          ).toLocaleString('vi-VN')}
-                          đ
+                          {product.deal.toLocaleString('vi-VN')}đ
                         </p>
                       </>
                     ) : (
                       <>
-                        <p className="text-muted-foreground text-sm">Giá</p>
+                        <div className="h-5" />
                         <p className="text-primary text-2xl font-bold">
                           {product.price.toLocaleString('vi-VN')}đ
                         </p>

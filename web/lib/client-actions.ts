@@ -1,3 +1,5 @@
+
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import apiClient from './api-client';
 
@@ -46,7 +48,8 @@ export async function refreshToken(): Promise<ApiResponse> {
 }
 
 // ================== USER API ==================
-export const getUser = async (): Promise<ApiResponse> => apiClient.get('/user');
+export const getAllUsers = async (): Promise<ApiResponse> => apiClient.get('/users');
+
 
 export const updateProfile = async (
   data: Partial<{ username: string; bio: string; avatar: string }>,
@@ -166,6 +169,12 @@ export async function getAllProduct(): Promise<ApiResponse<Product[]>> {
 
 export async function deleteProduct(id: string): Promise<ApiResponse> {
   return apiClient.delete(`/products/${id}`);
+}
+
+export async function getProductsByCategoryName(categoryName: string, page = 1, limit = 10): Promise<ApiResponse<Product[]>> {
+  return apiClient.get(`/products/category/${encodeURIComponent(categoryName)}`, {
+    params: { page, limit },
+  });
 }
 
 // ================== REVIEW API ==================
@@ -552,7 +561,6 @@ export async function getOrCreateConversation(
 export async function getUserConversations(): Promise<ApiResponse> {
   return apiClient.get(`/messages/conversations`);
 }
-
 /**
  * Xoá 1 conversation
  */
@@ -613,3 +621,37 @@ export async function getUnreadCount(): Promise<
 > {
   return apiClient.get(`/messages/unread-count`);
 }
+
+
+export async function getRatingsByProductId( productId: string): Promise<ApiResponse> {
+  return apiClient.get(`/rating/product/${productId}`);
+}
+
+export async function getAllRatings(): Promise<ApiResponse> {
+  return apiClient.get(`/rating/all`);
+}
+
+export async function adminReplyToRating( id: string, message: string): Promise<ApiResponse> {
+  return apiClient.post(`/rating/admin/reply/${id}`, { message });
+}
+
+export async function becomeHost(data: any): Promise<ApiResponse> {
+  return apiClient.post(`/users/become-host`, data);
+
+}
+
+export async function getAllHostRequests(): Promise<ApiResponse> {
+  return apiClient.get(`/users/become-host`);
+}
+
+export async function updateHostRequestStatus(id: string, status: 'pending' | 'approved' | 'rejected'): Promise<ApiResponse> {
+  return apiClient.post(`/users/update-status-host/${id}`, { status });
+}
+
+export async function getAllApprovedHosts(): Promise<ApiResponse> {
+  return apiClient.get(`/users/hosts`);
+}
+
+export const getDashboardStats = async (type: string) => {
+  return apiClient.get(`/dashboard/${type}`);
+};

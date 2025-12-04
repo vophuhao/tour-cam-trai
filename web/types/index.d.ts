@@ -83,6 +83,10 @@ declare interface Product {
   guide?: string[];
   warnings?: string[];
   isActive: boolean;
+  rating?: {
+    average: number;
+    count: number;
+  };
 }
 
 declare interface ProductDetail extends Product {
@@ -415,3 +419,36 @@ declare interface Booking {
   updatedAt: string;
 }
 // Amenity model - Tiện ích có tại campsite
+
+
+declare interface Rating {
+  _id: string;
+  user: {
+    _id: string;
+    username: string;
+    avatarUrl?: string;
+  };
+  product: string;
+  rating: number;
+  order: string;
+  review?: string;
+  files?: string[];
+  adminReply?: {
+    message: string;
+    repliedAt: Date;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+declare interface RatingStats {
+  averageRating: number;
+  totalRatings: number;
+  ratingDistribution: {
+    5: number;
+    4: number;
+    3: number;
+    2: number;
+    1: number;
+  };
+}

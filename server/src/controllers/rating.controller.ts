@@ -28,8 +28,8 @@ export default class RatingController {
     );
     updateRating = catchErrors(async (req, res) => {
         const { id } = req.params;
-        const result = await this.ratingService.updateRating(id, req.body);
-        return ResponseUtil.success(res, result.rating, result.message);
+        const result = await this.ratingService.updateRating(id || "", req.body);
+        return ResponseUtil.success(res, result, "Cập nhật đánh giá thành công");
     }
 
     );
@@ -37,6 +37,18 @@ export default class RatingController {
         const { id } = req.params;
         const result = await this.ratingService.deleteRating(id!);
         return ResponseUtil.success(res, null, result.message);
+    }
+    );
+    getAllRatings = catchErrors(async (req, res) => {
+        const ratings = await this.ratingService.getAllRatings();
+        return ResponseUtil.success(res, ratings, "Lấy tất cả đánh giá thành công");
+    }
+    );
+    adminReplyToRating = catchErrors(async (req, res) => {  
+        const { id } = req.params;
+        const { message } = req.body;
+        const result = await this.ratingService.adminReplyToRating(id!, message);
+        return ResponseUtil.success(res, result, "Phản hồi đánh giá thành công");
     }
     );
 }

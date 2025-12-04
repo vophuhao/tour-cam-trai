@@ -44,9 +44,9 @@ export default function FeaturedProducts() {
             {products.slice(0, 8).map((product: Product) => (
               <Card
                 key={product._id}
-                className="group overflow-hidden border-0 shadow-lg transition-all hover:-translate-y-2 hover:shadow-2xl"
+                className="group flex flex-col overflow-hidden border-0 shadow-lg transition-all hover:-translate-y-2 hover:shadow-2xl"
               >
-                <div className="relative h-64">
+                <div className="relative h-64 flex-shrink-0">
                   <Image
                     src={product.images[0] || '/placeholder.jpg'}
                     alt={product.name}
@@ -54,29 +54,48 @@ export default function FeaturedProducts() {
                     className="object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                   {product.deal > 0 && (
-                    <div className="absolute top-4 left-4">
+                    <div className="absolute top-4 right-4">
                       <span className="flex items-center gap-1 rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white shadow-lg">
-                        <TrendingUp className="h-3 w-3" />-{product.deal}%
+                        <TrendingUp className="h-3 w-3" />
+                        {((product.price - product.deal) / product.price * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  )}
+                  {product.stock < 10 && product.stock > 0 && (
+                    <div className="absolute top-4 left-4">
+                      <span className="flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-xs font-bold text-white shadow-lg">
+                        <Package className="h-3 w-3" />
+                        Còn {product.stock}
                       </span>
                     </div>
                   )}
                 </div>
-                <CardContent className="p-4">
-                  <h3 className="mb-3 line-clamp-2 text-base font-semibold">
+                
+                <CardContent className="flex flex-1 flex-col p-4">
+                  {/* Title - Fixed height */}
+                  <h3 className="mb-3 line-clamp-2 text-base font-semibold h-12">
                     {product.name}
                   </h3>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-primary text-xl font-bold">
-                        {product.price.toLocaleString('vi-VN')}đ
-                      </p>
-                      {product.deal > 0 && (
-                        <p className="text-muted-foreground text-sm line-through">
-                          {Math.round(
-                            product.price / (1 - product.deal / 100),
-                          ).toLocaleString('vi-VN')}
-                          đ
-                        </p>
+                  
+                  {/* Price & Button - Push to bottom */}
+                  <div className="mt-auto flex items-end justify-between">
+                    <div className="flex flex-col">
+                      {product.deal > 0 ? (
+                        <>
+                          <p className="text-muted-foreground text-sm line-through">
+                            {product.price.toLocaleString('vi-VN')}đ
+                          </p>
+                          <p className="text-primary text-xl font-bold">
+                            {product.deal.toLocaleString('vi-VN')}đ
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="h-5" />
+                          <p className="text-primary text-xl font-bold">
+                            {product.price.toLocaleString('vi-VN')}đ
+                          </p>
+                        </>
                       )}
                     </div>
                     <Link href={`/products/${product.slug}`}>

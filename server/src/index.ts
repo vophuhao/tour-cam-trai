@@ -30,6 +30,7 @@ import { initializeSocket } from "./socket";
 import supportRouter from "./routes/directMessage.route";
 import ratingRoutes from "./routes/rating.route";
 import payosRoutes from "./routes/payos.route,";
+import dashboardRoutes from "./routes/dashboard.route";
 
 const app = express();
 
@@ -81,7 +82,9 @@ app.use("/properties", propertyRoutes);
 app.use("/sites", siteRoutes);
 app.use("/payos/webhook", payosRoutes);
 app.use("/messages", authenticate, supportRouter);
-// error handler middleware
+app.use("/dashboard", authenticate, dashboardRoutes);
+
+
 app.use(errorHandler);
 
 const server = http.createServer(app);

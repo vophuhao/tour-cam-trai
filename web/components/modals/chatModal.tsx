@@ -1,46 +1,75 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import ChatWindow from './chat-window';
 import { getUserConversations, searchUsers } from '@/lib/client-actions';
+import { useSocket } from '@/provider/socketProvider';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5555';
 
 export default function ConversationsList() {
   const { user } = useAuthStore();
+  const { socket } = useSocket();
   const [open, setOpen] = useState(false);
   const [conversations, setConversations] = useState<any[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
 
-  // Load conversations khi mở
+  const loadConversations = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const res = await getUserConversations();
+      setConversations(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error('Load conversations error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!open || !user) return;
+    loadConversations();
+  }, [open, user, loadConversations]);
 
-    const loadConversations = async () => {
-      try {
-        setLoading(true);
-        const res = await getUserConversations();
-        setConversations(res.data || []);
-      } catch (err) {
-        console.error('Load conversations error:', err);
-      } finally {
-        setLoading(false);
-      }
+  useEffect(() => {
+    if (!open || !socket) return;
+
+    const handleConversationUpdate = (data: any) => {
+      setConversations((prev) => {
+        const updated = prev.map((conv) =>
+          conv._id === data.conversationId
+            ? {
+                ...conv,
+                lastMessage: data.lastMessage,
+                lastMessageAt: data.lastMessageAt,
+              }
+            : conv
+        );
+        
+        return updated.sort((a, b) => {
+          const aTime = new Date(a.lastMessageAt || 0).getTime();
+          const bTime = new Date(b.lastMessageAt || 0).getTime();
+          return bTime - aTime;
+        });
+      });
     };
 
-    loadConversations();
-  }, [open, user]);
+    socket.on('conversation_updated', handleConversationUpdate);
+    return () => {
+      socket.off('conversation_updated', handleConversationUpdate);
+    };
+  }, [open, socket]);
 
-  // Search users
-  // Search users
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -51,11 +80,9 @@ export default function ConversationsList() {
     const searchUser = async () => {
       try {
         setSearching(true);
-        console.log('Searching for:', searchQuery);
-        const res = await searchUsers(searchQuery); // Đây là từ client-actions.ts
-
+        const res = await searchUsers(searchQuery);
         if (res.success) {
-          setSearchResults(res.data || []);
+          setSearchResults(Array.isArray(res.data) ? res.data : []);
           setShowSearchResults(true);
         }
       } catch (err) {
@@ -65,11 +92,10 @@ export default function ConversationsList() {
       }
     };
 
-    const debounce = setTimeout(searchUser, 300); // ✅ Gọi searchUser (local function)
+    const debounce = setTimeout(searchUser, 300);
     return () => clearTimeout(debounce);
   }, [searchQuery]);
 
-  // Click outside để đóng
   useEffect(() => {
     if (!open) return;
 
@@ -87,7 +113,6 @@ export default function ConversationsList() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
-  // Start chat with searched user
   const startChatWithUser = async (otherUserId: string) => {
     try {
       setLoading(true);
@@ -115,6 +140,15 @@ export default function ConversationsList() {
     }
   };
 
+  const handleBackFromChat = async () => {
+    setSelectedConversation(null);
+    setSearchQuery('');
+    setShowSearchResults(false);
+    await loadConversations();
+  };
+
+  const totalUnread = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+
   if (!user) return null;
 
   return (
@@ -122,13 +156,16 @@ export default function ConversationsList() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg transition-transform hover:scale-105"
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg transition-all hover:bg-blue-600 hover:shadow-xl"
         aria-label="Tin nhắn"
       >
-        <span className="text-2xl">💬</span>
-        {conversations.some((c) => c.unreadCount > 0) && (
-          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold">
-            {conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0)}
+        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+        
+        {totalUnread > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+            {totalUnread > 9 ? '9+' : totalUnread}
           </span>
         )}
       </button>
@@ -139,26 +176,26 @@ export default function ConversationsList() {
           id="conversations-panel"
           className="fixed bottom-24 right-6 z-50 flex h-[600px] w-96 flex-col overflow-hidden rounded-lg bg-white shadow-2xl"
         >
-          {/* Nếu chưa chọn conversation -> hiện danh sách */}
           {!selectedConversation ? (
             <>
               {/* Header */}
-              <div className="border-b bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-3">
-                <h2 className="text-lg font-semibold text-white">Tin nhắn</h2>
+              <div className="border-b border-gray-200 bg-white px-5 py-4">
+                <h2 className="text-lg font-semibold text-gray-900">Tin nhắn</h2>
+                <p className="mt-0.5 text-sm text-gray-500">{conversations.length} cuộc trò chuyện</p>
               </div>
 
-              {/* Search bar */}
-              <div className="border-b bg-white px-4 py-3">
+              {/* Search */}
+              <div className="border-b border-gray-200 px-4 py-3">
                 <div className="relative">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Tìm kiếm người dùng..."
-                    className="w-full rounded-full border border-gray-300 bg-gray-50 px-4 py-2 pl-10 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    placeholder="Tìm kiếm..."
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 pl-9 text-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                   <svg
-                    className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                    className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -171,22 +208,20 @@ export default function ConversationsList() {
                     />
                   </svg>
                   {searching && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Search results hoặc Conversations list */}
+              {/* List */}
               <div className="flex-1 overflow-y-auto">
                 {showSearchResults ? (
-                  // Search Results
                   <>
                     {searchResults.length === 0 && !searching && (
-                      <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                        <span className="mb-2 text-4xl">🔍</span>
-                        <p className="text-sm">Không tìm thấy người dùng</p>
+                      <div className="py-12 text-center text-sm text-gray-500">
+                        Không tìm thấy
                       </div>
                     )}
 
@@ -194,9 +229,9 @@ export default function ConversationsList() {
                       <button
                         key={searchUser._id}
                         onClick={() => startChatWithUser(searchUser._id)}
-                        className="flex w-full items-center gap-3 border-b px-4 py-3 transition-colors hover:bg-gray-50"
+                        className="flex w-full items-center gap-3 border-b border-gray-100 px-4 py-3 text-left transition-colors hover:bg-gray-50"
                       >
-                        <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-blue-400 to-purple-500">
+                        <div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-full bg-gray-200">
                           {searchUser.avatar ? (
                             <img
                               src={searchUser.avatar}
@@ -204,39 +239,38 @@ export default function ConversationsList() {
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center text-white">
+                            <div className="flex h-full w-full items-center justify-center text-sm font-medium text-gray-600">
                               {searchUser.username?.charAt(0).toUpperCase()}
                             </div>
                           )}
                         </div>
 
-                        <div className="flex-1 text-left">
-                          <div className="text-sm font-medium">
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-sm font-medium text-gray-900">
                             {searchUser.username || searchUser.full_name}
-                          </div>
+                          </p>
                           {searchUser.email && (
-                            <div className="text-xs text-gray-500">{searchUser.email}</div>
+                            <p className="truncate text-xs text-gray-500">{searchUser.email}</p>
                           )}
                         </div>
 
-                        <div className="text-xs text-blue-600">Nhắn tin</div>
+                        <div className="rounded bg-blue-500 px-2 py-1 text-xs text-white">
+                          Chat
+                        </div>
                       </button>
                     ))}
                   </>
                 ) : (
-                  // Conversations List
                   <>
                     {loading && (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+                      <div className="flex justify-center py-8">
+                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
                       </div>
                     )}
 
                     {!loading && conversations.length === 0 && (
-                      <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                        <span className="mb-2 text-4xl">💬</span>
-                        <p className="text-sm">Chưa có tin nhắn nào</p>
-                        <p className="mt-1 text-xs">Tìm kiếm người dùng để bắt đầu chat</p>
+                      <div className="py-12 text-center text-sm text-gray-500">
+                        Chưa có tin nhắn
                       </div>
                     )}
 
@@ -251,51 +285,46 @@ export default function ConversationsList() {
                           <button
                             key={conv._id}
                             onClick={() => setSelectedConversation(conv)}
-                            className="flex w-full items-center gap-3 border-b px-4 py-3 transition-colors hover:bg-gray-50"
+                            className={`flex w-full items-center gap-3 border-b border-gray-100 px-4 py-3 text-left transition-colors hover:bg-gray-50 ${
+                              hasUnread ? 'bg-blue-50' : ''
+                            }`}
                           >
-                            {/* Avatar */}
                             <div className="relative flex-shrink-0">
-                              <div className="h-12 w-12 overflow-hidden rounded-full bg-gradient-to-br from-blue-400 to-purple-500">
-                                {avatar ? (
-                                  <img
-                                    src={avatar}
-                                    alt={name}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center text-white">
-                                    {name.charAt(0).toUpperCase()}
-                                  </div>
-                                )}
-                              </div>
+                              {avatar ? (
+                                <img
+                                  src={avatar}
+                                  alt={name}
+                                  className="h-11 w-11 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-600">
+                                  {name.charAt(0).toUpperCase()}
+                                </div>
+                              )}
                               {hasUnread && (
-                                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-medium text-white">
                                   {conv.unreadCount}
                                 </span>
                               )}
+                              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500"></span>
                             </div>
 
-                            {/* Info */}
-                            <div className="flex-1 overflow-hidden text-left">
-                              <div
-                                className={`truncate text-sm ${hasUnread ? 'font-semibold' : 'font-medium'}`}
-                              >
-                                {name}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className={`truncate text-sm ${hasUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
+                                  {name}
+                                </p>
+                                <span className="flex-shrink-0 text-xs text-gray-400">
+                                  {conv.lastMessageAt &&
+                                    new Date(conv.lastMessageAt).toLocaleDateString('vi-VN', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                    })}
+                                </span>
                               </div>
-                              <div
-                                className={`truncate text-xs ${hasUnread ? 'font-medium text-gray-900' : 'text-gray-500'}`}
-                              >
-                                {conv.lastMessage || 'Bắt đầu trò chuyện'}
-                              </div>
-                            </div>
-
-                            {/* Time */}
-                            <div className="flex-shrink-0 text-xs text-gray-400">
-                              {conv.lastMessageAt &&
-                                new Date(conv.lastMessageAt).toLocaleDateString('vi-VN', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                })}
+                              <p className={`mt-0.5 truncate text-xs ${hasUnread ? 'font-medium text-gray-600' : 'text-gray-500'}`}>
+                                {conv.lastMessage || 'Bắt đầu trò chuyện...'}
+                              </p>
                             </div>
                           </button>
                         );
@@ -305,14 +334,9 @@ export default function ConversationsList() {
               </div>
             </>
           ) : (
-            // Nếu đã chọn -> hiện chat window
             <ChatWindow
               conversation={selectedConversation}
-              onBack={() => {
-                setSelectedConversation(null);
-                setSearchQuery('');
-                setShowSearchResults(false);
-              }}
+              onBack={handleBackFromChat}
             />
           )}
         </div>
