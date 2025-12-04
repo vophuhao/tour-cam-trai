@@ -1,82 +1,81 @@
 import mongoose from "mongoose";
 
-// Property Model - Tài sản/khu đất tổng thể của host
 export interface PropertyDocument extends mongoose.Document {
-  // Ownership
-  host: mongoose.Types.ObjectId; // Reference to User (role: host)
+  // ====== THUỘC SỞ HỮU ======
+  host: mongoose.Types.ObjectId; // Chủ sở hữu property (host)
 
-  // Basic Info
-  name: string;
-  slug: string; // URL-friendly, unique
-  tagline?: string;
-  description: string;
+  // ====== THÔNG TIN CƠ BẢN ======
+  name: string;           // Tên property
+  slug: string;           // Dùng cho URL
+  tagline?: string;       // Mô tả ngắn
+  description: string;    // Mô tả chi tiết
 
-  // Location (Property-level)
+  // ====== VỊ TRÍ – Property-level ======
   location: {
     address: string;
-    city: string;
-    state: string; // tỉnh/thành
+    city: string;        // Thành phố
+    state: string;       // Tỉnh/thành
     country: string;
     zipCode?: string;
     coordinates: {
       type: "Point";
-      coordinates: [number, number]; // [lng, lat] - property center
+      coordinates: [number, number]; // [lng, lat] – dùng cho Map + filter khoảng cách
     };
-    directions?: string; // Hướng dẫn đến property
-    parkingInstructions?: string;
+    directions?: string;         // Hướng dẫn tới điểm cắm trại
+    parkingInstructions?: string; // Hướng dẫn đỗ xe
   };
 
-  // Property Details
+  // ====== THÔNG TIN DIỆN TÍCH/LOẠI ĐỊA HÌNH ======
   landSize?: {
     value: number;
     unit: "acres" | "hectares" | "square_meters";
   };
-  terrain?: string; // "forest", "beach", "mountain", "desert", "farm"
-  propertyType: string; // "private_land", "farm", "ranch", "campground"
+  terrain?: string; // Rừng, biển, núi, nông trại...
+  propertyType: string; // Loại hình đất: private_land/farm/ranch/campground
 
-  // Property-wide Photos
+  // ====== ẢNH PROPERTY ======
   photos: Array<{
     url: string;
     caption?: string;
-    isCover: boolean;
-    order: number;
+    isCover: boolean;  // Ảnh bìa
+    order: number;     // Thứ tự hiển thị
     uploadedAt?: Date;
   }>;
 
-  // Shared Amenities (property-wide)
+  // ====== TIỆN ÍCH DÙNG CHUNG ======
   sharedAmenities: {
     toilets?: {
-      type: "none" | "portable" | "flush" | "vault" | "composting";
+      type: "none" | "portable" | "flush" | "vault" | "composting"; // Loại toilet
       count: number;
-      isShared: boolean;
+      isShared: boolean; // Dùng chung hay riêng
     };
     showers?: {
       type: "none" | "outdoor" | "indoor" | "hot" | "cold";
       count: number;
       isShared: boolean;
     };
-    potableWater: boolean;
+    potableWater: boolean;                // Có nước uống được không
     waterSource?: "tap" | "well" | "stream" | "none";
     parkingType?: "drive_in" | "walk_in" | "nearby";
     parkingSpaces?: number;
-    commonAreas?: string[]; // ["fire_pit_area", "picnic_area", "kitchen"]
-    laundry: boolean;
+    commonAreas?: string[];              // Khu dùng chung: bếp, bàn ăn, fire pit...
+    laundry: boolean;                    // Giặt ủi
     wifi: boolean;
-    cellService?: "excellent" | "good" | "limited" | "none";
-    electricityAvailable: boolean;
+    cellService?: "excellent" | "good" | "limited" | "none"; // Sóng điện thoại
+    electricityAvailable: boolean;       // Có điện không
   };
 
-  // Property-wide Activities
-  activities: mongoose.Types.ObjectId[]; // References to Activity model
+  // ====== HOẠT ĐỘNG VÀ ĐIỂM THAM QUAN GẦN ĐÓ ======
+  activities: mongoose.Types.ObjectId[]; // Reference tới bảng Activity
   nearbyAttractions?: Array<{
     name: string;
-    distance: number; // km
-    type: string; // "national_park", "lake", "town", "restaurant"
+    distance: number;   // km
+    type: string;       // Loại địa điểm
   }>;
 
-  // Property Rules & Policies
+  // ====== NỘI QUY ======
   rules: Array<{
-    text: string;
+    text: string;        // Nội dung quy định
     category: "pets" | "noise" | "fire" | "general";
     order: number;
   }>;
@@ -89,16 +88,17 @@ export interface PropertyDocument extends mongoose.Document {
     instructions?: string;
   };
 
-  // Policies
+  // ====== CHÍNH SÁCH HỦY ======
   cancellationPolicy: {
     type: "flexible" | "moderate" | "strict";
     description?: string;
     refundRules: Array<{
-      daysBeforeCheckIn: number;
-      refundPercentage: number; // 0-100
+      daysBeforeCheckIn: number;   // Bao nhiêu ngày trước check-in
+      refundPercentage: number;    // % hoàn tiền
     }>;
   };
 
+  // ====== CHÍNH SÁCH THÚ CƯNG ======
   petPolicy: {
     allowed: boolean;
     maxPets?: number;
@@ -106,16 +106,17 @@ export interface PropertyDocument extends mongoose.Document {
     rules?: string;
   };
 
+  // ====== CHÍNH SÁCH TRẺ EM ======
   childrenPolicy: {
     allowed: boolean;
     ageRestrictions?: string;
   };
 
-  // Stats (aggregated from sites)
+  // ====== THỐNG KÊ PROPERTY ======
   stats: {
-    totalSites: number;
-    activeSites: number;
-    totalBookings: number;
+    totalSites: number;        // Tổng số site trong property
+    activeSites: number;       
+    totalBookings: number;     
     totalReviews: number;
     averageRating: number;
     ratings: {
@@ -123,12 +124,12 @@ export interface PropertyDocument extends mongoose.Document {
       communication: number;
       value: number;
     };
-    responseRate?: number; // 0-100
-    responseTime?: number; // minutes
-    viewCount: number;
+    responseRate?: number;     // Tỷ lệ phản hồi của host %
+    responseTime?: number;     // Thời gian phản hồi (phút)
+    viewCount: number;         // Lượt xem
   };
 
-  // Rating (for compatibility with review aggregation)
+  // ====== TƯƠNG THÍCH RATING ======
   rating?: {
     average: number;
     count: number;
@@ -139,46 +140,47 @@ export interface PropertyDocument extends mongoose.Document {
     };
   };
 
-  // Status
+  // ====== TRẠNG THÁI PROPERTY ======
   status: "active" | "inactive" | "pending_approval" | "suspended";
   isActive: boolean;
   isFeatured: boolean;
   featuredUntil?: Date;
-  isVerified: boolean;
+  isVerified: boolean;         // Đã được kiểm duyệt chưa
   verifiedAt?: Date;
 
-  // Settings
+  // ====== CÀI ĐẶT BOOKING ======
   settings: {
-    instantBookEnabled: boolean; // Apply to all sites
-    requireApproval: boolean;
-    minimumAdvanceNotice: number; // hours
-    bookingWindow: number; // days in advance
-    allowWholePropertyBooking: boolean;
+    instantBookEnabled: boolean;          // Cho phép booking ngay lập tức
+    requireApproval: boolean;             // Host phải duyệt?
+    minimumAdvanceNotice: number;         // Báo trước tối thiểu (giờ)
+    bookingWindow: number;                // Đặt trước tối đa (ngày)
+    allowWholePropertyBooking: boolean;   // Cho thuê toàn bộ property
   };
 
-  // SEO
+  // ====== SEO ======
   seo?: {
     metaTitle?: string;
     metaDescription?: string;
     keywords?: string[];
   };
 
-  // Timestamps
+  // ====== THỜI GIAN ======
   createdAt: Date;
   updatedAt: Date;
   publishedAt?: Date;
   lastBookedAt?: Date;
 
-  // Methods
+  // ====== METHOD ======
   activate(): Promise<PropertyDocument>;
   deactivate(): Promise<PropertyDocument>;
   incrementViews(): Promise<PropertyDocument>;
   updateStats(): Promise<PropertyDocument>;
 }
 
+// ========== SCHEMA – ĐÃ THÊM COMMENT TIẾNG VIỆT ==========
 const propertySchema = new mongoose.Schema<PropertyDocument>(
   {
-    // Ownership
+    // Chủ sở hữu property
     host: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -186,33 +188,39 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
       index: true,
     },
 
-    // Basic Info
+    // Thông tin cơ bản
     name: { type: String, required: true, trim: true, maxlength: 200 },
     slug: { type: String, required: true, unique: true, index: true },
     tagline: { type: String, trim: true, maxlength: 150 },
     description: { type: String, required: true, maxlength: 5000 },
 
-    // Location
+    // Vị trí
     location: {
       address: { type: String, required: true },
       city: { type: String, required: true, index: true },
       state: { type: String, required: true, index: true },
       country: { type: String, required: true, default: "Vietnam" },
       zipCode: { type: String },
+
+      // Toạ độ bản đồ dùng để search theo bán kính
       coordinates: {
         type: { type: String, enum: ["Point"], required: true, default: "Point" },
-        coordinates: { type: [Number], required: true }, // [lng, lat]
+        coordinates: { type: [Number], required: true },
       },
+
       directions: { type: String, maxlength: 1000 },
       parkingInstructions: { type: String, maxlength: 500 },
     },
 
-    // Property Details
+    // Thông tin diện tích
     landSize: {
       value: { type: Number, min: 0 },
       unit: { type: String, enum: ["acres", "hectares", "square_meters"] },
     },
+
     terrain: { type: String, maxlength: 100 },
+
+    // Loại hình property
     propertyType: {
       type: String,
       required: true,
@@ -220,7 +228,7 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
       enum: ["private_land", "farm", "ranch", "campground"],
     },
 
-    // Photos
+    // Ảnh property
     photos: [
       {
         url: { type: String, required: true },
@@ -231,7 +239,7 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
       },
     ],
 
-    // Shared Amenities
+    // Tiện ích dùng chung
     sharedAmenities: {
       toilets: {
         type: { type: String, enum: ["none", "portable", "flush", "vault", "composting"] },
@@ -243,6 +251,7 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
         count: { type: Number, min: 0, default: 0 },
         isShared: { type: Boolean, default: true },
       },
+
       potableWater: { type: Boolean, default: false },
       waterSource: { type: String, enum: ["tap", "well", "stream", "none"] },
       parkingType: { type: String, enum: ["drive_in", "walk_in", "nearby"] },
@@ -254,8 +263,10 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
       electricityAvailable: { type: Boolean, default: false },
     },
 
-    // Activities
+    // Hoạt động
     activities: [{ type: mongoose.Schema.Types.ObjectId, ref: "Activity" }],
+
+    // Địa điểm gần đó
     nearbyAttractions: [
       {
         name: { type: String, required: true },
@@ -264,7 +275,7 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
       },
     ],
 
-    // Rules
+    // Nội quy
     rules: [
       {
         text: { type: String, required: true, maxlength: 500 },
@@ -273,15 +284,18 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
       },
     ],
 
+    // Hướng dẫn check-in/out
     checkInInstructions: { type: String, maxlength: 2000 },
     checkOutInstructions: { type: String, maxlength: 2000 },
+
+    // Liên hệ khẩn cấp
     emergencyContact: {
       name: { type: String },
       phone: { type: String },
       instructions: { type: String, maxlength: 500 },
     },
 
-    // Policies
+    // Chính sách huỷ
     cancellationPolicy: {
       type: {
         type: String,
@@ -297,6 +311,7 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
       ],
     },
 
+    // Chính sách thú cưng
     petPolicy: {
       allowed: { type: Boolean, default: false },
       maxPets: { type: Number, min: 0 },
@@ -304,12 +319,13 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
       rules: { type: String, maxlength: 500 },
     },
 
+    // Chính sách trẻ em
     childrenPolicy: {
       allowed: { type: Boolean, default: true },
       ageRestrictions: { type: String, maxlength: 200 },
     },
 
-    // Stats
+    // Thống kê
     stats: {
       totalSites: { type: Number, default: 0, min: 0 },
       activeSites: { type: Number, default: 0, min: 0 },
@@ -326,7 +342,7 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
       viewCount: { type: Number, default: 0, min: 0 },
     },
 
-    // Rating (for review aggregation compatibility)
+    // Rating tổng hợp
     rating: {
       average: { type: Number, default: 0, min: 0, max: 5 },
       count: { type: Number, default: 0, min: 0 },
@@ -337,7 +353,7 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
       },
     },
 
-    // Status
+    // Trạng thái
     status: {
       type: String,
       enum: ["active", "inactive", "pending_approval", "suspended"],
@@ -350,12 +366,12 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
     isVerified: { type: Boolean, default: false },
     verifiedAt: { type: Date },
 
-    // Settings
+    // Cài đặt booking
     settings: {
       instantBookEnabled: { type: Boolean, default: false },
       requireApproval: { type: Boolean, default: true },
-      minimumAdvanceNotice: { type: Number, default: 24, min: 0 }, // hours
-      bookingWindow: { type: Number, default: 365, min: 1 }, // days
+      minimumAdvanceNotice: { type: Number, default: 24, min: 0 },
+      bookingWindow: { type: Number, default: 365, min: 1 },
       allowWholePropertyBooking: { type: Boolean, default: false },
     },
 
@@ -370,19 +386,17 @@ const propertySchema = new mongoose.Schema<PropertyDocument>(
     publishedAt: { type: Date },
     lastBookedAt: { type: Date },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-// Indexes for performance
+// ====== INDEXES ======
 propertySchema.index({ host: 1, isActive: 1 });
-propertySchema.index({ "location.coordinates": "2dsphere" }); // Geospatial index
+propertySchema.index({ "location.coordinates": "2dsphere" });
 propertySchema.index({ propertyType: 1, isActive: 1 });
 propertySchema.index({ isFeatured: 1, "stats.averageRating": -1 });
 propertySchema.index({ createdAt: -1 });
 
-// Text search index
+// Search text index
 propertySchema.index({
   name: "text",
   description: "text",
@@ -391,27 +405,26 @@ propertySchema.index({
   "location.state": "text",
 });
 
-// Methods
-propertySchema.methods.activate = async function (this: PropertyDocument) {
+// ====== METHODS ======
+propertySchema.methods.activate = async function () {
   this.status = "active";
   this.isActive = true;
   return this.save();
 };
 
-propertySchema.methods.deactivate = async function (this: PropertyDocument) {
+propertySchema.methods.deactivate = async function () {
   this.status = "inactive";
   this.isActive = false;
   return this.save();
 };
 
-propertySchema.methods.incrementViews = async function (this: PropertyDocument) {
+propertySchema.methods.incrementViews = async function () {
   this.stats.viewCount += 1;
   return this.save();
 };
 
-propertySchema.methods.updateStats = async function (this: PropertyDocument) {
-  // This will be implemented to aggregate stats from sites
-  // For now, just save
+propertySchema.methods.updateStats = async function () {
+  // TODO: Gộp thống kê từ các site (sẽ làm sau)
   return this.save();
 };
 

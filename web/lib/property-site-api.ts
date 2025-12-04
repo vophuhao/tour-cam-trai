@@ -271,7 +271,8 @@ export async function getMyProperties(
   page = 1,
   limit = 10,
 ): Promise<PropertyListResponse> {
-  return apiClient.get(`/properties/my-properties?page=${page}&limit=${limit}`);
+  // return apiClient.get(`/properties/my-properties?page=${page}&limit=${limit}`);
+  return apiClient.get(`/properties/my/list`);
 }
 
 /**

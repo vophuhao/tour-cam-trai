@@ -56,107 +56,184 @@ const childrenPolicySchema = z.object({
   requireSupervision: z.boolean().optional(),
 });
 
-// Validator cho tạo property
 export const createPropertySchema = z.object({
   // Ownership
-  host: z.string().optional(), // Will be set from auth context
+  host: z.string().optional(),
 
   // Basic Info
   name: z.string().min(3).max(200),
   slug: z.string().min(3).max(200).optional(),
-  tagline: z.string().min(10).max(200).optional(),
-  description: z.string().min(50).max(5000),
+  tagline: z.string().max(150).optional(),
+  description: z.string().min(0).max(5000),
 
   // Location
   location: z.object({
     address: z.string().min(5).max(500),
     city: z.string().min(2).max(100),
     state: z.string().min(2).max(100),
-    zipCode: z.string().max(20).optional(),
     country: z.string().default("Vietnam"),
+    zipCode: z.string().optional(),
+
     coordinates: z.object({
       type: z.literal("Point").default("Point"),
       coordinates: z.tuple([z.number(), z.number()]), // [lng, lat]
     }),
-    accessInstructions: z.string().max(2000).optional(),
-    gettingThere: z.string().max(2000).optional(),
-    nearestTown: z.string().max(100).optional(),
-    distanceToTown: z.number().min(0).optional(), // km
+
+    directions: z.string().max(1000).optional(),
+    parkingInstructions: z.string().max(500).optional(),
   }),
 
-  // Property Details
-  landSize: z.number().min(0).optional(), // in hectares
-  terrain: z
-    .array(
-      z.enum(["flat", "hilly", "mountainous", "forest", "desert", "beach", "riverside", "lakeside"])
-    )
-    .optional(),
-  propertyType: z.enum([
-    "private-land",
-    "farm",
-    "ranch",
-    "vineyard",
-    "orchard",
-    "campground",
-    "retreat-center",
-    "other",
-  ]),
-
-  // Media
-  photos: z.array(z.string()).min(1).max(100).optional(),
-  videos: z.array(z.string()).max(20).optional(),
-  coverPhoto: z.string().optional(),
-
-  // Shared Amenities
-  sharedAmenities: sharedAmenitiesSchema.optional(),
-
-  // Activities
-  activities: z.array(z.string()).optional(), // Activity IDs
-
-  // Property Rules
-  rules: z
+  // Land size
+  landSize: z
     .object({
-      customRules: z.array(z.string()).optional(),
-      quietHours: z.string().optional(),
-      allowSmoking: z.boolean().default(false),
-      allowAlcohol: z.boolean().default(true),
-      allowFires: z.boolean().default(true),
-      requireWaiver: z.boolean().default(false),
-      ageRestriction: z.number().int().min(0).optional(),
+      value: z.number().min(0),
+      unit: z.enum(["acres", "hectares", "square_meters"]),
     })
     .optional(),
 
-  // Policies
-  cancellationPolicy: cancellationPolicySchema.optional(),
-  petPolicy: petPolicySchema.optional(),
-  childrenPolicy: childrenPolicySchema.optional(),
+  // Terrain
+  terrain: z.string().max(100).optional(),
 
-  // Property Settings
-  settings: z
+  // Property Type
+  propertyType: z.enum(["private_land", "farm", "ranch", "campground"]),
+
+  // Photos
+  photos: z
+    .array(
+      z.object({
+        url: z.string(),
+        caption: z.string().max(200).optional(),
+        isCover: z.boolean().default(false),
+        order: z.number().default(0),
+      })
+    )
+    .min(1),
+
+  // Shared Amenities
+  sharedAmenities: z
     .object({
-      instantBooking: z.boolean().default(false),
-      requireApproval: z.boolean().default(true),
-      allowMultiSiteBookings: z.boolean().default(false),
-      allowWholePropertyBookings: z.boolean().default(false),
-      minAdvanceBooking: z.number().int().min(0).optional(), // hours
-      maxAdvanceBooking: z.number().int().min(0).optional(), // days
+      toilets: z
+        .object({
+          type: z.enum(["none", "portable", "flush", "vault", "composting"]),
+          count: z.number().min(0),
+          isShared: z.boolean(),
+        })
+        .optional(),
+
+      showers: z
+        .object({
+          type: z.enum(["none", "outdoor", "indoor", "hot", "cold"]),
+          count: z.number().min(0),
+          isShared: z.boolean(),
+        })
+        .optional(),
+
+      potableWater: z.boolean().optional(),
+      waterSource: z.enum(["tap", "well", "stream", "none"]).optional(),
+      parkingType: z.enum(["drive_in", "walk_in", "nearby"]).optional(),
+      parkingSpaces: z.number().min(0).optional(),
+      commonAreas: z.array(z.string()).optional(),
+      laundry: z.boolean().optional(),
+      wifi: z.boolean().optional(),
+      cellService: z.enum(["excellent", "good", "limited", "none"]).optional(),
+      electricityAvailable: z.boolean().optional(),
+    })
+    .optional(),
+
+  // Activities
+  activities: z.array(z.string()).optional(),
+
+  // Nearby attractions
+  nearbyAttractions: z
+    .array(
+      z.object({
+        name: z.string(),
+        distance: z.number().min(0),
+        type: z.string(),
+      })
+    )
+    .optional(),
+
+  // Rules
+  rules: z
+    .array(
+      z.object({
+        text: z.string().max(500),
+        category: z.enum(["pets", "noise", "fire", "general"]).default("general"),
+        order: z.number().default(0),
+      })
+    )
+    .optional(),
+
+  checkInInstructions: z.string().max(2000).optional(),
+  checkOutInstructions: z.string().max(2000).optional(),
+
+  emergencyContact: z
+    .object({
+      name: z.string().optional(),
+      phone: z.string().optional(),
+      instructions: z.string().max(500).optional(),
+    })
+    .optional(),
+
+  // Cancellation Policy
+  cancellationPolicy: z
+    .object({
+      type: z.enum(["flexible", "moderate", "strict"]),
+      description: z.string().max(1000).optional(),
+      refundRules: z.array(
+        z.object({
+          daysBeforeCheckIn: z.number().min(0),
+          refundPercentage: z.number().min(0).max(100),
+        })
+      ),
+    })
+    .optional(),
+
+  // Pet Policy
+  petPolicy: z
+    .object({
+      allowed: z.boolean(),
+      maxPets: z.number().min(0).optional(),
+      fee: z.number().min(0).optional(),
+      rules: z.string().max(500).optional(),
+    })
+    .optional(),
+
+  // Children Policy
+  childrenPolicy: z
+    .object({
+      allowed: z.boolean(),
+      ageRestrictions: z.string().max(200).optional(),
     })
     .optional(),
 
   // SEO
   seo: z
     .object({
-      metaTitle: z.string().max(60).optional(),
-      metaDescription: z.string().max(160).optional(),
+      metaTitle: z.string().max(100).optional(),
+      metaDescription: z.string().max(200).optional(),
       keywords: z.array(z.string()).optional(),
     })
     .optional(),
 
-  // Status
-  isActive: z.boolean().default(false), // Starts inactive until sites are added
-  isFeatured: z.boolean().default(false),
-  isVerified: z.boolean().default(false),
+  // Settings
+  settings: z
+    .object({
+      instantBookEnabled: z.boolean().optional(),
+      requireApproval: z.boolean().optional(),
+      minimumAdvanceNotice: z.number().min(0).optional(),
+      bookingWindow: z.number().min(1).optional(),
+      allowWholePropertyBooking: z.boolean().optional(),
+    })
+    .optional(),
+
+  // Status flags
+  isActive: z.boolean().optional(),
+  isFeatured: z.boolean().optional(),
+  isVerified: z.boolean().optional(),
 });
+
 
 export const updatePropertySchema = createPropertySchema.partial();
 

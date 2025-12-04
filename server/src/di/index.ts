@@ -18,8 +18,6 @@ import {
 } from "@/services";
 import { Container } from "./container";
 import { TOKENS } from "./tokens";
-
-import LocationService from "@/services/location.service";
 import RatingService from "@/services/rating.service";
 import DirectMessageService from "@/services/directMessage.service";
 
@@ -39,8 +37,6 @@ container.register(TOKENS.DirectMessageService, () => new DirectMessageService()
 container.register(TOKENS.VerificationService, () => new VerificationService(), {
   singleton: true,
 });
-container.register(TOKENS.LocationService, () => new LocationService(), { singleton: true });
-
 container.register(
   TOKENS.AuthService,
   () => new AuthService(container.resolve(TOKENS.VerificationService)),
