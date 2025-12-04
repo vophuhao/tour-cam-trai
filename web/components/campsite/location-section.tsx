@@ -68,6 +68,8 @@ export function LocationSection({ location }: LocationSectionProps) {
         {/* Mapbox Map */}
         <div className="relative h-[400px] w-full overflow-hidden rounded-lg border">
           <Map
+            key={`location-${coords.lat}-${coords.lng}`}
+            id="location-map"
             ref={mapRef}
             mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
             initialViewState={{
@@ -89,7 +91,6 @@ export function LocationSection({ location }: LocationSectionProps) {
             onError={e => {
               console.error('Location map error:', e);
             }}
-            reuseMaps
           >
             {mapLoaded && isInitialized && (
               <Marker
