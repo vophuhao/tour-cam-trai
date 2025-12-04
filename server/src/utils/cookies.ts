@@ -1,6 +1,6 @@
 import { NODE_ENV } from "@/constants";
 import type { CookieOptions, Response } from "express";
-import { fifteenMinutesFromNow, oneWeekFromNow, thirtyDaysFromNow } from "./date";
+import { oneWeekFromNow, thirtyDaysFromNow } from "./date";
 
 export const REFRESH_PATH = "/auth/refresh";
 

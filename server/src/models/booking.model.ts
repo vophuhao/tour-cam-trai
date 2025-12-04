@@ -4,9 +4,10 @@ import mongoose from "mongoose";
 export interface BookingDocument extends mongoose.Document {
   // Reference
   code?: string; // mã đặt chỗ
-  campsite: mongoose.Types.ObjectId;
+  property: mongoose.Types.ObjectId; // Reference to Property
+  site: mongoose.Types.ObjectId; // Reference to Site (specific site booked)
   guest: mongoose.Types.ObjectId; // user đặt chỗ
-  host: mongoose.Types.ObjectId; // chủ campsite
+  host: mongoose.Types.ObjectId; // chủ property
 
   // Booking Details
   checkIn: Date;
@@ -70,9 +71,15 @@ export interface BookingDocument extends mongoose.Document {
 
 const bookingSchema = new mongoose.Schema<BookingDocument>(
   {
-    campsite: {
+    property: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Campsite",
+      ref: "Property",
+      required: true,
+      index: true,
+    },
+    site: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Site",
       required: true,
       index: true,
     },
@@ -144,11 +151,11 @@ bookingSchema.index({ status: 1, checkIn: 1 });
 bookingSchema.index({ status: 1, checkOut: 1 });
 bookingSchema.index({ guest: 1, status: 1, createdAt: -1 });
 bookingSchema.index({ host: 1, status: 1, createdAt: -1 });
-bookingSchema.index({ campsite: 1, checkIn: 1, checkOut: 1 });
+bookingSchema.index({ site: 1, checkIn: 1, checkOut: 1 });
 
 // Prevent overlapping bookings
 bookingSchema.index(
-  { campsite: 1, checkIn: 1, checkOut: 1, status: 1 },
+  { site: 1, checkIn: 1, checkOut: 1, status: 1 },
   {
     unique: true,
     partialFilterExpression: {

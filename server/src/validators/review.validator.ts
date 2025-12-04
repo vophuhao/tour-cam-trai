@@ -4,13 +4,18 @@ import { z } from "zod";
 export const createReviewSchema = z.object({
   booking: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid booking ID"),
 
-  // Ratings (1-5 stars)
-  ratings: z.object({
+  // Property Ratings (1-5 stars) - property-level aspects
+  propertyRatings: z.object({
+    location: z.number().int().min(1).max(5),
+    communication: z.number().int().min(1).max(5),
+    value: z.number().int().min(1).max(5),
+  }),
+
+  // Site Ratings (1-5 stars) - site-specific aspects
+  siteRatings: z.object({
     cleanliness: z.number().int().min(1).max(5),
     accuracy: z.number().int().min(1).max(5),
-    location: z.number().int().min(1).max(5),
-    value: z.number().int().min(1).max(5),
-    communication: z.number().int().min(1).max(5),
+    amenities: z.number().int().min(1).max(5),
   }),
 
   // Review content
@@ -30,8 +35,12 @@ export const hostResponseSchema = z.object({
 
 // Validator cho search/filter reviews
 export const searchReviewSchema = z.object({
-  // Filter by campsite
-  campsite: z
+  // Filter by property or site
+  property: z
+    .string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .optional(),
+  site: z
     .string()
     .regex(/^[0-9a-fA-F]{24}$/)
     .optional(),

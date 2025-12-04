@@ -13,10 +13,11 @@ import {
   ReviewService,
   AmenityService,
   ActivityService,
+  PropertyService,
+  SiteService,
 } from "@/services";
 import { Container } from "./container";
 import { TOKENS } from "./tokens";
-
 
 import LocationService from "@/services/location.service";
 import RatingService from "@/services/rating.service";
@@ -32,11 +33,13 @@ container.register(TOKENS.AddressService, () => new AddressService(), { singleto
 container.register(TOKENS.OrderService, () => new OrderService(), { singleton: true });
 container.register(TOKENS.CartService, () => new CartService(), { singleton: true });
 container.register(TOKENS.RatingService, () => new RatingService(), { singleton: true });
-container.register(TOKENS.DirectMessageService, () => new DirectMessageService(), { singleton: true });
+container.register(TOKENS.DirectMessageService, () => new DirectMessageService(), {
+  singleton: true,
+});
 container.register(TOKENS.VerificationService, () => new VerificationService(), {
   singleton: true,
 });
-container.register(TOKENS.LocationService,() => new LocationService(),{ singleton: true });
+container.register(TOKENS.LocationService, () => new LocationService(), { singleton: true });
 
 container.register(
   TOKENS.AuthService,
@@ -50,6 +53,8 @@ container.register(TOKENS.BookingService, () => new BookingService(), { singleto
 container.register(TOKENS.ReviewService, () => new ReviewService(), { singleton: true });
 container.register(TOKENS.AmenityService, () => new AmenityService(), { singleton: true });
 container.register(TOKENS.ActivityService, () => new ActivityService(), { singleton: true });
+container.register(TOKENS.PropertyService, () => new PropertyService(), { singleton: true });
+container.register(TOKENS.SiteService, () => new SiteService(), { singleton: true });
 
 export type { Container } from "./container";
 export { TOKENS } from "./tokens";

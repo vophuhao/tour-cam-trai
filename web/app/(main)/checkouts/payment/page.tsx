@@ -11,7 +11,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { createBooking } from '@/lib/client-actions';
 import { useAuthStore } from '@/store/auth.store';
 import { useMutation } from '@tanstack/react-query';
-import { differenceInDays } from 'date-fns';
 import {
   ArrowLeft,
   Building2,
@@ -27,19 +26,34 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 interface BookingSummaryData {
-  campsiteId: string;
-  campsiteName: string;
-  campsiteLocation: string;
-  campsiteImage: string;
+  // NEW: Property-Site architecture
+  siteId?: string;
+  propertyId?: string;
+  siteName?: string;
+  propertyName?: string;
+
+  // UNDESIGNATED: Group booking
+  groupId?: string;
+
+  // LEGACY: Old campsite support (for backward compatibility)
+  campsiteId?: string;
+  campsiteName?: string;
+
+  // Shared fields
+  location: string;
+  image: string;
   checkIn: string;
   checkOut: string;
   basePrice: number;
+  nights: number;
   cleaningFee: number;
   petFee: number;
+  additionalGuestFee: number;
+  total: number;
   currency: string;
   guests: number;
-  children: number;
   pets: number;
+  vehicles: number;
 }
 
 export default function PaymentPage() {
@@ -47,22 +61,44 @@ export default function PaymentPage() {
   const searchParams = useSearchParams();
   const { user } = useAuthStore();
 
-  // Parse booking data from URL params
+  // Parse booking data from URL params (supports both new Property-Site and legacy Campsite)
   const bookingData: BookingSummaryData = {
-    campsiteId: searchParams.get('campsiteId') || '',
-    campsiteName: searchParams.get('name') || '',
-    campsiteLocation: searchParams.get('location') || '',
-    campsiteImage: searchParams.get('image') || '',
+    // NEW: Property-Site params (from BookingSiteForm)
+    siteId: searchParams.get('siteId') || undefined,
+    propertyId: searchParams.get('propertyId') || undefined,
+    siteName: searchParams.get('name') || undefined,
+
+    // UNDESIGNATED: Group booking params
+    groupId: searchParams.get('groupId') || undefined,
+
+    // LEGACY: Campsite params (for backward compatibility)
+    campsiteId: searchParams.get('campsiteId') || undefined,
+    campsiteName: searchParams.get('name') || undefined,
+
+    // Shared params
+    location: searchParams.get('location') || '',
+    image: searchParams.get('image') || '',
     checkIn: searchParams.get('checkIn') || '',
     checkOut: searchParams.get('checkOut') || '',
     basePrice: Number(searchParams.get('basePrice')) || 0,
+    nights: Number(searchParams.get('nights')) || 1,
     cleaningFee: Number(searchParams.get('cleaningFee')) || 0,
     petFee: Number(searchParams.get('petFee')) || 0,
+    additionalGuestFee: Number(searchParams.get('additionalGuestFee')) || 0,
+    total: Number(searchParams.get('total')) || 0,
     currency: searchParams.get('currency') || 'VND',
     guests: Number(searchParams.get('guests')) || 1,
-    children: Number(searchParams.get('children')) || 0,
     pets: Number(searchParams.get('pets')) || 0,
+    vehicles: Number(searchParams.get('vehicles')) || 1,
   };
+
+  // Determine which architecture we're using
+  const isUndesignatedBooking = !!bookingData.groupId;
+  const isPropertySiteBooking =
+    (!!bookingData.siteId || isUndesignatedBooking) && !!bookingData.propertyId;
+  const displayName = isPropertySiteBooking
+    ? bookingData.siteName
+    : bookingData.campsiteName || 'Site Name';
 
   // Form state
   const [fullName, setFullName] = useState('');
@@ -73,17 +109,23 @@ export default function PaymentPage() {
     'card' | 'bank_transfer' | 'momo' | 'zalopay'
   >('card');
 
-  // Calculate pricing
-  const nights = differenceInDays(
-    new Date(bookingData.checkOut),
-    new Date(bookingData.checkIn),
-  );
+  // Calculate pricing (use backend values from BookingSiteForm)
+  const nights = bookingData.nights;
   const subtotal = bookingData.basePrice * nights;
   const serviceFee = Math.round(subtotal * 0.1); // 10% service fee
   const tax = Math.round((subtotal + serviceFee) * 0.08); // 8% tax
-  const totalPetFee = bookingData.petFee * bookingData.pets;
+  const totalPetFee = bookingData.petFee;
+  const additionalGuestFee = bookingData.additionalGuestFee;
+
+  // Use backend-calculated total or calculate locally
   const total =
-    subtotal + bookingData.cleaningFee + totalPetFee + serviceFee + tax;
+    bookingData.total ||
+    subtotal +
+      bookingData.cleaningFee +
+      totalPetFee +
+      additionalGuestFee +
+      serviceFee +
+      tax;
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat('vi-VN', {
@@ -99,14 +141,46 @@ export default function PaymentPage() {
     phone.trim() &&
     /^[0-9]{10,11}$/.test(phone);
 
-  // Booking mutation
+  // Booking mutation (supports both Property-Site and legacy Campsite)
   const bookingMutation = useMutation({
     mutationFn: async () => {
+      // NEW: Property-Site booking
+      if (isPropertySiteBooking) {
+        // Undesignated booking (groupId provided)
+        if (isUndesignatedBooking) {
+          return createBooking({
+            groupId: bookingData.groupId!, // Pass groupId for undesignated
+            property: bookingData.propertyId!,
+            checkIn: bookingData.checkIn,
+            checkOut: bookingData.checkOut,
+            numberOfGuests: bookingData.guests,
+            numberOfPets: bookingData.pets,
+            numberOfVehicles: bookingData.vehicles,
+            guestMessage: guestMessage || undefined,
+            paymentMethod,
+          });
+        }
+
+        // Designated booking (siteId provided)
+        return createBooking({
+          site: bookingData.siteId!,
+          property: bookingData.propertyId!,
+          checkIn: bookingData.checkIn,
+          checkOut: bookingData.checkOut,
+          numberOfGuests: bookingData.guests,
+          numberOfPets: bookingData.pets,
+          numberOfVehicles: bookingData.vehicles,
+          guestMessage: guestMessage || undefined,
+          paymentMethod,
+        });
+      }
+
+      // LEGACY: Old campsite booking (backward compatibility)
       return createBooking({
-        campsite: bookingData.campsiteId,
+        campsite: bookingData.campsiteId!,
         checkIn: bookingData.checkIn,
         checkOut: bookingData.checkOut,
-        numberOfGuests: bookingData.guests + bookingData.children,
+        numberOfGuests: bookingData.guests,
         numberOfPets: bookingData.pets,
         guestMessage: guestMessage || undefined,
         paymentMethod,
@@ -116,7 +190,17 @@ export default function PaymentPage() {
       const bookingId =
         (data?.data as { _id?: string; id?: string })?._id ||
         (data?.data as { _id?: string; id?: string })?.id;
-      router.replace(data.data.payOSCheckoutUrl);
+
+      // If payment URL is provided, redirect to PayOS
+      if (data.data.payOSCheckoutUrl) {
+        router.replace(data.data.payOSCheckoutUrl);
+      } else if (bookingId) {
+        // Otherwise, redirect to booking confirmation page
+        router.replace(`/bookings/${bookingId}`);
+      } else {
+        // Fallback to bookings list
+        router.replace('/bookings');
+      }
     },
   });
 
@@ -333,25 +417,32 @@ export default function PaymentPage() {
                 <CardTitle>Chi tiết đặt chỗ</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Campsite Info */}
+                {/* Campsite/Site Info */}
                 <div className="flex gap-4">
-                  {bookingData.campsiteImage && (
+                  {bookingData.image && (
                     <Image
-                      src={bookingData.campsiteImage}
-                      alt={bookingData.campsiteName}
+                      src={bookingData.image}
+                      alt={displayName || 'Campsite'}
                       width={80}
                       height={80}
                       className="h-20 w-20 rounded-lg object-cover"
                     />
                   )}
                   <div className="flex-1">
-                    <h3 className="font-semibold">
-                      {bookingData.campsiteName}
-                    </h3>
+                    <h3 className="font-semibold">{displayName}</h3>
                     <p className="text-muted-foreground flex items-center gap-1 text-sm">
                       <MapPin className="h-3 w-3" />
-                      {bookingData.campsiteLocation}
+                      {bookingData.location}
                     </p>
+                    {isPropertySiteBooking && (
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        {bookingData.nights} nights • {bookingData.guests}{' '}
+                        guests
+                        {bookingData.pets > 0 && ` • ${bookingData.pets} pets`}
+                        {bookingData.vehicles > 0 &&
+                          ` • ${bookingData.vehicles} vehicles`}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -382,9 +473,7 @@ export default function PaymentPage() {
                   <div className="flex-1">
                     <p className="text-sm font-medium">Khách</p>
                     <p className="text-muted-foreground text-sm">
-                      {bookingData.guests} người lớn
-                      {bookingData.children > 0 &&
-                        `, ${bookingData.children} trẻ em`}
+                      {bookingData.guests} người
                     </p>
                   </div>
                 </div>
@@ -424,6 +513,13 @@ export default function PaymentPage() {
                     <div className="flex justify-between text-sm">
                       <span>Phí thú cưng</span>
                       <span>{formatPrice(totalPetFee)}</span>
+                    </div>
+                  )}
+
+                  {additionalGuestFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Phí khách thêm</span>
+                      <span>{formatPrice(additionalGuestFee)}</span>
                     </div>
                   )}
 

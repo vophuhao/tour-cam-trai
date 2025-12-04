@@ -1,7 +1,12 @@
-
-import { ErrorFactory } from "@/errors";
-import { AvailabilityModel, BookingModel, CampsiteModel, type BookingDocument } from "@/models";
 import { CLIENT_URL, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY, PAYOS_CLIENT_ID } from "@/constants";
+import { ErrorFactory } from "@/errors";
+import {
+  AvailabilityModel,
+  BookingModel,
+  PropertyModel,
+  SiteModel,
+  type BookingDocument,
+} from "@/models";
 import appAssert from "@/utils/app-assert";
 import type {
   CancelBookingInput,
@@ -9,7 +14,7 @@ import type {
   SearchBookingInput,
 } from "@/validators/booking.validator";
 import mongoose from "mongoose";
-
+import SiteService from "./site.service";
 
 const { PayOS } = require("@payos/node");
 
@@ -21,11 +26,13 @@ const payos = new PayOS({
 
 export class BookingService {
   /**
-   * Create booking (guest book campsite)
+   * Create booking (guest book site)
    */
   async createBooking(guestId: string, input: CreateBookingInput): Promise<BookingDocument> {
     const {
-      campsite: campsiteId,
+      property: propertyId,
+      site: siteId,
+      campsite: campsiteId, // Legacy support
       checkIn,
       checkOut,
       numberOfGuests,
@@ -35,34 +42,52 @@ export class BookingService {
       paymentMethod,
     } = input;
 
-    // Get campsite
-    const campsite = await CampsiteModel.findById(campsiteId);
-    appAssert(campsite, ErrorFactory.resourceNotFound("Campsite"));
-    appAssert(campsite.isActive, ErrorFactory.badRequest("Campsite không còn hoạt động"));
-
-    // Check capacity
+    // Ensure either site or campsite is provided
     appAssert(
-      numberOfGuests <= campsite.capacity.maxGuests,
-      ErrorFactory.badRequest(`Số khách tối đa: ${campsite.capacity.maxGuests}`)
+      siteId || campsiteId,
+      ErrorFactory.badRequest("Either site or campsite must be provided")
     );
-    if (campsite.capacity.maxPets !== undefined) {
+
+    // Get property and site
+    const [property, site] = await Promise.all([
+      PropertyModel.findById(propertyId),
+      siteId ? SiteModel.findById(siteId) : Promise.resolve(null),
+    ]);
+
+    appAssert(property, ErrorFactory.resourceNotFound("Property"));
+    appAssert(site, ErrorFactory.resourceNotFound("Site"));
+    appAssert(property.isActive, ErrorFactory.badRequest("Property không còn hoạt động"));
+    appAssert(site!.isActive, ErrorFactory.badRequest("Site không còn hoạt động"));
+
+    // Verify site belongs to property
+    appAssert(
+      site!.property.toString() === propertyId,
+      ErrorFactory.badRequest("Site không thuộc property này")
+    );
+
+    // Check capacity (from site)
+    appAssert(
+      numberOfGuests <= site.capacity.maxGuests,
+      ErrorFactory.badRequest(`Số khách tối đa: ${site.capacity.maxGuests}`)
+    );
+    if (site.capacity.maxPets !== undefined) {
       appAssert(
-        numberOfPets <= campsite.capacity.maxPets,
-        ErrorFactory.badRequest(`Số thú cưng tối đa: ${campsite.capacity.maxPets}`)
+        numberOfPets <= site.capacity.maxPets,
+        ErrorFactory.badRequest(`Số thú cưng tối đa: ${site.capacity.maxPets}`)
       );
     }
-    if (campsite.capacity.maxVehicles !== undefined) {
+    if (site.capacity.maxVehicles !== undefined) {
       appAssert(
-        numberOfVehicles <= campsite.capacity.maxVehicles,
-        ErrorFactory.badRequest(`Số xe tối đa: ${campsite.capacity.maxVehicles}`)
+        numberOfVehicles <= site.capacity.maxVehicles,
+        ErrorFactory.badRequest(`Số xe tối đa: ${site.capacity.maxVehicles}`)
       );
     }
 
-    // Check pet policy
+    // Check pet policy (from property)
     if (numberOfPets > 0) {
       appAssert(
-        campsite.rules.allowPets,
-        ErrorFactory.badRequest("Campsite không cho phép thú cưng")
+        property.petPolicy?.allowed,
+        ErrorFactory.badRequest("Property không cho phép thú cưng")
       );
     }
 
@@ -73,38 +98,38 @@ export class BookingService {
       (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    // Check min nights
+    // Check min nights (from site booking settings)
     appAssert(
-      nights >= campsite.rules.minNights,
-      ErrorFactory.badRequest(`Tối thiểu ${campsite.rules.minNights} đêm`)
+      nights >= site.bookingSettings.minimumNights,
+      ErrorFactory.badRequest(`Tối thiểu ${site.bookingSettings.minimumNights} đêm`)
     );
 
     // Check max nights
-    if (campsite.rules.maxNights) {
+    if (site.bookingSettings.maximumNights) {
       appAssert(
-        nights <= campsite.rules.maxNights,
-        ErrorFactory.badRequest(`Tối đa ${campsite.rules.maxNights} đêm`)
+        nights <= site.bookingSettings.maximumNights,
+        ErrorFactory.badRequest(`Tối đa ${site.bookingSettings.maximumNights} đêm`)
       );
     }
 
     // Check availability in calendar
-    //  const isAvailable = await this.checkAvailability(campsiteId, checkIn, checkOut);
-    //  appAssert(isAvailable, ErrorFactory.conflict("Campsite không có sẵn trong thời gian này"));
+    //  const isAvailable = await this.checkAvailability(siteId, checkIn, checkOut);
+    //  appAssert(isAvailable, ErrorFactory.conflict("Site không có sẵn trong thời gian này"));
 
-    // Calculate pricing
-    const pricing = this.calculatePricing(campsite, nights, numberOfGuests, numberOfPets);
+    // Calculate pricing (from site)
+    const pricing = this.calculatePricing(site, nights, numberOfGuests, numberOfPets);
 
     let payOSOrderCode: number | null = null;
     let payOSCheckoutUrl: string | null = null;
     const code = this.generateBookingCode();
     payOSOrderCode = Math.floor(Date.now() / 1000);
-    const amount = 2000; // TODO: TESTING ONLY
+    const amount = pricing.total; // Use actual total from pricing calculation
 
     try {
       const paymentLink = await payos.paymentRequests.create({
         orderCode: payOSOrderCode,
         amount,
-        description: `BOOKING`, 
+        description: `BOOKING ${code}`,
         returnUrl: `${CLIENT_URL}/bookings/${code}/success`,
         cancelUrl: `${CLIENT_URL}/bookings/cancel`,
       });
@@ -116,19 +141,18 @@ export class BookingService {
         paymentLink?.data?.checkoutUrl ||
         null;
     } catch (err: any) {
-
       console.error("Error creating PayOS payment link:", err.message);
     }
-
 
     // Create booking
     const booking = await BookingModel.create({
       code,
       payOSOrderCode,
       payOSCheckoutUrl,
-      campsite: campsiteId,
+      property: propertyId,
+      site: siteId,
       guest: guestId,
-      host: campsite.host,
+      host: property.host,
       checkIn: checkInDate,
       checkOut: checkOutDate,
       nights,
@@ -145,9 +169,11 @@ export class BookingService {
     // Calculate total
     await booking.calculateTotal();
     // Block dates in availability calendar
-    await this.blockDatesForBooking(campsiteId, checkInDate, checkOutDate);
+    if (siteId) {
+      await this.blockDatesForBooking(siteId, checkInDate, checkOutDate);
+    }
     // Auto-confirm if instant book
-    if (campsite.isInstantBook) {
+    if (site!.bookingSettings.instantBook) {
       await booking.confirm();
     }
 
@@ -166,23 +192,25 @@ export class BookingService {
   }
 
   async handlePayOSWebhook(data: any) {
-
     try {
       const orderCode = data.data?.code;
       const success = data.data?.status === "PAID" || data.success;
 
-
-      const booking = await BookingModel.findOne({ payOSOrderCode: orderCode })
+      const booking = await BookingModel.findOne({ payOSOrderCode: orderCode });
       appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
 
       if (success) {
         booking.paymentStatus = "paid";
         await booking.save();
-        return { success: true, code: "PAYMENT_SUCCESS", message: "Thanh toán thành công", booking };
+        return {
+          success: true,
+          code: "PAYMENT_SUCCESS",
+          message: "Thanh toán thành công",
+          booking,
+        };
       } else {
         booking.paymentStatus = "failed";
         await booking.save();
-
 
         return { success: false, code: "PAYMENT_FAILED", message: "Thanh toán thất bại", booking };
       }
@@ -207,7 +235,8 @@ export class BookingService {
    */
   async getBooking(bookingId: string, userId: string): Promise<BookingDocument> {
     const booking = await BookingModel.findById(bookingId)
-      .populate("campsite", "images")
+      .populate("property", "name location photos")
+      .populate("site", "name accommodationType photos pricing")
       .populate("guest", "username email avatarUrl")
       .populate("host", "username email avatarUrl");
 
@@ -274,11 +303,7 @@ export class BookingService {
     await booking.cancel(userId, input.cancellationReason);
 
     // Unblock dates when booking is cancelled
-    await this.unblockDatesForBooking(
-      booking.campsite.toString(),
-      booking.checkIn,
-      booking.checkOut
-    );
+    await this.unblockDatesForBooking(booking.site.toString(), booking.checkIn, booking.checkOut);
 
     return booking;
   }
@@ -376,7 +401,7 @@ export class BookingService {
    * Check availability helper
    */
   private async checkAvailability(
-    campsiteId: string,
+    siteId: string,
     checkIn: string,
     checkOut: string
   ): Promise<boolean> {
@@ -385,7 +410,7 @@ export class BookingService {
 
     // Check blocked dates
     const blockedDates = await AvailabilityModel.countDocuments({
-      campsite: campsiteId,
+      site: siteId,
       date: { $gte: checkInDate, $lt: checkOutDate },
       isAvailable: false,
     });
@@ -394,7 +419,7 @@ export class BookingService {
 
     // Check overlapping bookings
     const overlappingBooking = await BookingModel.findOne({
-      campsite: campsiteId,
+      site: siteId,
       status: { $in: ["pending", "confirmed"] },
       $or: [
         {
@@ -411,19 +436,20 @@ export class BookingService {
    * Calculate pricing breakdown
    */
   private calculatePricing(
-    campsite: any,
+    site: any,
     nights: number,
     numberOfGuests: number,
     numberOfPets: number
   ): any {
-    const { basePrice, cleaningFee = 0, petFee = 0, extraGuestFee = 0 } = campsite.pricing;
+    const { basePrice, fees = {} } = site.pricing;
+    const { cleaningFee = 0, petFee = 0, extraGuestFee = 0 } = fees;
 
     const subtotal = basePrice * nights;
     const cleaning = cleaningFee;
     const pet = numberOfPets > 0 ? petFee * numberOfPets : 0;
     const extraGuest =
-      numberOfGuests > campsite.capacity.maxGuests
-        ? extraGuestFee * (numberOfGuests - campsite.capacity.maxGuests) * nights
+      numberOfGuests > site.capacity.maxGuests
+        ? extraGuestFee * (numberOfGuests - site.capacity.maxGuests) * nights
         : 0;
 
     return {
@@ -442,11 +468,7 @@ export class BookingService {
   /**
    * Block dates in availability calendar when booking is created
    */
-  private async blockDatesForBooking(
-    campsiteId: string,
-    checkIn: Date,
-    checkOut: Date
-  ): Promise<void> {
+  private async blockDatesForBooking(siteId: string, checkIn: Date, checkOut: Date): Promise<void> {
     const dates: Date[] = [];
     const currentDate = new Date(checkIn);
 
@@ -458,7 +480,7 @@ export class BookingService {
 
     // Create availability records for each date
     const availabilityRecords = dates.map((date) => ({
-      campsite: campsiteId,
+      site: siteId,
       date,
       isAvailable: false,
       blockType: "booked" as const,
@@ -468,7 +490,7 @@ export class BookingService {
     // Use bulkWrite with upsert to avoid duplicates
     const bulkOps = availabilityRecords.map((record) => ({
       updateOne: {
-        filter: { campsite: record.campsite, date: record.date },
+        filter: { site: record.site, date: record.date },
         update: { $set: record },
         upsert: true,
       },
@@ -483,13 +505,13 @@ export class BookingService {
    * Unblock dates when booking is cancelled
    */
   private async unblockDatesForBooking(
-    campsiteId: string,
+    siteId: string,
     checkIn: Date,
     checkOut: Date
   ): Promise<void> {
     // Remove availability records for booked dates
     await AvailabilityModel.deleteMany({
-      campsite: campsiteId,
+      site: siteId,
       date: { $gte: checkIn, $lt: checkOut },
       blockType: "booked",
     });
@@ -500,7 +522,8 @@ export class BookingService {
       $or: [{ host: userId }],
     };
     const bookings = await BookingModel.find(query)
-      .populate("campsite", "name slug images location")
+      .populate("property", "name slug location photos")
+      .populate("site", "name slug accommodationType photos pricing")
       .populate("guest", "name email avatar")
       .populate("host", "name email avatar")
       .sort({ createdAt: -1 })
@@ -520,4 +543,36 @@ export class BookingService {
     };
   }
 
+  /**
+   * Book undesignated site (guest books any available site in group)
+   * Auto-assigns an available site from the group
+   */
+  async bookUndesignatedSite(
+    guestId: string,
+    groupId: string,
+    input: Omit<CreateBookingInput, "site"> & { property: string }
+  ): Promise<BookingDocument> {
+    const { property: propertyId, checkIn, checkOut } = input;
+
+    // Check if group has any available sites
+    const groupAvailability = await SiteService.checkGroupAvailability(groupId, checkIn, checkOut);
+
+    appAssert(
+      groupAvailability.isAvailable && groupAvailability.availableSiteIds,
+      ErrorFactory.conflict(
+        groupAvailability.reason || "Không có site nào available trong group này"
+      )
+    );
+
+    // Auto-select first available site
+    const selectedSiteId = groupAvailability.availableSiteIds[0];
+
+    // Create booking with the auto-selected site
+    const booking = await this.createBooking(guestId, {
+      ...input,
+      site: selectedSiteId,
+    });
+
+    return booking;
+  }
 }

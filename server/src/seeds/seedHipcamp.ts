@@ -6,8 +6,9 @@ import {
   AmenityModel,
   AvailabilityModel,
   BookingModel,
-  CampsiteModel,
+  PropertyModel,
   ReviewModel,
+  SiteModel,
   UserModel,
 } from "@/models";
 import { hashValue } from "@/utils/bcrypt";
@@ -971,6 +972,94 @@ const campsitesData = [
     amenityNames: ["Điện", "Nước", "Toilet", "Lửa trại", "Lò nướng BBQ"],
     activityNames: ["Ngắm sao", "Chụp ảnh", "Lửa trại", "Thiền"],
   },
+  {
+    name: "Pine Forest Campground Ba Vì",
+    slug: "pine-forest-campground-ba-vi",
+    tagline: "Khu cắm trại rừng thông - Chọn chỗ khi đến",
+    description:
+      "Khu cắm trại rộng lớn giữa rừng thông Ba Vì với 15 vị trí cắm trại. Khách được tự do chọn chỗ khi check-in, không cần đặt vị trí cụ thể. Tất cả các vị trí đều có cùng mức giá và tiện nghi.",
+    location: {
+      address: "Vườn Quốc gia Ba Vì",
+      city: "Ba Vì",
+      state: "Hà Nội",
+      country: "Vietnam",
+      zipCode: "100000",
+      coordinates: { lat: 21.0833, lng: 105.3667 },
+    },
+    propertyType: "tent",
+    capacity: { maxGuests: 4, maxVehicles: 2, maxPets: 1 },
+    pricing: {
+      basePrice: 300000,
+      weekendPrice: 450000,
+      cleaningFee: 50000,
+      petFee: 50000,
+      extraGuestFee: 50000,
+    },
+    rules: {
+      checkIn: "12:00",
+      checkOut: "11:00",
+      minNights: 1,
+      maxNights: 7,
+      allowPets: true,
+      allowChildren: true,
+      allowSmoking: true,
+      allowEvents: true,
+      quietHours: "22:00 - 07:00",
+    },
+    images: [
+      "https://images.unsplash.com/photo-1478131143081-80f7f84ca84d",
+      "https://images.unsplash.com/photo-1504851149312-7a075b496cc7",
+    ],
+    isInstantBook: true,
+    amenityNames: ["Điện", "Nước", "Toilet", "Tắm nước nóng", "Bãi đỗ xe", "Lửa trại", "Wifi"],
+    activityNames: ["Trekking", "Xe đạp địa hình", "Ngắm chim", "Chụp ảnh"],
+    isUndesignated: true, // Flag to create undesignated sites
+    numberOfSites: 15, // Number of undesignated sites to create
+  },
+  {
+    name: "Lakeside Retreat Hòa Bình",
+    slug: "lakeside-retreat-hoa-binh",
+    tagline: "Bờ hồ yên bình - 2 vị trí tiện nghi",
+    description:
+      "Khu cắm trại nhỏ xinh bên bờ hồ Hòa Bình với 2 vị trí cắm trại. Khách được tự do chọn chỗ khi check-in. Cả 2 vị trí đều có view hồ tuyệt đẹp và tiện nghi đầy đủ.",
+    location: {
+      address: "Hồ Hòa Bình",
+      city: "Hòa Bình",
+      state: "Hòa Bình",
+      country: "Vietnam",
+      zipCode: "35000",
+      coordinates: { lat: 20.8142, lng: 105.3381 },
+    },
+    propertyType: "tent",
+    capacity: { maxGuests: 4, maxVehicles: 2, maxPets: 2 },
+    pricing: {
+      basePrice: 350000,
+      weekendPrice: 500000,
+      cleaningFee: 50000,
+      petFee: 30000,
+      extraGuestFee: 50000,
+    },
+    rules: {
+      checkIn: "13:00",
+      checkOut: "11:00",
+      minNights: 1,
+      maxNights: 5,
+      allowPets: true,
+      allowChildren: true,
+      allowSmoking: false,
+      allowEvents: false,
+      quietHours: "22:00 - 06:00",
+    },
+    images: [
+      "https://images.unsplash.com/photo-1504851149312-7a075b496cc7",
+      "https://images.unsplash.com/photo-1478131143081-80f7f84ca84d",
+    ],
+    isInstantBook: true,
+    amenityNames: ["Điện", "Nước", "Toilet", "Tắm nước nóng", "Lửa trại", "Lò nướng BBQ"],
+    activityNames: ["Câu cá", "Chèo kayak", "Ngắm hoàng hôn", "Chụp ảnh"],
+    isUndesignated: true,
+    numberOfSites: 2, // Only 2 sites for easy testing
+  },
 ];
 
 async function seedDatabase() {
@@ -981,11 +1070,18 @@ async function seedDatabase() {
 
     // Clear existing data
     console.log("🗑️  Clearing existing Hipcamp data...");
+    // Drop old collections to remove old indexes
+    await mongoose.connection.db
+      ?.collection("availabilities")
+      .drop()
+      .catch(() => {});
     await AmenityModel.deleteMany({});
     await ActivityModel.deleteMany({});
     await ReviewModel.deleteMany({});
     await BookingModel.deleteMany({});
-    await CampsiteModel.deleteMany({});
+    await AvailabilityModel.deleteMany({});
+    await SiteModel.deleteMany({});
+    await PropertyModel.deleteMany({});
     // Keep existing users, only add new ones
     console.log("✅ Cleared Hipcamp data");
 
@@ -1021,9 +1117,10 @@ async function seedDatabase() {
     const hosts = createdUsers.filter((u) => u.email.startsWith("host"));
     const guests = createdUsers.filter((u) => u.email.startsWith("guest"));
 
-    // ===== SEED CAMPSITES =====
-    console.log("🏕️  Seeding campsites...");
-    const createdCampsites = [];
+    // ===== SEED PROPERTIES & SITES =====
+    console.log("🏕️  Seeding properties and sites...");
+    const createdProperties = [];
+    const createdSites = [];
 
     for (let i = 0; i < campsitesData.length; i++) {
       const data = campsitesData[i];
@@ -1041,27 +1138,235 @@ async function seedDatabase() {
         name: { $in: data.activityNames },
       }).select("_id");
 
-      // Transform coordinates from {lat, lng} to GeoJSON format
-      const transformedData = {
-        ...data,
+      // Create Property
+      const property = await PropertyModel.create({
+        name: data.name,
+        slug: data.slug,
+        tagline: data.tagline,
+        description: data.description,
+        host: host._id,
         location: {
-          ...data.location,
+          address: data.location.address,
+          city: data.location.city,
+          state: data.location.state,
+          country: data.location.country,
+          zipCode: data.location.zipCode,
           coordinates: {
             type: "Point" as const,
-            coordinates: [data.location.coordinates.lng, data.location.coordinates.lat], // [lng, lat]
+            coordinates: [data.location.coordinates.lng, data.location.coordinates.lat],
           },
         },
-        host: host._id,
-        amenities: amenityIds.map((a) => a._id),
+        propertyType:
+          data.propertyType === "tent"
+            ? "campground"
+            : data.propertyType === "rv"
+              ? "campground"
+              : data.propertyType === "cabin"
+                ? "ranch"
+                : data.propertyType === "glamping"
+                  ? "farm"
+                  : "private_land",
+        landSize: {
+          value: Math.floor(Math.random() * 200) + 50, // 50-250 acres
+          unit: "acres" as const,
+        },
+        lodgingType:
+          data.propertyType === "tent" || data.propertyType === "rv"
+            ? "bring_your_own"
+            : "structure_provided",
+        sharedAmenities: {
+          toilets: {
+            type: amenityIds.some((a: any) => ["Toilet"].includes(a.name)) ? "flush" : "none",
+            count: 2,
+            isShared: true,
+          },
+          showers: {
+            type: amenityIds.some((a: any) => ["Tắm nước nóng"].includes(a.name)) ? "hot" : "none",
+            count: 2,
+            isShared: true,
+          },
+          potableWater: amenityIds.some((a: any) => ["Nước"].includes(a.name)),
+          parkingType: amenityIds.some((a: any) => ["Bãi đỗ xe"].includes(a.name))
+            ? "drive_in"
+            : undefined,
+          parkingSpaces: amenityIds.some((a: any) => ["Bãi đỗ xe"].includes(a.name)) ? 10 : 0,
+          laundry: false,
+          wifi: amenityIds.some((a: any) => ["Wifi"].includes(a.name)),
+          electricityAvailable: amenityIds.some((a: any) => ["Điện"].includes(a.name)),
+        },
         activities: activityIds.map((a) => a._id),
+        rules: [
+          {
+            text: data.rules.allowPets ? "Cho phép thú cưng" : "Không cho phép thú cưng",
+            category: "pets",
+            order: 1,
+          },
+          { text: `Giờ yên tĩnh: ${data.rules.quietHours}`, category: "noise", order: 2 },
+          {
+            text: data.rules.allowSmoking ? "Cho phép hút thuốc" : "Không hút thuốc",
+            category: "general",
+            order: 3,
+          },
+        ],
+        policies: {
+          checkInTime: data.rules.checkIn,
+          checkOutTime: data.rules.checkOut,
+          cancellationPolicy: "flexible",
+        },
+        photos: data.images.map((url: string, idx: number) => ({
+          url,
+          isCover: idx === 0,
+          order: idx,
+        })),
         isActive: true,
-      };
+      });
 
-      const campsite = await CampsiteModel.create(transformedData);
+      createdProperties.push(property);
 
-      createdCampsites.push(campsite);
+      // Create multiple Sites for each Property
+      // Check if this is an undesignated property (grouped sites)
+      const isUndesignated = (data as any).isUndesignated === true;
+      const numSites = isUndesignated
+        ? (data as any).numberOfSites || 10
+        : Math.floor(Math.random() * 4) + 2; // 2-5 sites for normal properties
+
+      const accommodationType =
+        data.propertyType === "glamping" ? "safari_tent" : data.propertyType;
+
+      // For undesignated properties, create a group ID
+      const groupId = isUndesignated ? new mongoose.Types.ObjectId() : undefined;
+
+      // Site names for variety
+      const siteNames = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"];
+
+      for (let siteIdx = 0; siteIdx < numSites; siteIdx++) {
+        // Generate slightly different coordinates for each site (within 0.01 degree)
+        const siteCoords = [
+          data.location.coordinates.lng + (Math.random() * 0.01 - 0.005),
+          data.location.coordinates.lat + (Math.random() * 0.01 - 0.005),
+        ];
+
+        // For undesignated sites, all have same price
+        // For designated sites, vary pricing slightly
+        const priceVariation = isUndesignated ? 1.0 : Math.random() * 0.3 + 0.85; // 85%-115%
+        const siteBasePrice = Math.round((data.pricing.basePrice * priceVariation) / 10000) * 10000;
+        const siteWeekendPrice = data.pricing.weekendPrice
+          ? Math.round((data.pricing.weekendPrice * priceVariation) / 10000) * 10000
+          : undefined;
+
+        // For undesignated, all sites have same capacity
+        const siteCapacity = isUndesignated
+          ? {
+              maxGuests: data.capacity.maxGuests,
+              maxAdults: data.capacity.maxGuests,
+              maxPets: data.capacity.maxPets || 0,
+              maxVehicles: data.capacity.maxVehicles || 1,
+            }
+          : {
+              maxGuests: Math.max(1, data.capacity.maxGuests + Math.floor(Math.random() * 3) - 1),
+              maxAdults: data.capacity.maxGuests,
+              maxPets: data.capacity.maxPets || 0,
+              maxVehicles: data.capacity.maxVehicles || 1,
+            };
+
+        const site = await SiteModel.create({
+          name: isUndesignated
+            ? `${data.name} - Site ${siteIdx + 1}`
+            : `${data.name} - Site ${siteNames[siteIdx] || siteIdx + 1}`,
+          slug: isUndesignated
+            ? `${data.slug}-site-${siteIdx + 1}`
+            : `${data.slug}-site-${siteNames[siteIdx]?.toLowerCase() || siteIdx + 1}`,
+          description: isUndesignated
+            ? `One of ${numSites} tent camping sites in this campground. Choose your spot upon arrival - all sites have the same amenities and pricing.`
+            : `${accommodationType === "tent" ? "Tent camping site" : accommodationType === "rv" ? "RV camping site" : "Lodging accommodation"} with ${siteCapacity.maxGuests} guest capacity`,
+          property: property._id,
+          accommodationType,
+          lodgingProvided: data.propertyType === "tent" ? "bring_your_own" : "structure_provided",
+          siteType: isUndesignated ? "undesignated" : "designated",
+          siteLocation: {
+            coordinates: {
+              type: "Point",
+              coordinates: siteCoords,
+            },
+            mapPinLabel: isUndesignated
+              ? `Site ${siteIdx + 1}`
+              : `Site ${siteNames[siteIdx] || siteIdx + 1}`,
+            relativeDescription: isUndesignated
+              ? "Throughout the pine forest"
+              : siteIdx === 0
+                ? "Near entrance"
+                : siteIdx === 1
+                  ? "By the river"
+                  : siteIdx === 2
+                    ? "In the meadow"
+                    : "Forest area",
+          },
+          capacity: siteCapacity,
+          pricing: {
+            basePrice: siteBasePrice,
+            currency: "VND",
+            cleaningFee: data.pricing.cleaningFee || 0,
+            petFee: data.pricing.petFee || 0,
+            additionalGuestFee: data.pricing.extraGuestFee || 0,
+            weekendPrice: siteWeekendPrice,
+            seasonalPricing: [],
+          },
+          amenities: {
+            electrical: {
+              available: amenityIds.some((a: any) => ["Điện"].includes(a.name)),
+              amperage: 30,
+            },
+            water: {
+              available: amenityIds.some((a: any) => ["Nước"].includes(a.name)),
+              drinkable: true,
+            },
+            sewer: { available: false, type: "dump_station" },
+            firePit: amenityIds.some((a: any) => ["Lửa trại", "Lò nướng BBQ"].includes(a.name)),
+            picnicTable: amenityIds.some((a: any) => ["Bàn ghế ngoài trời"].includes(a.name)),
+          },
+          bookingSettings: {
+            minimumNights: data.rules.minNights,
+            maximumNights: data.rules.maxNights,
+            checkInTime: data.rules.checkIn,
+            checkOutTime: data.rules.checkOut,
+            instantBook: data.isInstantBook,
+            advanceNotice: 1,
+            preparationTime: 0,
+            allowSameDayBooking: true,
+          },
+          photos: data.images.map((url: string, idx: number) => ({
+            url,
+            isCover: idx === 0,
+            order: idx,
+          })),
+          // Grouped site info for undesignated sites
+          groupedSiteInfo: isUndesignated
+            ? {
+                isGrouped: true,
+                groupId: groupId,
+                totalSitesInGroup: numSites,
+              }
+            : {
+                isGrouped: false,
+              },
+          isActive: true,
+        });
+
+        createdSites.push(site);
+      }
+
+      // Update property's totalSites count after creating all sites
+      await PropertyModel.findByIdAndUpdate(property._id, {
+        $set: {
+          "stats.totalSites": numSites,
+          "stats.activeSites": numSites,
+          minPrice: Math.min(...createdSites.slice(-numSites).map((s) => s.pricing.basePrice)),
+        },
+      });
     }
-    console.log(`✅ Created ${createdCampsites.length} campsites`);
+    console.log(
+      `✅ Created ${createdProperties.length} properties and ${createdSites.length} sites`
+    );
 
     // ===== SEED BOOKINGS =====
     console.log("📅 Seeding bookings...");
@@ -1182,26 +1487,29 @@ async function seedDatabase() {
 
     const createdBookings = [];
     for (const bookingData of bookingsData) {
-      const campsite = createdCampsites[bookingData.campsiteIndex];
+      const property = createdProperties[bookingData.campsiteIndex];
+      const site = createdSites[bookingData.campsiteIndex];
       const guest = guests[bookingData.guestIndex];
       const host = hosts[bookingData.campsiteIndex % hosts.length];
 
-      if (!campsite || !guest || !host) continue;
+      if (!property || !site || !guest || !host) continue;
 
       const nights = Math.ceil(
         (bookingData.checkOut.getTime() - bookingData.checkIn.getTime()) / (1000 * 60 * 60 * 24)
       );
 
-      const basePrice = campsite.pricing.basePrice;
+      const basePrice = site.pricing.basePrice;
       const subtotal = basePrice * nights;
-      const cleaningFee = campsite.pricing.cleaningFee || 0;
-      const petFee = bookingData.numberOfPets > 0 ? campsite.pricing.petFee || 0 : 0;
+      const cleaningFee = site.pricing.cleaningFee || 0;
+      const petFee = bookingData.numberOfPets > 0 ? site.pricing.petFee || 0 : 0;
       const serviceFee = Math.round(subtotal * 0.1);
       const tax = Math.round((subtotal + cleaningFee + petFee + serviceFee) * 0.1);
       const total = subtotal + cleaningFee + petFee + serviceFee + tax;
 
       const booking = await BookingModel.create({
-        campsite: campsite._id,
+        code: `BK${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+        property: property._id,
+        site: site._id,
         guest: guest._id,
         host: host._id,
         checkIn: bookingData.checkIn,
@@ -1235,7 +1543,7 @@ async function seedDatabase() {
     console.log("📅 Seeding availability...");
     const availabilityRecords = [];
 
-    for (const campsite of createdCampsites) {
+    for (const site of createdSites) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -1271,13 +1579,13 @@ async function seedDatabase() {
         }
         // 10% chance of weekend pricing (higher price)
         else if (date.getDay() === 0 || date.getDay() === 6) {
-          if (campsite.pricing.weekendPrice) {
-            price = campsite.pricing.weekendPrice;
+          if (site.pricing.weekendPrice) {
+            price = site.pricing.weekendPrice;
           }
         }
 
         availabilityRecords.push({
-          campsite: campsite._id,
+          site: site._id,
           date,
           isAvailable,
           blockType,
@@ -1369,13 +1677,21 @@ async function seedDatabase() {
 
       const review: any = {
         booking: booking._id,
-        campsite: booking.campsite,
+        property: booking.property,
+        site: booking.site,
         guest: booking.guest,
         host: booking.host,
-        ratings: {
-          ...template.ratings,
-          overall: overallRating,
+        propertyRatings: {
+          location: template.ratings.location,
+          communication: template.ratings.communication,
+          value: template.ratings.value,
         },
+        siteRatings: {
+          cleanliness: template.ratings.cleanliness,
+          accuracy: template.ratings.accuracy,
+          amenities: Math.round((template.ratings.cleanliness + template.ratings.accuracy) / 2),
+        },
+        overallRating,
         title: template.title,
         comment: template.comment,
         pros: template.pros,
@@ -1405,49 +1721,81 @@ async function seedDatabase() {
 
     console.log(`✅ Created ${createdReviews.length} reviews`);
 
-    // Update campsite ratings for all campsites with reviews
-    const campsitesWithReviews = [...new Set(createdReviews.map((r) => r.campsite.toString()))];
-    for (const campsiteId of campsitesWithReviews) {
-      const reviews = await ReviewModel.find({ campsite: campsiteId, isPublished: true });
+    // Update property and site ratings
+    const propertiesWithReviews = [
+      ...new Set(createdReviews.map((r: any) => r.property.toString())),
+    ];
+    const sitesWithReviews = [...new Set(createdReviews.map((r: any) => r.site.toString()))];
+
+    for (const propertyId of propertiesWithReviews) {
+      const reviews = await ReviewModel.find({ property: propertyId, isPublished: true });
       if (reviews.length === 0) continue;
 
-      const totalRatings = reviews.reduce(
-        (acc, review) => {
-          acc.overall += review.ratings.overall;
-          acc.cleanliness += review.ratings.cleanliness;
-          acc.accuracy += review.ratings.accuracy;
-          acc.location += review.ratings.location;
-          acc.value += review.ratings.value;
-          acc.communication += review.ratings.communication;
+      const totalPropertyRatings = reviews.reduce(
+        (acc, review: any) => {
+          acc.location += review.propertyRatings.location;
+          acc.communication += review.propertyRatings.communication;
+          acc.value += review.propertyRatings.value;
+          acc.overall += review.overallRating;
           return acc;
         },
-        { overall: 0, cleanliness: 0, accuracy: 0, location: 0, value: 0, communication: 0 }
+        { location: 0, communication: 0, value: 0, overall: 0 }
       );
 
       const count = reviews.length;
-      await CampsiteModel.findByIdAndUpdate(campsiteId, {
+      await PropertyModel.findByIdAndUpdate(propertyId, {
         rating: {
-          average: Math.round((totalRatings.overall / count) * 10) / 10,
+          average: Math.round((totalPropertyRatings.overall / count) * 10) / 10,
           count,
           breakdown: {
-            cleanliness: Math.round((totalRatings.cleanliness / count) * 10) / 10,
-            accuracy: Math.round((totalRatings.accuracy / count) * 10) / 10,
-            location: Math.round((totalRatings.location / count) * 10) / 10,
-            value: Math.round((totalRatings.value / count) * 10) / 10,
-            communication: Math.round((totalRatings.communication / count) * 10) / 10,
+            location: Math.round((totalPropertyRatings.location / count) * 10) / 10,
+            communication: Math.round((totalPropertyRatings.communication / count) * 10) / 10,
+            value: Math.round((totalPropertyRatings.value / count) * 10) / 10,
           },
         },
       });
     }
 
-    console.log(`✅ Updated ratings for ${campsitesWithReviews.length} campsites`);
+    for (const siteId of sitesWithReviews) {
+      const reviews = await ReviewModel.find({ site: siteId, isPublished: true });
+      if (reviews.length === 0) continue;
+
+      const totalSiteRatings = reviews.reduce(
+        (acc, review: any) => {
+          acc.cleanliness += review.siteRatings.cleanliness;
+          acc.accuracy += review.siteRatings.accuracy;
+          acc.amenities += review.siteRatings.amenities;
+          acc.overall += review.overallRating;
+          return acc;
+        },
+        { cleanliness: 0, accuracy: 0, amenities: 0, overall: 0 }
+      );
+
+      const count = reviews.length;
+      await SiteModel.findByIdAndUpdate(siteId, {
+        rating: {
+          average: Math.round((totalSiteRatings.overall / count) * 10) / 10,
+          count,
+          breakdown: {
+            cleanliness: Math.round((totalSiteRatings.cleanliness / count) * 10) / 10,
+            accuracy: Math.round((totalSiteRatings.accuracy / count) * 10) / 10,
+            amenities: Math.round((totalSiteRatings.amenities / count) * 10) / 10,
+          },
+        },
+      });
+    }
+
+    console.log(
+      `✅ Updated ratings for ${propertiesWithReviews.length} properties and ${sitesWithReviews.length} sites`
+    );
 
     console.log("\n🎉 Database seeded successfully!");
     console.log("📊 Summary:");
     console.log(`   - Amenities: ${createdAmenities.length}`);
     console.log(`   - Activities: ${createdActivities.length}`);
     console.log(`   - Users: ${createdUsers.length}`);
-    console.log(`   - Campsites: ${createdCampsites.length}`);
+    console.log(`   - Properties: ${createdProperties.length}`);
+    console.log(`   - Sites: ${createdSites.length}`);
     console.log(`   - Availability: ${availabilityRecords.length}`);
     console.log(`   - Bookings: ${createdBookings.length}`);
     console.log(`   - Reviews: ${createdReviews.length}`);

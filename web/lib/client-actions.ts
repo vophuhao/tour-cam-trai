@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import apiClient from './api-client';
 
+// ==================== PROPERTY-SITE API ====================
+// Re-export all Property-Site API functions for centralized access
+export * from './property-site-api';
+
 export async function login(data: {
   email: string;
   password: string;
@@ -57,9 +61,7 @@ export const searchUsers = async (
   page = 1,
   limit = 20,
 ): Promise<ApiResponse> =>
-  apiClient.get(
-    `/users/search?q=${encodeURIComponent(query)}`,
-  );
+  apiClient.get(`/users/search?q=${encodeURIComponent(query)}`);
 
 export async function uploadMedia(formData: FormData): Promise<ApiResponse> {
   return apiClient.post('/media/save', formData, {
@@ -386,7 +388,17 @@ export async function getAllOrders(): Promise<ApiResponse<Order[]>> {
 
 // ================== BOOKING API ==================
 export async function createBooking(data: {
-  campsite: string;
+  // NEW: Property-Site architecture
+  site?: string;
+  property?: string;
+
+  // UNDESIGNATED: Group booking
+  groupId?: string;
+
+  // LEGACY: Old campsite (backward compatible)
+  campsite?: string;
+
+  // Shared fields
   checkIn: string;
   checkOut: string;
   numberOfGuests: number;
@@ -415,8 +427,6 @@ export async function getUserBookings(params?: {
   return apiClient.get('/bookings', { params });
 }
 
-
-
 export async function getAllAmenities(): Promise<ApiResponse<Amenity[]>> {
   return apiClient.get('/amenities');
 }
@@ -425,27 +435,114 @@ export async function getAllActivities(): Promise<ApiResponse<Activity[]>> {
   return apiClient.get('/activities');
 }
 
-
-
 export async function getMyBookings(): Promise<ApiResponse<Booking[]>> {
   return apiClient.get('/bookings/my/list');
 }
 
+// ================== AVAILABILITY API ==================
+export async function getBlockedDates(
+  siteId: string,
+  startDate: string,
+  endDate: string,
+): Promise<
+  ApiResponse<{
+    blockedDates: string[];
+    totalBlocked: number;
+  }>
+> {
+  return apiClient.get(`/sites/${siteId}/blocked-dates`, {
+    params: { startDate, endDate },
+  });
+}
 
+export async function getSiteAvailability(
+  siteId: string,
+  checkIn?: string,
+  checkOut?: string,
+): Promise<
+  ApiResponse<{
+    isAvailable: boolean;
+    reason?: string;
+    blockedDates?: string[];
+  }>
+> {
+  const params = checkIn && checkOut ? { checkIn, checkOut } : {};
+  return apiClient.get(`/sites/${siteId}/availability`, { params });
+}
 
+export async function checkGroupAvailability(
+  groupId: string,
+  checkIn: string,
+  checkOut: string,
+): Promise<
+  ApiResponse<{
+    isAvailable: boolean;
+    availableSiteIds?: string[];
+    totalAvailable?: number;
+    reason?: string;
+  }>
+> {
+  return apiClient.get(`/sites/group/${groupId}/availability`, {
+    params: { checkIn, checkOut },
+  });
+}
 
 export async function getMyCampsitesReview(): Promise<ApiResponse<Reviews[]>> {
   return apiClient.get('/reviews/my');
 }
 
-export async function addHostResponse(reviewId: string, comment: string): Promise<ApiResponse> {
+// ================== REVIEW API (Property-Site) ==================
+export async function createReview(data: {
+  booking: string;
+  property: string;
+  site: string;
+  propertyRatings: {
+    location: number;
+    communication: number;
+    value: number;
+  };
+  siteRatings: {
+    cleanliness: number;
+    accuracy: number;
+  };
+  comment: string;
+}): Promise<ApiResponse> {
+  return apiClient.post('/reviews', data);
+}
+
+export async function getPropertyReviews(
+  propertyId: string,
+  page = 1,
+  limit = 10,
+): Promise<ApiResponse> {
+  return apiClient.get(`/properties/${propertyId}/reviews`, {
+    params: { page, limit },
+  });
+}
+
+export async function getSiteReviews(
+  siteId: string,
+  page = 1,
+  limit = 10,
+): Promise<ApiResponse> {
+  return apiClient.get(`/sites/${siteId}/reviews`, {
+    params: { page, limit },
+  });
+}
+
+export async function addHostResponse(
+  reviewId: string,
+  comment: string,
+): Promise<ApiResponse> {
   return apiClient.post(`/reviews/${reviewId}/response`, { comment });
 }
 
 /**
  * Lấy hoặc tạo cuộc trò chuyện với 1 user khác
  */
-export async function getOrCreateConversation(userId: string): Promise<ApiResponse> {
+export async function getOrCreateConversation(
+  userId: string,
+): Promise<ApiResponse> {
   return apiClient.post(`/messages/conversations`, { userId });
 }
 
@@ -459,14 +556,18 @@ export async function getUserConversations(): Promise<ApiResponse> {
 /**
  * Xoá 1 conversation
  */
-export async function deleteConversation(conversationId: string): Promise<ApiResponse> {
+export async function deleteConversation(
+  conversationId: string,
+): Promise<ApiResponse> {
   return apiClient.delete(`/messages/${conversationId}`);
 }
 
 /**
  * Lưu trữ (archive) 1 conversation
  */
-export async function archiveConversation(conversationId: string): Promise<ApiResponse> {
+export async function archiveConversation(
+  conversationId: string,
+): Promise<ApiResponse> {
   return apiClient.put(`/messages/${conversationId}/archive`);
 }
 
@@ -477,14 +578,19 @@ export async function archiveConversation(conversationId: string): Promise<ApiRe
 /**
  * Gửi tin nhắn trong 1 conversation
  */
-export async function sendMessageUser(conversationId: string, payload : any ): Promise<ApiResponse> {
+export async function sendMessageUser(
+  conversationId: string,
+  payload: any,
+): Promise<ApiResponse> {
   return apiClient.post(`/messages/${conversationId}`, { payload });
 }
 
 /**
  * Lấy message trong 1 conversation
  */
-export async function getMessages(conversationId: string): Promise<ApiResponse> {
+export async function getMessages(
+  conversationId: string,
+): Promise<ApiResponse> {
   return apiClient.get(`/messages/${conversationId}`);
 }
 
@@ -502,6 +608,8 @@ export async function markAsRead(conversationId: string): Promise<ApiResponse> {
 /**
  * Lấy tổng số tin nhắn chưa đọc
  */
-export async function getUnreadCount(): Promise<ApiResponse<{ count: number }>> {
+export async function getUnreadCount(): Promise<
+  ApiResponse<{ count: number }>
+> {
   return apiClient.get(`/messages/unread-count`);
 }
