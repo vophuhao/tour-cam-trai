@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 
-// Availability model - Quản lý lịch trống/đã book của campsite
+// Availability model - Quản lý lịch trống/đã book của site
 export interface AvailabilityDocument extends mongoose.Document {
-  campsite: mongoose.Types.ObjectId;
+  site: mongoose.Types.ObjectId;
 
   // Date range
   date: Date; // ngày cụ thể
@@ -23,9 +23,9 @@ export interface AvailabilityDocument extends mongoose.Document {
 
 const availabilitySchema = new mongoose.Schema<AvailabilityDocument>(
   {
-    campsite: {
+    site: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Campsite",
+      ref: "Site",
       required: true,
       index: true,
     },
@@ -48,18 +48,19 @@ const availabilitySchema = new mongoose.Schema<AvailabilityDocument>(
 );
 
 // Indexes
-availabilitySchema.index({ campsite: 1, date: 1 }, { unique: true }); // mỗi campsite chỉ có 1 record cho 1 ngày
-availabilitySchema.index({ campsite: 1, date: 1, isAvailable: 1 });
+availabilitySchema.index({ site: 1, date: 1 }, { unique: true }); // mỗi site chỉ có 1 record cho 1 ngày
+availabilitySchema.index({ site: 1, date: 1, isAvailable: 1 });
 
 export const AvailabilityModel = mongoose.model<AvailabilityDocument>(
   "Availability",
   availabilitySchema
 );
 
-// Favorite model - Wishlist campsite của user
+// Favorite model - Wishlist property/site của user
 export interface FavoriteDocument extends mongoose.Document {
   user: mongoose.Types.ObjectId;
-  campsite: mongoose.Types.ObjectId;
+  property?: mongoose.Types.ObjectId; // favorite whole property
+  site?: mongoose.Types.ObjectId; // or favorite specific site
   notes?: string; // ghi chú cá nhân
   createdAt: Date;
   updatedAt: Date;
@@ -68,10 +69,14 @@ export interface FavoriteDocument extends mongoose.Document {
 const favoriteSchema = new mongoose.Schema<FavoriteDocument>(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    campsite: {
+    property: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Campsite",
-      required: true,
+      ref: "Property",
+      index: true,
+    },
+    site: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Site",
       index: true,
     },
     notes: { type: String, trim: true, maxlength: 500 },
@@ -81,8 +86,23 @@ const favoriteSchema = new mongoose.Schema<FavoriteDocument>(
   }
 );
 
+// Validation: must have either property OR site (not both, not neither)
+favoriteSchema.pre("validate", function (next) {
+  const hasProperty = !!this.property;
+  const hasSite = !!this.site;
+
+  if (hasProperty && hasSite) {
+    return next(new Error("Cannot favorite both property and site - choose one"));
+  }
+  if (!hasProperty && !hasSite) {
+    return next(new Error("Must favorite either a property or a site"));
+  }
+  next();
+});
+
 // Indexes
-favoriteSchema.index({ user: 1, campsite: 1 }, { unique: true }); // mỗi user chỉ favorite 1 lần
+favoriteSchema.index({ user: 1, property: 1 }, { unique: true, sparse: true }); // user can favorite property once
+favoriteSchema.index({ user: 1, site: 1 }, { unique: true, sparse: true }); // user can favorite site once
 favoriteSchema.index({ user: 1, createdAt: -1 }); // list favorites của user
 
 export const FavoriteModel = mongoose.model<FavoriteDocument>("Favorite", favoriteSchema);

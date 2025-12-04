@@ -300,7 +300,7 @@ declare interface Order {
   code?: string;
   items: OrderItem[];
   shippingAddress: OrderAddress;
-  product : Product;
+  product: Product;
   paymentMethod: 'cod' | 'card';
   shippingMethod: 'standard' | 'express';
   itemsTotal: number;
@@ -327,7 +327,6 @@ declare interface Order {
   updatedAt: string;
 }
 
-
 declare interface Location {
   _id: string;
   name: string;
@@ -350,10 +349,16 @@ declare interface Activity {
   name: string;
   description?: string;
   icon?: string;
-  category: 'water' | 'hiking' | 'wildlife' | 'winter' | 'adventure' | 'relaxation' | 'other';
+  category:
+    | 'water'
+    | 'hiking'
+    | 'wildlife'
+    | 'winter'
+    | 'adventure'
+    | 'relaxation'
+    | 'other';
   isActive: boolean;
 }
-
 
 declare interface Reviews {
   _id: string;
@@ -364,7 +369,7 @@ declare interface Reviews {
     images: string[];
   };
   guest: {
-    _id: string;  
+    _id: string;
     username: string;
     avatarUrl?: string;
   };
@@ -389,7 +394,7 @@ declare interface Reviews {
 
 declare interface Booking {
   _id: string;
-  campsite: { 
+  campsite: {
     _id: string;
     name: string;
     slug: string;

@@ -1,7 +1,7 @@
 import CampsiteController from "@/controllers/campsite.controller";
 import ReviewController from "@/controllers/review.controller";
 import { container, TOKENS } from "@/di";
-import { authenticate, requireAdmin } from "@/middleware";
+import { authenticate } from "@/middleware";
 import type { CampsiteService } from "@/services/campsite.service";
 import type { ReviewService } from "@/services/review.service";
 import { Router } from "express";
@@ -18,8 +18,9 @@ const reviewController = new ReviewController(reviewService);
 campsiteRoutes.get("/", campsiteController.searchCampsites);
 
 // Campsite reviews routes (must be before /:idOrSlug)
-campsiteRoutes.get("/:campsiteId/reviews", reviewController.getCampsiteReviews);
-campsiteRoutes.get("/:campsiteId/reviews/stats", reviewController.getCampsiteReviewStats);
+// Note: Keeping these for backward compatibility, but they should migrate to property/site routes
+campsiteRoutes.get("/:campsiteId/reviews", reviewController.searchReviews);
+campsiteRoutes.get("/:campsiteId/reviews/stats", reviewController.getPropertyReviewStats);
 
 campsiteRoutes.get("/:idOrSlug", campsiteController.getCampsite);
 campsiteRoutes.get("/:id/availability", campsiteController.checkAvailability);

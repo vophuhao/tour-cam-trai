@@ -19,9 +19,27 @@ export default class BookingController {
    * @route POST /api/bookings
    */
   createBooking = catchErrors(async (req, res) => {
+    // Parse and validate input
     const input = createBookingSchema.parse(req.body);
     const guestId = mongoIdSchema.parse(req.userId);
 
+    // Check if this is an undesignated booking (groupId provided)
+    if (input.groupId) {
+      const booking = await this.bookingService.bookUndesignatedSite(guestId, input.groupId, {
+        property: input.property,
+        checkIn: input.checkIn,
+        checkOut: input.checkOut,
+        numberOfGuests: input.numberOfGuests,
+        numberOfPets: input.numberOfPets,
+        numberOfVehicles: input.numberOfVehicles,
+        guestMessage: input.guestMessage,
+        paymentMethod: input.paymentMethod,
+      });
+
+      return ResponseUtil.created(res, booking, "Đặt chỗ thành công (undesignated site)");
+    }
+
+    // Regular designated booking
     const booking = await this.bookingService.createBooking(guestId, input);
 
     return ResponseUtil.created(res, booking, "Đặt chỗ thành công");
@@ -115,7 +133,12 @@ export default class BookingController {
     const userId = mongoIdSchema.parse(req.userId);
 
     const { data, pagination } = await this.bookingService.getMyBookings(userId);
-    return ResponseUtil.paginated(res, data, pagination, "Lấy danh sách booking của tôi thành công");
+    return ResponseUtil.paginated(
+      res,
+      data,
+      pagination,
+      "Lấy danh sách booking của tôi thành công"
+    );
   });
   getBookingByCode = catchErrors(async (req, res) => {
     const { code } = req.params;
@@ -128,5 +151,4 @@ export default class BookingController {
     const result = await this.bookingService.handlePayOSWebhook(req.body);
     return res.status(200).json(result);
   });
-  
 }

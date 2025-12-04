@@ -29,6 +29,8 @@ interface SearchSheetProps {
   onPetsChange: (value: number) => void;
   onSearch: () => void;
   loading?: boolean;
+  onRecentSearchDateSelect?: (checkIn: string, checkOut: string) => void;
+  onRecentSearchGuestsSelect?: (guests: number) => void;
 }
 
 export function SearchSheet({
@@ -48,6 +50,8 @@ export function SearchSheet({
   onPetsChange,
   onSearch,
   loading,
+  onRecentSearchDateSelect,
+  onRecentSearchGuestsSelect,
 }: SearchSheetProps) {
   const handleSearch = () => {
     onSearch();
@@ -58,7 +62,7 @@ export function SearchSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="top" className="h-auto">
         <SheetHeader>
-          <SheetTitle className="text-center">Tìm kiếm</SheetTitle>
+          <SheetTitle className="text-center">Tìm kiếm gần đây</SheetTitle>
         </SheetHeader>
         <div className="mt-6 flex justify-center">
           <SearchBar
@@ -76,6 +80,8 @@ export function SearchSheet({
             onPetsChange={onPetsChange}
             onSearch={handleSearch}
             loading={loading}
+            onRecentSearchDateSelect={onRecentSearchDateSelect}
+            onRecentSearchGuestsSelect={onRecentSearchGuestsSelect}
           />
         </div>
       </SheetContent>

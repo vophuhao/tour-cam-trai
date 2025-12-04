@@ -51,32 +51,61 @@ export default class ReviewController {
   });
 
   /**
-   * Get campsite reviews
-   * @route GET /api/campsites/:campsiteId/reviews
+   * Get property reviews
+   * @route GET /api/properties/:propertyId/reviews
    */
-  getCampsiteReviews = catchErrors(async (req, res) => {
-    const { campsiteId } = req.params;
+  getPropertyReviews = catchErrors(async (req, res) => {
+    const { propertyId } = req.params;
     const { page = 1, limit = 20 } = req.query as { page?: string; limit?: string };
 
-    const { data, pagination } = await this.reviewService.getCampsiteReviews(
-      campsiteId || "",
+    const { data, pagination } = await this.reviewService.getPropertyReviews(
+      propertyId || "",
       Number(page),
       Number(limit)
     );
 
-    return ResponseUtil.paginated(res, data, pagination, "Lấy review campsite thành công");
+    return ResponseUtil.paginated(res, data, pagination, "Lấy review property thành công");
   });
 
   /**
-   * Get campsite review stats
-   * @route GET /api/campsites/:campsiteId/reviews/stats
+   * Get site reviews
+   * @route GET /api/sites/:siteId/reviews
    */
-  getCampsiteReviewStats = catchErrors(async (req, res) => {
-    const { campsiteId } = req.params;
+  getSiteReviews = catchErrors(async (req, res) => {
+    const { siteId } = req.params;
+    const { page = 1, limit = 20 } = req.query as { page?: string; limit?: string };
 
-    const stats = await this.reviewService.getCampsiteReviewStats(campsiteId || "");
+    const { data, pagination } = await this.reviewService.getSiteReviews(
+      siteId || "",
+      Number(page),
+      Number(limit)
+    );
 
-    return ResponseUtil.success(res, stats, "Lấy thống kê review thành công");
+    return ResponseUtil.paginated(res, data, pagination, "Lấy review site thành công");
+  });
+
+  /**
+   * Get property review stats
+   * @route GET /api/properties/:propertyId/reviews/stats
+   */
+  getPropertyReviewStats = catchErrors(async (req, res) => {
+    const { propertyId } = req.params;
+
+    const stats = await this.reviewService.getPropertyReviewStats(propertyId || "");
+
+    return ResponseUtil.success(res, stats, "Lấy thống kê review property thành công");
+  });
+
+  /**
+   * Get site review stats
+   * @route GET /api/sites/:siteId/reviews/stats
+   */
+  getSiteReviewStats = catchErrors(async (req, res) => {
+    const { siteId } = req.params;
+
+    const stats = await this.reviewService.getSiteReviewStats(siteId || "");
+
+    return ResponseUtil.success(res, stats, "Lấy thống kê review site thành công");
   });
 
   /**
@@ -87,7 +116,6 @@ export default class ReviewController {
     const { id } = req.params;
     const hostId = mongoIdSchema.parse(req.userId);
     const input = hostResponseSchema.parse(req.body);
-    
 
     const review = await this.reviewService.addHostResponse(id || "", hostId, input);
 
@@ -141,14 +169,14 @@ export default class ReviewController {
     );
   });
 
-  getMyCampsitesReview = catchErrors(async (req, res) => {
+  getMyPropertiesReviews = catchErrors(async (req, res) => {
     const userId = mongoIdSchema.parse(req.userId);
     const { page = 1, limit = 20 } = req.query as { page?: string; limit?: string };
-    const { data, pagination } = await this.reviewService.getMyCampsitesReview(
+    const { data, pagination } = await this.reviewService.getMyPropertiesReviews(
       userId,
       Number(page),
       Number(limit)
     );
-    return ResponseUtil.paginated(res, data, pagination, "Lấy review campsite của tôi thành công");
+    return ResponseUtil.paginated(res, data, pagination, "Lấy review property của tôi thành công");
   });
 }

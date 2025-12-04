@@ -19,7 +19,11 @@
     "seed": "ts-node -r tsconfig-paths/register src/seeds/seedDatabase.ts",
     "seed:dev": "ts-node-dev -r tsconfig-paths/register src/seeds/seedDatabase.ts",
     "seed:posts": "ts-node -r tsconfig-paths/register src/seeds/addMorePosts.ts",
-    "seed:hipcamp": "ts-node -r tsconfig-paths/register src/seeds/seedHipcamp.ts"
+    "seed:hipcamp": "ts-node -r tsconfig-paths/register src/seeds/seedHipcamp.ts",
+    "seed:availability": "ts-node -r tsconfig-paths/register src/seeds/seedAvailability.ts",
+    "migrate:property-site": "ts-node -r tsconfig-paths/register src/scripts/migrate-to-property-site.ts",
+    "migrate:rollback": "ts-node -r tsconfig-paths/register src/scripts/rollback-property-site.ts",
+    "validate:migration": "ts-node -r tsconfig-paths/register src/scripts/validate-migration.ts"
   },
   "engines": {
     "node": ">=18.0.0"

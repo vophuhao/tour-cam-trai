@@ -3,10 +3,11 @@ import mongoose from "mongoose";
 // Booking/Reservation model
 export interface BookingDocument extends mongoose.Document {
   // Reference
-  code ?: string; // mã đặt chỗ
-  campsite: mongoose.Types.ObjectId;
+  code?: string; // mã đặt chỗ
+  property: mongoose.Types.ObjectId; // Reference to Property
+  site: mongoose.Types.ObjectId; // Reference to Site (specific site booked)
   guest: mongoose.Types.ObjectId; // user đặt chỗ
-  host: mongoose.Types.ObjectId; // chủ campsite
+  host: mongoose.Types.ObjectId; // chủ property
 
   // Booking Details
   checkIn: Date;
@@ -36,7 +37,7 @@ export interface BookingDocument extends mongoose.Document {
 
   // Payment
   paymentStatus: "pending" | "paid" | "refunded" | "failed";
-  paymentMethod?: "card" ;
+  paymentMethod?: "card";
   transactionId?: string;
   paidAt?: Date;
 
@@ -58,21 +59,27 @@ export interface BookingDocument extends mongoose.Document {
   createdAt: Date;
   updatedAt: Date;
 
-  payOSOrderCode?: Number,
-  payOSCheckoutUrl?: String,
+  payOSOrderCode?: Number;
+  payOSCheckoutUrl?: String;
 
   // Methods
   confirm(): Promise<BookingDocument>;
   cancel(userId: mongoose.Types.ObjectId, reason?: string): Promise<BookingDocument>;
   complete(): Promise<BookingDocument>;
-  calculateTotal(): number;
+  calculateTotal(): Promise<BookingDocument>;
 }
 
 const bookingSchema = new mongoose.Schema<BookingDocument>(
   {
-    campsite: {
+    property: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Campsite",
+      ref: "Property",
+      required: true,
+      index: true,
+    },
+    site: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Site",
       required: true,
       index: true,
     },
@@ -144,11 +151,11 @@ bookingSchema.index({ status: 1, checkIn: 1 });
 bookingSchema.index({ status: 1, checkOut: 1 });
 bookingSchema.index({ guest: 1, status: 1, createdAt: -1 });
 bookingSchema.index({ host: 1, status: 1, createdAt: -1 });
-bookingSchema.index({ campsite: 1, checkIn: 1, checkOut: 1 });
+bookingSchema.index({ site: 1, checkIn: 1, checkOut: 1 });
 
 // Prevent overlapping bookings
 bookingSchema.index(
-  { campsite: 1, checkIn: 1, checkOut: 1, status: 1 },
+  { site: 1, checkIn: 1, checkOut: 1, status: 1 },
   {
     unique: true,
     partialFilterExpression: {
@@ -182,9 +189,12 @@ bookingSchema.methods.complete = async function (this: BookingDocument) {
   return this.save();
 };
 
-bookingSchema.methods.calculateTotal = function (this: BookingDocument): number {
+bookingSchema.methods.calculateTotal = async function (
+  this: BookingDocument
+): Promise<BookingDocument> {
   const { subtotal, cleaningFee, petFee, extraGuestFee, serviceFee, tax } = this.pricing;
-  return subtotal + cleaningFee + petFee + extraGuestFee + serviceFee + tax;
+  this.pricing.total = subtotal + cleaningFee + petFee + extraGuestFee + serviceFee + tax;
+  return this.save();
 };
 
 export const BookingModel = mongoose.model<BookingDocument>("Booking", bookingSchema);

@@ -8,14 +8,16 @@ export const TOKENS = {
   AddressService: Symbol("AddressService"),
   OrderService: Symbol("OrderService"),
   CartService: Symbol("CartService"),
-	CampsiteService: Symbol("CampsiteService"),
+  CampsiteService: Symbol("CampsiteService"),
   BookingService: Symbol("BookingService"),
- LocationService: Symbol("LocationService"),
-  RatingService: Symbol("RatingService"), ReviewService: Symbol("ReviewService"),
+  LocationService: Symbol("LocationService"),
+  RatingService: Symbol("RatingService"),
+  ReviewService: Symbol("ReviewService"),
   AmenityService: Symbol("AmenityService"),
   ActivityService: Symbol("ActivityService"),
   DirectMessageService: Symbol("DirectMessageService"),
+  PropertyService: Symbol("PropertyService"),
+  SiteService: Symbol("SiteService"),
 } as const;
-  
 
 export type TokenMap = typeof TOKENS;

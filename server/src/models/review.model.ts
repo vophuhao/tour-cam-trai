@@ -1,22 +1,30 @@
 import mongoose from "mongoose";
 
-// Review model - đánh giá campsite
+// Review model - đánh giá property và site
 export interface ReviewDocument extends mongoose.Document {
   // References
-  campsite: mongoose.Types.ObjectId;
+  property: mongoose.Types.ObjectId; // property being reviewed
+  site: mongoose.Types.ObjectId; // specific site being reviewed
   booking: mongoose.Types.ObjectId;
   guest: mongoose.Types.ObjectId; // người đánh giá
-  host: mongoose.Types.ObjectId; // chủ campsite
+  host: mongoose.Types.ObjectId; // chủ property
 
-  // Ratings (1-5 stars)
-  ratings: {
-    overall: number; // tổng quan
-    cleanliness: number; // vệ sinh
-    accuracy: number; // đúng mô tả
-    location: number; // vị trí
-    value: number; // giá trị
+  // Property Ratings (1-5 stars) - property-level aspects
+  propertyRatings: {
+    location: number; // vị trí property
     communication: number; // giao tiếp với host
+    value: number; // giá trị
   };
+
+  // Site Ratings (1-5 stars) - site-specific aspects
+  siteRatings: {
+    cleanliness: number; // vệ sinh site
+    accuracy: number; // đúng mô tả site
+    amenities: number; // tiện nghi site
+  };
+
+  // Overall rating (calculated from property + site ratings)
+  overallRating: number;
 
   // Review Content
   title?: string;
@@ -55,9 +63,15 @@ export interface ReviewDocument extends mongoose.Document {
 
 const reviewSchema = new mongoose.Schema<ReviewDocument>(
   {
-    campsite: {
+    property: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Campsite",
+      ref: "Property",
+      required: true,
+      index: true,
+    },
+    site: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Site",
       required: true,
       index: true,
     },
@@ -65,14 +79,19 @@ const reviewSchema = new mongoose.Schema<ReviewDocument>(
     guest: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     host: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
 
-    ratings: {
-      overall: { type: Number, required: true, min: 1, max: 5 },
+    propertyRatings: {
+      location: { type: Number, required: true, min: 1, max: 5 },
+      communication: { type: Number, required: true, min: 1, max: 5 },
+      value: { type: Number, required: true, min: 1, max: 5 },
+    },
+
+    siteRatings: {
       cleanliness: { type: Number, required: true, min: 1, max: 5 },
       accuracy: { type: Number, required: true, min: 1, max: 5 },
-      location: { type: Number, required: true, min: 1, max: 5 },
-      value: { type: Number, required: true, min: 1, max: 5 },
-      communication: { type: Number, required: true, min: 1, max: 5 },
+      amenities: { type: Number, required: true, min: 1, max: 5 },
     },
+
+    overallRating: { type: Number, required: true, min: 1, max: 5 },
 
     title: { type: String, trim: true, maxlength: 100 },
     comment: { type: String, required: true, trim: true, maxlength: 2000 },
@@ -99,9 +118,10 @@ const reviewSchema = new mongoose.Schema<ReviewDocument>(
 );
 
 // Indexes
-reviewSchema.index({ campsite: 1, isPublished: 1, createdAt: -1 });
+reviewSchema.index({ property: 1, isPublished: 1, createdAt: -1 });
+reviewSchema.index({ site: 1, isPublished: 1, createdAt: -1 });
 reviewSchema.index({ guest: 1, createdAt: -1 });
-reviewSchema.index({ "ratings.overall": -1, isPublished: 1 });
+reviewSchema.index({ overallRating: -1, isPublished: 1 });
 reviewSchema.index({ isFeatured: 1, isPublished: 1 });
 
 // Methods
@@ -124,14 +144,18 @@ reviewSchema.methods.addHostResponse = async function (this: ReviewDocument, res
 };
 
 reviewSchema.methods.calculateOverallRating = function (this: ReviewDocument): number {
-  const { cleanliness, accuracy, location, value, communication } = this.ratings;
-  return Math.round(((cleanliness + accuracy + location + value + communication) / 5) * 10) / 10;
+  const { location, communication, value } = this.propertyRatings;
+  const { cleanliness, accuracy, amenities } = this.siteRatings;
+  return (
+    Math.round(((location + communication + value + cleanliness + accuracy + amenities) / 6) * 10) /
+    10
+  );
 };
 
 // Auto-calculate overall rating before save
 reviewSchema.pre("save", function (next) {
-  if (this.isModified("ratings")) {
-    this.ratings.overall = this.calculateOverallRating();
+  if (this.isModified("propertyRatings") || this.isModified("siteRatings")) {
+    this.overallRating = this.calculateOverallRating();
   }
   next();
 });

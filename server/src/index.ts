@@ -18,7 +18,9 @@ import {
   mediaRoutes,
   orderRoutes,
   productRoutes,
+  propertyRoutes,
   reviewRoutes,
+  siteRoutes,
   tourRoutes,
   userRoutes,
 } from "./routes";
@@ -76,6 +78,8 @@ app.use("/bookings", bookingRoutes);
 app.use("/reviews", reviewRoutes);
 app.use("/amenities", amenityRoutes);
 app.use("/activities", activityRoutes);
+app.use("/properties", propertyRoutes);
+app.use("/sites", siteRoutes);
 app.use("/payos/webhook", payosRoutes);
 app.use("/messages", authenticate, supportRouter);
 app.use("/dashboard", authenticate, dashboardRoutes);

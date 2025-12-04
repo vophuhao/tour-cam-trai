@@ -1,5 +1,5 @@
 import { ErrorFactory } from "@/errors";
-import { BookingModel, CampsiteModel, ReviewModel, type ReviewDocument } from "@/models";
+import { BookingModel, PropertyModel, SiteModel, ReviewModel, type ReviewDocument } from "@/models";
 import appAssert from "@/utils/app-assert";
 import type {
   CreateReviewInput,
@@ -9,10 +9,19 @@ import type {
 
 export class ReviewService {
   /**
-   * Create review (guest review campsite after stay)
+   * Create review (guest review site after stay)
    */
   async createReview(guestId: string, input: CreateReviewInput): Promise<ReviewDocument> {
-    const { booking: bookingId, ratings, title, comment, pros, cons, images } = input;
+    const {
+      booking: bookingId,
+      propertyRatings,
+      siteRatings,
+      title,
+      comment,
+      pros,
+      cons,
+      images,
+    } = input;
 
     // Get booking
     const booking = await BookingModel.findById(bookingId);
@@ -29,11 +38,13 @@ export class ReviewService {
 
     // Create review
     const review = await ReviewModel.create({
-      campsite: booking!.campsite,
+      property: booking!.property,
+      site: booking!.site,
       booking: bookingId,
       guest: guestId,
       host: booking!.host,
-      ratings,
+      propertyRatings,
+      siteRatings,
       title,
       comment,
       pros,
@@ -47,8 +58,11 @@ export class ReviewService {
     booking!.review = review._id as any;
     await booking!.save();
 
-    // Update campsite rating
-    await this.updateCampsiteRating(booking!.campsite.toString());
+    // Update property and site ratings
+    await Promise.all([
+      this.updatePropertyRating(booking!.property.toString()),
+      this.updateSiteRating(booking!.site.toString()),
+    ]);
 
     return review;
   }
@@ -58,7 +72,8 @@ export class ReviewService {
    */
   async getReview(reviewId: string): Promise<ReviewDocument> {
     const review = await ReviewModel.findById(reviewId)
-      .populate("campsite", "name slug images")
+      .populate("property", "name slug location photos")
+      .populate("site", "name slug accommodationType photos")
       .populate("guest", "name avatar")
       .populate("host", "name");
 
@@ -74,7 +89,6 @@ export class ReviewService {
     hostId: string,
     input: HostResponseInput
   ): Promise<ReviewDocument> {
-    
     const review = await ReviewModel.findById(reviewId);
     appAssert(review, ErrorFactory.resourceNotFound("Review"));
     appAssert(
@@ -91,14 +105,15 @@ export class ReviewService {
    * Search reviews with filters
    */
   async searchReviews(input: SearchReviewInput) {
-    const { campsite, guest, minRating, isPublished, isFeatured, sort, page, limit } = input;
+    const { property, site, guest, minRating, isPublished, isFeatured, sort, page, limit } = input;
 
     // Build query
     const query: any = {};
 
-    if (campsite) query.campsite = campsite;
+    if (property) query.property = property;
+    if (site) query.site = site;
     if (guest) query.guest = guest;
-    if (minRating !== undefined) query["ratings.overall"] = { $gte: minRating };
+    if (minRating !== undefined) query.overallRating = { $gte: minRating };
     if (isPublished !== undefined) query.isPublished = isPublished;
     if (isFeatured !== undefined) query.isFeatured = isFeatured;
 
@@ -127,8 +142,9 @@ export class ReviewService {
     const skip = (page - 1) * limit;
     const [reviews, total] = await Promise.all([
       ReviewModel.find(query)
-        .populate("campsite", "name slug images")
-        .populate("guest", "username avatarUrl")
+        .populate("property", "name slug images")
+        .populate("site", "name slug images")
+        .populate("guest", "fullName email avatar")
         .sort(sortOption)
         .skip(skip)
         .limit(limit),
@@ -149,11 +165,24 @@ export class ReviewService {
   }
 
   /**
-   * Get reviews for specific campsite
+   * Get reviews for specific property
    */
-  async getCampsiteReviews(campsiteId: string, page: number = 1, limit: number = 20) {
+  async getPropertyReviews(propertyId: string, page: number = 1, limit: number = 20) {
     return this.searchReviews({
-      campsite: campsiteId,
+      property: propertyId,
+      isPublished: true,
+      sort: "newest",
+      page,
+      limit,
+    });
+  }
+
+  /**
+   * Get reviews for specific site
+   */
+  async getSiteReviews(siteId: string, page: number = 1, limit: number = 20) {
+    return this.searchReviews({
+      site: siteId,
       isPublished: true,
       sort: "newest",
       page,
@@ -208,72 +237,115 @@ export class ReviewService {
   }
 
   /**
-   * Update campsite rating based on all reviews
+   * Update property rating based on all reviews
+   * Aggregates: location, communication, value
    */
-  private async updateCampsiteRating(campsiteId: string): Promise<void> {
+  private async updatePropertyRating(propertyId: string): Promise<void> {
     const reviews = await ReviewModel.find({
-      campsite: campsiteId,
+      property: propertyId,
       isPublished: true,
     });
 
     if (reviews.length === 0) return;
 
-    // Calculate average ratings
+    // Calculate average ratings from propertyRatings
     const totalRatings = reviews.reduce(
       (acc, review) => {
-        acc.overall += review.ratings.overall;
-        acc.cleanliness += review.ratings.cleanliness;
-        acc.accuracy += review.ratings.accuracy;
-        acc.location += review.ratings.location;
-        acc.value += review.ratings.value;
-        acc.communication += review.ratings.communication;
+        acc.location += review.propertyRatings.location;
+        acc.communication += review.propertyRatings.communication;
+        acc.value += review.propertyRatings.value;
         return acc;
       },
       {
-        overall: 0,
-        cleanliness: 0,
-        accuracy: 0,
         location: 0,
-        value: 0,
         communication: 0,
+        value: 0,
       }
     );
 
     const count = reviews.length;
-    const averageRating = {
-      average: totalRatings.overall / count,
+    const average =
+      (totalRatings.location + totalRatings.communication + totalRatings.value) / (count * 3);
+
+    const propertyRating = {
+      average,
       count,
       breakdown: {
-        cleanliness: totalRatings.cleanliness / count,
-        accuracy: totalRatings.accuracy / count,
         location: totalRatings.location / count,
-        value: totalRatings.value / count,
         communication: totalRatings.communication / count,
+        value: totalRatings.value / count,
       },
     };
 
-    // Update campsite
-    await CampsiteModel.findByIdAndUpdate(campsiteId, {
-      rating: averageRating,
+    // Update property
+    await PropertyModel.findByIdAndUpdate(propertyId, {
+      rating: propertyRating,
     });
   }
 
   /**
-   * Get review stats for campsite
+   * Update site rating based on all reviews
+   * Aggregates: cleanliness, accuracy, amenities
    */
-  async getCampsiteReviewStats(campsiteId: string): Promise<any> {
-    const campsite = await CampsiteModel.findById(campsiteId);
-    appAssert(campsite, ErrorFactory.resourceNotFound("Campsite"));
-
+  private async updateSiteRating(siteId: string): Promise<void> {
     const reviews = await ReviewModel.find({
-      campsite: campsiteId,
+      site: siteId,
       isPublished: true,
     });
 
-    // Rating distribution (1-5 stars)
+    if (reviews.length === 0) return;
+
+    // Calculate average ratings from siteRatings
+    const totalRatings = reviews.reduce(
+      (acc, review) => {
+        acc.cleanliness += review.siteRatings.cleanliness;
+        acc.accuracy += review.siteRatings.accuracy;
+        acc.amenities += review.siteRatings.amenities;
+        return acc;
+      },
+      {
+        cleanliness: 0,
+        accuracy: 0,
+        amenities: 0,
+      }
+    );
+
+    const count = reviews.length;
+    const average =
+      (totalRatings.cleanliness + totalRatings.accuracy + totalRatings.amenities) / (count * 3);
+
+    const siteRating = {
+      average,
+      count,
+      breakdown: {
+        cleanliness: totalRatings.cleanliness / count,
+        accuracy: totalRatings.accuracy / count,
+        amenities: totalRatings.amenities / count,
+      },
+    };
+
+    // Update site
+    await SiteModel.findByIdAndUpdate(siteId, {
+      rating: siteRating,
+    });
+  }
+
+  /**
+   * Get review stats for property
+   */
+  async getPropertyReviewStats(propertyId: string): Promise<any> {
+    const property = await PropertyModel.findById(propertyId);
+    appAssert(property, ErrorFactory.resourceNotFound("Property"));
+
+    const reviews = await ReviewModel.find({
+      property: propertyId,
+      isPublished: true,
+    });
+
+    // Rating distribution (1-5 stars) based on overallRating
     const distribution = [0, 0, 0, 0, 0];
     reviews.forEach((review) => {
-      const rating = Math.floor(review.ratings.overall);
+      const rating = Math.floor(review.overallRating);
       if (rating >= 1 && rating <= 5) {
         distribution[rating - 1] += 1;
       }
@@ -281,8 +353,8 @@ export class ReviewService {
 
     return {
       totalReviews: reviews.length,
-      averageRating: campsite!.rating?.average || 0,
-      breakdown: campsite!.rating?.breakdown || {},
+      averageRating: property!.rating?.average || 0,
+      breakdown: property!.rating?.breakdown || {},
       distribution: {
         1: distribution[0],
         2: distribution[1],
@@ -293,32 +365,68 @@ export class ReviewService {
     };
   }
 
- async getMyCampsitesReview(hostId: string, page: number = 1, limit: number = 20) {
-  // Build query
-  const query = { host: hostId };
+  /**
+   * Get review stats for site
+   */
+  async getSiteReviewStats(siteId: string): Promise<any> {
+    const site = await SiteModel.findById(siteId);
+    appAssert(site, ErrorFactory.resourceNotFound("Site"));
 
-  // Execute query with pagination
-  const skip = (page - 1) * limit;
-  const [reviews, total] = await Promise.all([
-    ReviewModel.find(query)
-      .populate("campsite", "name slug images")
-      .populate("guest", "username avatarUrl")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit),
-    ReviewModel.countDocuments(query),
-  ]);
+    const reviews = await ReviewModel.find({
+      site: siteId,
+      isPublished: true,
+    });
 
-  return {
-    data: reviews as any[],
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-      hasNext: page < Math.ceil(total / limit),
-      hasPrev: page > 1,
-    },
-  };
-}
+    // Rating distribution (1-5 stars) based on overallRating
+    const distribution = [0, 0, 0, 0, 0];
+    reviews.forEach((review) => {
+      const rating = Math.floor(review.overallRating);
+      if (rating >= 1 && rating <= 5) {
+        distribution[rating - 1] += 1;
+      }
+    });
+
+    return {
+      totalReviews: reviews.length,
+      averageRating: site!.rating?.average || 0,
+      breakdown: site!.rating?.breakdown || {},
+      distribution: {
+        1: distribution[0],
+        2: distribution[1],
+        3: distribution[2],
+        4: distribution[3],
+        5: distribution[4],
+      },
+    };
+  }
+
+  async getMyPropertiesReviews(hostId: string, page: number = 1, limit: number = 20) {
+    // Build query
+    const query = { host: hostId };
+
+    // Execute query with pagination
+    const skip = (page - 1) * limit;
+    const [reviews, total] = await Promise.all([
+      ReviewModel.find(query)
+        .populate("property", "name slug photos")
+        .populate("site", "name slug accommodationType photos")
+        .populate("guest", "username avatarUrl")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      ReviewModel.countDocuments(query),
+    ]);
+
+    return {
+      data: reviews as any[],
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1,
+      },
+    };
+  }
 }
