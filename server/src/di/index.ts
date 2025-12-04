@@ -1,27 +1,26 @@
 import {
+  ActivityService,
   AddressService,
+  AmenityService,
   AuthService,
+  BookingService,
+  // Hipcamp-style services
+  CampsiteService,
   CartService,
   CategoryService,
   OrderService,
   ProductService,
+  PropertyService,
+  ReviewService,
+  SiteService,
   TourService,
   VerificationService,
-  // Hipcamp-style services
-  CampsiteService,
-  BookingService,
-  ReviewService,
-  AmenityService,
-  ActivityService,
-  PropertyService,
-  SiteService,
 } from "@/services";
 import { Container } from "./container";
 import { TOKENS } from "./tokens";
 
-import LocationService from "@/services/location.service";
-import RatingService from "@/services/rating.service";
 import DirectMessageService from "@/services/directMessage.service";
+import RatingService from "@/services/rating.service";
 
 export const container = new Container();
 
@@ -39,7 +38,6 @@ container.register(TOKENS.DirectMessageService, () => new DirectMessageService()
 container.register(TOKENS.VerificationService, () => new VerificationService(), {
   singleton: true,
 });
-container.register(TOKENS.LocationService, () => new LocationService(), { singleton: true });
 
 container.register(
   TOKENS.AuthService,
