@@ -2,13 +2,12 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import "dotenv/config";
 import express from "express";
+import http from "http";
+import cron from "node-cron";
 import { connectRedis, connectToDatabase } from "./config";
 import { APP_ORIGIN, NODE_ENV, OK, PORT } from "./constants";
 import { authenticate, errorHandler } from "./middleware";
-import http from "http";
-import cron from "node-cron";
 import {
-  activityRoutes,
   addressRoutes,
   amenityRoutes,
   authRoutes,
@@ -25,11 +24,11 @@ import {
   userRoutes,
 } from "./routes";
 import cartRoutes from "./routes/cart.route";
+import supportRouter from "./routes/directMessage.route";
+import payosRoutes from "./routes/payos.route,";
+import ratingRoutes from "./routes/rating.route";
 import { OrderService } from "./services";
 import { initializeSocket } from "./socket";
-import supportRouter from "./routes/directMessage.route";
-import ratingRoutes from "./routes/rating.route";
-import payosRoutes from "./routes/payos.route,";
 // import dashboardRoutes from "./routes/dashboard.route";
 
 const app = express();
@@ -77,13 +76,11 @@ app.use("/campsites", campsiteRoutes);
 app.use("/bookings", bookingRoutes);
 app.use("/reviews", reviewRoutes);
 app.use("/amenities", amenityRoutes);
-app.use("/activities", activityRoutes);
 app.use("/properties", propertyRoutes);
 app.use("/sites", siteRoutes);
 app.use("/payos/webhook", payosRoutes);
 app.use("/messages", authenticate, supportRouter);
 // app.use("/dashboard", authenticate, dashboardRoutes);
-
 
 app.use(errorHandler);
 

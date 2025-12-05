@@ -2,17 +2,18 @@ import { catchErrors } from "@/errors";
 import { BookingModel } from "@/models/booking.model";
 import HostModel from "@/models/host.modal";
 import { OrderModel } from "@/models/order.model";
+import { PropertyModel } from "@/models/property.model";
 import { ReviewModel } from "@/models/review.model";
 import UserModel from "@/models/user.model";
 import { ResponseUtil } from "@/utils";
 
 export default class DashboardController {
   // Thống kê tổng quan
-  getOverviewStats = catchErrors(async (req, res) => {
+  getOverviewStats = catchErrors(async (_req, res) => {
     const [
       totalUsers,
       totalHosts,
-      totalLocations,
+      totalProperties,
       totalBookings,
       totalRevenue,
       pendingHostRequests,
@@ -21,7 +22,7 @@ export default class DashboardController {
     ] = await Promise.all([
       UserModel.countDocuments(),
       UserModel.countDocuments({ role: "host" }),
-      LocationModel.countDocuments({ status: "approved" }),
+      PropertyModel.countDocuments({ status: "approved" }),
       BookingModel.countDocuments(),
       OrderModel.aggregate([
         { $match: { status: "completed" } },
@@ -38,8 +39,8 @@ export default class DashboardController {
         hosts: totalHosts,
         guests: totalUsers - totalHosts,
       },
-      locations: {
-        total: totalLocations,
+      properties: {
+        total: totalProperties,
       },
       bookings: {
         total: totalBookings,
@@ -118,17 +119,17 @@ export default class DashboardController {
     return ResponseUtil.success(res, stats, "Lấy thống kê booking thành công");
   });
 
-  // Top locations
-  getTopLocations = catchErrors(async (req, res) => {
-    const { limit = 10 } = req.query;
+  // Top properties
+  getTopLocations = catchErrors(async (_req, res) => {
+    const { limit = 10 } = res.req.query;
 
-    const topLocations = await LocationModel.aggregate([
+    const topProperties = await PropertyModel.aggregate([
       { $match: { status: "approved" } },
       {
         $lookup: {
           from: "bookings",
           localField: "_id",
-          foreignField: "location",
+          foreignField: "property",
           as: "bookings",
         },
       },
@@ -147,16 +148,17 @@ export default class DashboardController {
       {
         $project: {
           name: 1,
-          address: 1,
+          "location.address": 1,
+          "location.city": 1,
           rating: 1,
           bookingCount: 1,
           revenue: 1,
-          images: { $arrayElemAt: ["$images", 0] },
+          photos: { $arrayElemAt: ["$photos", 0] },
         },
       },
     ]);
 
-    return ResponseUtil.success(res, topLocations, "Lấy top địa điểm thành công");
+    return ResponseUtil.success(res, topProperties, "Lấy top địa điểm thành công");
   });
 
   // Top hosts
@@ -260,7 +262,7 @@ export default class DashboardController {
   });
 
   // Growth stats (so với tháng trước)
-  getGrowthStats = catchErrors(async (req, res) => {
+  getGrowthStats = catchErrors(async (_req, res) => {
     const now = new Date();
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);

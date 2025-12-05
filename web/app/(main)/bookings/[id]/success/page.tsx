@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { getBooking, getBookingByCode } from '@/lib/client-actions';
+import { getBookingByCode } from '@/lib/client-actions';
+import type { Property, Site } from '@/types/property-site';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -19,6 +20,48 @@ import {
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 
+// Backend Booking type matching the populated response
+interface BookingData {
+  _id: string;
+  code?: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded';
+  checkIn: string;
+  checkOut: string;
+  numberOfGuests: number;
+  numberOfPets?: number;
+  numberOfVehicles?: number;
+  paymentMethod?: string;
+  paymentStatus?: 'pending' | 'paid' | 'refunded' | 'failed';
+  guestMessage?: string;
+
+  // New Property-Site architecture
+  property?: Partial<Property>;
+  site?: Partial<Site> & {
+    property?: Partial<Property>;
+  };
+
+  // Legacy campsite support
+  campsite?: {
+    name: string;
+    location?: {
+      city: string;
+      state: string;
+    };
+  };
+
+  pricing?: {
+    basePrice: number;
+    totalNights: number;
+    subtotal: number;
+    cleaningFee?: number;
+    petFee?: number;
+    extraGuestFee?: number;
+    serviceFee: number;
+    tax: number;
+    total: number;
+  };
+}
+
 export default function ConfirmationPage() {
   const router = useRouter();
   const params = useParams();
@@ -30,33 +73,14 @@ export default function ConfirmationPage() {
     enabled: !!bookingId,
   });
 
-  // Type assertion for booking data
-  interface BookingData {
-    _id: string;
-    status: string;
-    checkIn: string;
-    checkOut: string;
-    numberOfGuests: number;
-    numberOfPets: number;
-    paymentMethod: string;
-    guestMessage?: string;
-    campsite?: {
-      name: string;
-      location?: {
-        city: string;
-        state: string;
-      };
-    };
-    pricing?: {
-      subtotal: number;
-      cleaningFee: number;
-      serviceFee: number;
-      tax: number;
-      total: number;
-    };
-  }
-
   const booking = data?.data as BookingData | undefined;
+
+  // Get property and site info (support both new and legacy structure)
+  const property = booking?.site?.property || booking?.property;
+  const site = booking?.site;
+  const siteName = site?.name || booking?.campsite?.name || 'Site';
+  const propertyName = property?.name || '';
+  const location = property?.location || booking?.campsite?.location;
 
   if (isLoading) {
     return (
@@ -96,23 +120,26 @@ export default function ConfirmationPage() {
       currency: 'VND',
     }).format(price);
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
+  const getStatusBadge = (status: BookingData['status']) => {
+    const variants: Record<
+      BookingData['status'],
+      'default' | 'secondary' | 'destructive'
+    > = {
       pending: 'secondary',
       confirmed: 'default',
       cancelled: 'destructive',
       completed: 'default',
+      refunded: 'secondary',
     };
-    const labels: Record<string, string> = {
+    const labels: Record<BookingData['status'], string> = {
       pending: 'Chờ xác nhận',
       confirmed: 'Đã xác nhận',
       cancelled: 'Đã hủy',
       completed: 'Hoàn thành',
+      refunded: 'Đã hoàn tiền',
     };
     return (
-      <Badge variant={variants[status] || 'default'}>
-        {labels[status] || status}
-      </Badge>
+      <Badge variant={variants[status] || 'default'}>{labels[status]}</Badge>
     );
   };
 
@@ -136,20 +163,29 @@ export default function ConfirmationPage() {
               {getStatusBadge(booking.status)}
             </div>
             <p className="text-muted-foreground text-sm">
-              Mã đặt chỗ: {booking._id}
+              Mã đặt chỗ: {booking.code || booking._id}
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Campsite Info */}
+            {/* Site/Property Info */}
             <div>
               <h3 className="mb-2 font-semibold">Địa điểm</h3>
               <div className="flex items-start gap-2">
                 <MapPin className="text-muted-foreground mt-1 h-4 w-4" />
                 <div>
-                  <p className="font-medium">{booking.campsite?.name}</p>
+                  <p className="font-medium">
+                    {siteName}
+                    {propertyName && (
+                      <span className="text-muted-foreground">
+                        {' '}
+                        tại {propertyName}
+                      </span>
+                    )}
+                  </p>
                   <p className="text-muted-foreground text-sm">
-                    {booking.campsite?.location?.city},{' '}
-                    {booking.campsite?.location?.state}
+                    {location?.city &&
+                      location?.state &&
+                      `${location.city}, ${location.state}`}
                   </p>
                 </div>
               </div>
@@ -188,8 +224,12 @@ export default function ConfirmationPage() {
                 <Users className="text-muted-foreground mt-1 h-4 w-4" />
                 <p className="text-sm">
                   {booking.numberOfGuests} khách
-                  {booking.numberOfPets > 0 &&
+                  {booking.numberOfPets &&
+                    booking.numberOfPets > 0 &&
                     `, ${booking.numberOfPets} thú cưng`}
+                  {booking.numberOfVehicles &&
+                    booking.numberOfVehicles > 0 &&
+                    `, ${booking.numberOfVehicles} xe`}
                 </p>
               </div>
             </div>

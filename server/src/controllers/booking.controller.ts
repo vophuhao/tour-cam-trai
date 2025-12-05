@@ -6,6 +6,7 @@ import {
   cancelBookingSchema,
   confirmBookingSchema,
   createBookingSchema,
+  refundBookingSchema,
   searchBookingSchema,
   updatePaymentSchema,
 } from "@/validators/booking.validator";
@@ -96,6 +97,19 @@ export default class BookingController {
 
     const booking = await this.bookingService.completeBooking(id || "");
     return ResponseUtil.success(res, booking, "Hoàn thành booking thành công");
+  });
+
+  /**
+   * Refund booking (host or admin)
+   * @route POST /api/bookings/:id/refund
+   */
+  refundBooking = catchErrors(async (req, res) => {
+    const { id } = req.params;
+    const userId = mongoIdSchema.parse(req.userId);
+    const { refundAmount } = refundBookingSchema.parse(req.body);
+
+    const booking = await this.bookingService.refundBooking(id || "", userId, refundAmount);
+    return ResponseUtil.success(res, booking, "Hoàn tiền booking thành công");
   });
 
   /**

@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { getUserBookings } from '@/lib/client-actions';
 import { useAuthStore } from '@/store/auth.store';
+import type { Property, Site } from '@/types/property-site';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -14,13 +15,23 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
+// Backend Booking type matching the populated response
 interface BookingData {
   _id: string;
-  status: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded';
   checkIn: string;
   checkOut: string;
   numberOfGuests: number;
+  numberOfPets?: number;
+  numberOfVehicles?: number;
   extras?: string[];
+
+  // New Property-Site architecture
+  site?: Partial<Site> & {
+    property?: Partial<Property>;
+  };
+
+  // Legacy campsite support (for backward compatibility)
   campsite?: {
     _id: string;
     name: string;
@@ -53,30 +64,30 @@ export default function TripsPage() {
   // Separate upcoming and past trips
   const now = new Date();
   const upcomingTrips = bookings.filter(
-    b => new Date(b.checkOut) >= now && b.status !== 'cancelled',
+    b =>
+      // new Date(b.checkOut) >= now &&
+      b.status !== 'cancelled' && b.status !== 'completed',
   );
   const pastTrips = bookings.filter(
     b => new Date(b.checkOut) < now || b.status === 'completed',
   );
 
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
+  const getStatusBadge = (status: BookingData['status']) => {
+    const styles: Record<BookingData['status'], string> = {
       pending: 'bg-yellow-100 text-yellow-800',
       confirmed: 'bg-emerald-100 text-emerald-800',
       cancelled: 'bg-red-100 text-red-800',
       completed: 'bg-blue-100 text-blue-800',
+      refunded: 'bg-gray-100 text-gray-800',
     };
-    const labels: Record<string, string> = {
+    const labels: Record<BookingData['status'], string> = {
       pending: 'Chờ xác nhận',
       confirmed: 'Đã xác nhận',
       cancelled: 'Đã hủy',
       completed: 'Hoàn thành',
+      refunded: 'Đã hoàn tiền',
     };
-    return (
-      <Badge className={`${styles[status] || styles.pending}`}>
-        {labels[status] || status}
-      </Badge>
-    );
+    return <Badge className={`${styles[status]}`}>{labels[status]}</Badge>;
   };
 
   if (!isOwnProfile) {
@@ -99,58 +110,90 @@ export default function TripsPage() {
     );
   }
 
-  const TripCard = ({ booking }: { booking: BookingData }) => (
-    <Card className="overflow-hidden">
-      {/* Trip Image */}
-      <div className="relative h-48 w-full">
-        <Image
-          src={booking.campsite?.images?.[0] || '/placeholder-campsite.jpg'}
-          alt={booking.campsite?.name || 'Campsite'}
-          fill
-          sizes="(max-width: 768px) 100vw, 50vw"
-          className="object-cover"
-        />
-      </div>
-      <CardContent className="p-4">
-        {/* Status Badge */}
-        <div className="mb-2">{getStatusBadge(booking.status)}</div>
+  const TripCard = ({ booking }: { booking: BookingData }) => {
+    // Support both new (site/property) and legacy (campsite) structure
+    const property = booking.site?.property;
 
-        {/* Campsite Name */}
-        <h3 className="text-lg font-semibold">
-          {booking.campsite?.host?.name}: {booking.campsite?.name}
-        </h3>
+    // Get image: prefer site photos, fallback to campsite images
+    const imageUrl =
+      booking.site?.photos?.find(p => p.isCover)?.url ||
+      booking.site?.photos?.[0]?.url ||
+      booking.campsite?.images?.[0] ||
+      '/placeholder-campsite.jpg';
 
-        {/* Location */}
-        <p className="text-muted-foreground mt-1 flex items-center gap-1 text-sm">
-          <MapPin className="h-3 w-3" />
-          {booking.campsite?.location?.city},{' '}
-          {booking.campsite?.location?.state}
-        </p>
+    // Get name and location
+    const siteName = booking.site?.name || booking.campsite?.name || 'Site';
+    const propertyName = property?.name || booking.campsite?.host?.name || '';
+    const city =
+      property?.location?.city || booking.campsite?.location?.city || '';
+    const state =
+      property?.location?.state || booking.campsite?.location?.state || '';
 
-        {/* Dates */}
-        <div className="text-muted-foreground mt-2 flex items-center gap-1 text-sm">
-          <CalendarDays className="h-3 w-3" />
-          {format(new Date(booking.checkIn), 'dd/MM', { locale: vi })} -{' '}
-          {format(new Date(booking.checkOut), 'dd/MM/yyyy', { locale: vi })}
+    return (
+      <Card className="overflow-hidden">
+        {/* Trip Image */}
+        <div className="relative h-48 w-full">
+          <Image
+            src={imageUrl}
+            alt={siteName}
+            fill
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="object-cover"
+          />
         </div>
+        <CardContent className="p-4">
+          {/* Status Badge */}
+          <div className="mb-2">{getStatusBadge(booking.status)}</div>
 
-        {/* Extras */}
-        {booking.extras && booking.extras.length > 0 && (
-          <p className="mt-2 text-sm">
-            <span className="font-medium">Dịch vụ thêm:</span>{' '}
-            {booking.extras.join(', ')}
+          {/* Site Name */}
+          <h3 className="text-lg font-semibold">
+            {propertyName && `${propertyName}: `}
+            {siteName}
+          </h3>
+
+          {/* Location */}
+          {(city || state) && (
+            <p className="text-muted-foreground mt-1 flex items-center gap-1 text-sm">
+              <MapPin className="h-3 w-3" />
+              {city}
+              {city && state && ', '}
+              {state}
+            </p>
+          )}
+
+          {/* Dates */}
+          <div className="text-muted-foreground mt-2 flex items-center gap-1 text-sm">
+            <CalendarDays className="h-3 w-3" />
+            {format(new Date(booking.checkIn), 'dd/MM', { locale: vi })} -{' '}
+            {format(new Date(booking.checkOut), 'dd/MM/yyyy', { locale: vi })}
+          </div>
+
+          {/* Guests & Pets */}
+          <p className="text-muted-foreground mt-2 text-sm">
+            {booking.numberOfGuests} khách
+            {booking.numberOfPets &&
+              booking.numberOfPets > 0 &&
+              ` · ${booking.numberOfPets} thú cưng`}
           </p>
-        )}
 
-        {/* Trip Page Button */}
-        <Button asChild variant="outline" className="mt-4 w-full">
-          <Link href={`/bookings/${booking._id}/confirmation`}>
-            Trang chuyến đi
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
-  );
+          {/* Extras */}
+          {booking.extras && booking.extras.length > 0 && (
+            <p className="mt-2 text-sm">
+              <span className="font-medium">Dịch vụ thêm:</span>{' '}
+              {booking.extras.join(', ')}
+            </p>
+          )}
+
+          {/* Trip Page Button */}
+          <Button asChild variant="outline" className="mt-4 w-full">
+            <Link href={`/bookings/${booking._id}/confirmation`}>
+              Trang chuyến đi
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -158,7 +201,7 @@ export default function TripsPage() {
       <section>
         <h2 className="mb-4 text-xl font-semibold">Chuyến đi sắp tới</h2>
         {upcomingTrips.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2">
             {upcomingTrips.map(booking => (
               <TripCard key={booking._id} booking={booking} />
             ))}

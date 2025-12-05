@@ -14,7 +14,6 @@ export const TOKENS = {
   RatingService: Symbol("RatingService"),
   ReviewService: Symbol("ReviewService"),
   AmenityService: Symbol("AmenityService"),
-  ActivityService: Symbol("ActivityService"),
   DirectMessageService: Symbol("DirectMessageService"),
   PropertyService: Symbol("PropertyService"),
   SiteService: Symbol("SiteService"),

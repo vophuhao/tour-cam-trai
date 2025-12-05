@@ -1,5 +1,4 @@
 import {
-  ActivityService,
   AddressService,
   AmenityService,
   AuthService,
@@ -50,7 +49,6 @@ container.register(TOKENS.CampsiteService, () => new CampsiteService(), { single
 container.register(TOKENS.BookingService, () => new BookingService(), { singleton: true });
 container.register(TOKENS.ReviewService, () => new ReviewService(), { singleton: true });
 container.register(TOKENS.AmenityService, () => new AmenityService(), { singleton: true });
-container.register(TOKENS.ActivityService, () => new ActivityService(), { singleton: true });
 container.register(TOKENS.PropertyService, () => new PropertyService(), { singleton: true });
 container.register(TOKENS.SiteService, () => new SiteService(), { singleton: true });
 

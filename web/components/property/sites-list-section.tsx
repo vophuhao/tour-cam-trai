@@ -401,13 +401,6 @@ export function SitesListSection({
                   <div className="space-y-4">
                     {sitesInGroup.map(site => {
                       const totalPrice = site.pricing.basePrice * nights;
-                      const amenityIcons: string[] = [];
-                      if (site.amenities?.firePit) amenityIcons.push('🔥');
-                      if (site.amenities?.electrical?.available)
-                        amenityIcons.push('⚡');
-                      if (site.amenities?.water?.hookup)
-                        amenityIcons.push('💧');
-                      if (site.amenities?.picnicTable) amenityIcons.push('🪑');
 
                       return (
                         <Card
@@ -504,28 +497,14 @@ export function SitesListSection({
                                   </p>
                                 )}
 
-                                {/* Amenities Icons */}
-                                <div className="mb-3 flex flex-wrap gap-4 text-sm">
-                                  {amenityIcons.map((icon, idx) => (
-                                    <span key={idx}>{icon}</span>
-                                  ))}
-                                  {site.amenities?.firePit && (
-                                    <span className="text-gray-600">
-                                      No campfires
-                                    </span>
-                                  )}
+                                {/* Quick Info */}
+                                <div className="mb-3 flex flex-wrap gap-4 text-sm text-gray-600">
                                   {site.capacity.maxPets &&
                                     site.capacity.maxPets > 0 && (
                                       <span className="flex items-center gap-1">
                                         <Dog className="h-4 w-4" /> Pets allowed
                                       </span>
                                     )}
-                                  {site.amenities?.electrical?.available && (
-                                    <span>Electrical hookup</span>
-                                  )}
-                                  {site.amenities?.water?.hookup && (
-                                    <span>Water hookup</span>
-                                  )}
                                 </div>
                               </div>
 

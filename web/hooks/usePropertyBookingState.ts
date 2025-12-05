@@ -52,10 +52,41 @@ export function usePropertyBookingState(
     const checkOut = searchParams.get('checkOut') || initialCheckOut;
 
     if (checkIn && checkOut) {
-      return {
-        from: new Date(checkIn),
-        to: new Date(checkOut),
-      };
+      try {
+        // Parse as local date to avoid timezone shift
+        // Format: YYYY-MM-DD -> create date at midnight local time
+        const checkInParts = checkIn.split('-').map(Number);
+        const checkOutParts = checkOut.split('-').map(Number);
+
+        // Validate we have exactly 3 parts and all are valid numbers
+        if (
+          checkInParts.length !== 3 ||
+          checkOutParts.length !== 3 ||
+          checkInParts.some(isNaN) ||
+          checkOutParts.some(isNaN)
+        ) {
+          return undefined;
+        }
+
+        const [fromYear, fromMonth, fromDay] = checkInParts;
+        const [toYear, toMonth, toDay] = checkOutParts;
+
+        const fromDate = new Date(fromYear, fromMonth - 1, fromDay);
+        const toDate = new Date(toYear, toMonth - 1, toDay);
+
+        // Validate dates are valid
+        if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+          return undefined;
+        }
+
+        return {
+          from: fromDate,
+          to: toDate,
+        };
+      } catch (error) {
+        console.error('Error parsing date range:', error);
+        return undefined;
+      }
     }
     return undefined;
   }, [searchParams, initialCheckIn, initialCheckOut]);
@@ -101,9 +132,17 @@ export function usePropertyBookingState(
   const setDateRange = useCallback(
     (newDateRange: DateRangeType | undefined) => {
       if (newDateRange?.from && newDateRange?.to) {
+        // Format as local date YYYY-MM-DD to avoid timezone shift
+        const formatLocalDate = (date: Date) => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+
         updateSearchParams({
-          checkIn: newDateRange.from.toISOString().split('T')[0],
-          checkOut: newDateRange.to.toISOString().split('T')[0],
+          checkIn: formatLocalDate(newDateRange.from),
+          checkOut: formatLocalDate(newDateRange.to),
         });
       } else {
         updateSearchParams({
