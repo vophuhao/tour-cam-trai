@@ -24,6 +24,7 @@ import { updateProfile, uploadMedia } from '@/lib/client-actions';
 import { useAuthStore } from '@/store/auth.store';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
+
 import { Camera, Loader2, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -67,6 +68,7 @@ export default function EditProfilePage() {
     mutationFn: async (
       data: Partial<{ username: string; bio: string; avatar: string }>,
     ) => {
+     
       return updateProfile(data);
     },
     onSuccess: response => {
@@ -99,11 +101,12 @@ export default function EditProfilePage() {
     setUploadingAvatar(true);
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('files', file);
       const response = await uploadMedia(formData);
-      const mediaData = response.data as { url?: string } | undefined;
-      if ('data' in response && mediaData?.url) {
-        await updateProfile({ avatar: mediaData.url });
+      console.log("Upload media response:", response); 
+      if (response.success)  {
+        
+        await updateProfile({ avatar: response.data[0] });
         toast.success('Cập nhật ảnh đại diện thành công!');
       }
     } catch {
