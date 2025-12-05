@@ -103,11 +103,8 @@ export default async function CampsitePage({
 
             <Separator className="my-8" />
 
-            {/* Amenities & Activities */}
-            <AmenitiesSection
-              amenities={campsite.amenities}
-              activities={campsite.activities}
-            />
+            {/* Amenities */}
+            <AmenitiesSection amenities={campsite.amenities} />
 
             <Separator className="my-8" />
 

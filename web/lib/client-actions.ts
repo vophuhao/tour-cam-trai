@@ -442,9 +442,10 @@ export async function getAllAmenities(): Promise<ApiResponse<Amenity[]>> {
   return apiClient.get('/amenities');
 }
 
-export async function getAllActivities(): Promise<ApiResponse<Activity[]>> {
-  return apiClient.get('/activities');
-}
+// Deprecated: Activity model removed from backend
+// export async function getAllActivities(): Promise<ApiResponse<Activity[]>> {
+//   return apiClient.get('/activities');
+// }
 
 export async function getMyBookings(): Promise<ApiResponse<Booking[]>> {
   return apiClient.get('/bookings/my/list');

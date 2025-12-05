@@ -17,39 +17,10 @@ export type LodgingType =
   | 'structure_provided'
   | 'vehicle_provided';
 
-export interface SharedAmenities {
-  toilets?: {
-    type: 'none' | 'portable' | 'flush' | 'vault' | 'composting';
-    count: number;
-    isShared: boolean;
-  };
-  showers?: {
-    type: 'none' | 'outdoor' | 'indoor' | 'hot' | 'cold';
-    count: number;
-    isShared: boolean;
-  };
-  potableWater?: boolean;
-  waterSource?: 'tap' | 'well' | 'stream' | 'none';
-  parkingType?: 'drive_in' | 'walk_in' | 'nearby';
-  parkingSpaces?: number;
-  commonAreas?: string[];
-  laundry?: boolean;
-  wifi?: boolean;
-  cellService?: 'excellent' | 'good' | 'limited' | 'none';
-  electricityAvailable?: boolean;
-}
-
 export interface PropertyRule {
   category: 'pets' | 'noise' | 'fire' | 'vehicle' | 'general';
   description: string;
   isRequired: boolean;
-}
-
-export interface PropertyPolicies {
-  checkInTime: string; // "14:00"
-  checkOutTime: string; // "11:00"
-  cancellationPolicy: 'flexible' | 'moderate' | 'strict';
-  houseRules?: string[];
 }
 
 export interface PropertyStats {
@@ -79,8 +50,8 @@ interface User {
   avatar?: string;
 }
 
-// Activity type reference
-interface Activity {
+// Amenity type reference
+interface Amenity {
   _id: string;
   name: string;
   description?: string;
@@ -117,30 +88,9 @@ export interface Property {
   };
   minPrice?: number; // Minimum price from sites
 
-  sharedAmenities: SharedAmenities;
-  activities: string[] | Activity[];
+  amenities: string[]; // Amenity IDs that apply to the property
 
   rules: PropertyRule[];
-
-  // Policies (backend structure)
-  cancellationPolicy?: {
-    type: 'flexible' | 'moderate' | 'strict';
-    description?: string;
-    refundRules?: Array<{
-      daysBeforeCheckIn: number;
-      refundPercentage: number;
-    }>;
-  };
-  petPolicy?: {
-    allowed: boolean;
-    maxPets?: number;
-    fee?: number;
-    rules?: string;
-  };
-  childrenPolicy?: {
-    allowed: boolean;
-    ageRestrictions?: string;
-  };
 
   photos: Array<{
     url: string;
@@ -207,33 +157,6 @@ export interface SitePricing {
   }>;
 }
 
-export interface SiteAmenities {
-  electrical?: {
-    available: boolean;
-    amperage?: number; // 15, 30, 50
-    outlets?: number;
-  };
-  water?: {
-    hookup: boolean;
-    nearby: boolean;
-    distance?: number; // feet
-  };
-  sewer?: {
-    hookup: boolean;
-    dumpStation: boolean;
-    distance?: number;
-  };
-  firePit: boolean;
-  fireRing: boolean;
-  firewood?:
-    | 'provided'
-    | 'available_for_purchase'
-    | 'bring_your_own'
-    | 'not_allowed';
-  furniture?: string[]; // ["picnic_table", "chairs", "hammock"]
-  picnicTable: boolean;
-}
-
 export interface SiteBookingSettings {
   minimumNights: number;
   maximumNights?: number;
@@ -277,7 +200,7 @@ export interface Site {
 
   capacity: SiteCapacity;
   pricing: SitePricing;
-  amenities: SiteAmenities;
+  amenities: string[] | Amenity[]; // Array of Amenity IDs or populated Amenity objects
   bookingSettings: SiteBookingSettings;
 
   photos?: Array<{
@@ -425,17 +348,10 @@ export interface PropertySearchFilters {
   lng?: number;
   radius?: number; // miles
   amenities?: string[]; // Amenity IDs
-  activities?: string[]; // Activity IDs
-  // Shared amenity boolean filters (property-level)
-  hasToilets?: boolean;
-  hasShowers?: boolean;
-  hasParking?: boolean;
-  hasWifi?: boolean;
-  hasElectricity?: boolean;
-  hasWater?: boolean;
   instantBook?: boolean;
   minRating?: number;
-  sort?: string; // e.g., "minPrice-asc", "minPrice-desc", "rating", "newest"
+  sort?: string; // Frontend URL param - e.g., "minPrice-asc", "minPrice-desc", "rating", "newest"
+  sortBy?: string; // Backend API param - maps from 'sort'
 }
 
 export interface SiteSearchFilters {

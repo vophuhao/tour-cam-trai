@@ -1,32 +1,26 @@
 'use client';
 
-import { type DateRangeType } from '@/components/search/date-range-picker';
 import { DateRangePopover } from '@/components/search/date-range-popover';
 import { GuestPopover } from '@/components/search/guest-popover';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { usePropertyBookingState } from '@/hooks/usePropertyBookingState';
 import { getBlockedDates } from '@/lib/client-actions';
 import type { Property, Site } from '@/types/property-site';
 import { useQuery } from '@tanstack/react-query';
 import { differenceInDays } from 'date-fns';
 import { Star } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface PropertyBookingCardProps {
   property: Property;
   sites: Site[];
   initialGuests?: number;
   initialPets?: number;
-  checkIn?: string;
-  checkOut?: string;
-  onSearch?: (params: {
-    checkIn: string;
-    checkOut: string;
-    guests: number;
-    pets: number;
-  }) => void;
+  initialCheckIn?: string;
+  initialCheckOut?: string;
 }
 
 export function PropertyBookingCard({
@@ -34,10 +28,17 @@ export function PropertyBookingCard({
   sites,
   initialGuests = 2,
   initialPets = 0,
-  checkIn,
-  checkOut,
-  onSearch,
+  initialCheckIn,
+  initialCheckOut,
 }: PropertyBookingCardProps) {
+  // Use shared booking state synced with URL
+  const booking = usePropertyBookingState({
+    initialGuests,
+    initialPets,
+    initialCheckIn,
+    initialCheckOut,
+  });
+
   // Auto-detect if this is undesignated property
   // Undesignated = any site with maxConcurrentBookings > 1
   const isUndesignated = useMemo(() => {
@@ -46,23 +47,31 @@ export function PropertyBookingCard({
 
   // Check if property has only one site (for maximumNights check)
   const isSingleSiteProperty = sites.length === 1;
-  const [dateRange, setDateRange] = useState<DateRangeType | undefined>(() => {
-    if (checkIn && checkOut) {
-      return {
-        from: new Date(checkIn),
-        to: new Date(checkOut),
-      };
-    }
-    return undefined;
-  });
-  const [adults, setAdults] = useState(Math.max(1, initialGuests - 0)); // At least 1 adult
+
+  // Adults/children breakdown (local state, not in URL)
+  // Sync initial values from booking.guests (which comes from URL)
+  const [adults, setAdults] = useState(() => Math.max(1, booking.guests));
   const [children, setChildren] = useState(0);
-  const [pets, setPets] = useState(initialPets);
+
+  // Popovers open state
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const [guestPopoverOpen, setGuestPopoverOpen] = useState(false);
 
-  // Total guests = adults + children
-  const guests = adults + children;
+  // Sync local adults state when booking.guests changes from URL
+  useEffect(() => {
+    if (booking.guests !== adults + children) {
+      // Update adults only if total changed (preserve children if possible)
+      const newAdults = Math.max(1, booking.guests - children);
+      setAdults(newAdults);
+    }
+  }, [booking.guests]); // Only run when URL guests changes
+
+  // Sync total guests with URL when adults/children change
+  const handleGuestsChange = (newAdults: number, newChildren: number) => {
+    setAdults(newAdults);
+    setChildren(newChildren);
+    booking.setGuests(newAdults + newChildren);
+  };
 
   // Collect all site IDs to check their availability (for both designated and undesignated)
   const siteIdsForAvailability = useMemo(() => {
@@ -193,8 +202,8 @@ export function PropertyBookingCard({
 
   // Calculate nights
   const nights =
-    dateRange?.from && dateRange?.to
-      ? differenceInDays(dateRange.to, dateRange.from)
+    booking.dateRange?.from && booking.dateRange?.to
+      ? differenceInDays(booking.dateRange.to, booking.dateRange.from)
       : 1;
 
   // Get maximumNights from sites (for single site properties)
@@ -209,12 +218,12 @@ export function PropertyBookingCard({
     if (
       !isSingleSiteProperty ||
       !maximumNights ||
-      !dateRange?.from ||
-      !dateRange?.to
+      !booking.dateRange?.from ||
+      !booking.dateRange?.to
     )
       return false;
     return nights > maximumNights;
-  }, [isSingleSiteProperty, maximumNights, nights, dateRange]);
+  }, [isSingleSiteProperty, maximumNights, nights, booking.dateRange]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -233,23 +242,13 @@ export function PropertyBookingCard({
 
   const handleSearch = () => {
     // Validation: Check if dates are selected
-    if (!dateRange?.from || !dateRange?.to) {
+    if (!booking.dateRange?.from || !booking.dateRange?.to) {
       setDatePopoverOpen(true);
       return;
     }
 
     // For undesignated properties, scroll is not needed as there's no sites list
     if (!isUndesignated) {
-      // Scroll to sites section with search params
-      if (onSearch) {
-        onSearch({
-          checkIn: dateRange.from.toISOString(),
-          checkOut: dateRange.to.toISOString(),
-          guests,
-          pets,
-        });
-      }
-
       // Scroll to sites section
       const sitesSection = document.getElementById('sites');
       if (sitesSection) {
@@ -261,8 +260,8 @@ export function PropertyBookingCard({
   // Build checkout URL for single site property booking
   const buildUndesignatedCheckoutUrl = () => {
     if (
-      !dateRange?.from ||
-      !dateRange?.to ||
+      !booking.dateRange?.from ||
+      !booking.dateRange?.to ||
       !isSingleSiteProperty ||
       sites.length === 0
     )
@@ -281,23 +280,25 @@ export function PropertyBookingCard({
         name: site.name || property.name, // Use site name if available, fallback to property name
         location: `${property.location.city}, ${property.location.state}`,
         image: property.photos?.[0]?.url || '',
-        checkIn: dateRange.from.toISOString(),
-        checkOut: dateRange.to.toISOString(),
+        checkIn: booking.dateRange.from.toISOString(),
+        checkOut: booking.dateRange.to.toISOString(),
         basePrice: site.pricing.basePrice.toString(),
         nights: nights.toString(),
         cleaningFee: (site.pricing.cleaningFee || 0).toString(),
-        petFee: pets ? ((site.pricing.petFee || 0) * pets).toString() : '0',
+        petFee: booking.pets
+          ? ((site.pricing.petFee || 0) * booking.pets).toString()
+          : '0',
         additionalGuestFee:
-          guests > site.capacity.maxGuests
+          booking.guests > site.capacity.maxGuests
             ? (
                 (site.pricing.additionalGuestFee || 0) *
-                (guests - site.capacity.maxGuests)
+                (booking.guests - site.capacity.maxGuests)
               ).toString()
             : '0',
         total: totalPrice.toString(),
         currency: site.pricing.currency || 'VND',
-        guests: guests.toString(),
-        pets: pets.toString(),
+        guests: booking.guests.toString(),
+        pets: booking.pets.toString(),
         vehicles: '1',
       }).toString()
     );
@@ -349,8 +350,8 @@ export function PropertyBookingCard({
         <div className="space-y-2">
           <label className="text-sm font-medium">Ngày</label>
           <DateRangePopover
-            dateRange={dateRange}
-            onDateChange={setDateRange}
+            dateRange={booking.dateRange}
+            onDateChange={booking.setDateRange}
             disabledDates={blockedDates}
             open={datePopoverOpen}
             onOpenChange={setDatePopoverOpen}
@@ -366,10 +367,10 @@ export function PropertyBookingCard({
           <GuestPopover
             adults={adults}
             childrenCount={children}
-            pets={pets}
-            onAdultsChange={setAdults}
-            onChildrenChange={setChildren}
-            onPetsChange={setPets}
+            pets={booking.pets}
+            onAdultsChange={val => handleGuestsChange(val, children)}
+            onChildrenChange={val => handleGuestsChange(adults, val)}
+            onPetsChange={booking.setPets}
             open={guestPopoverOpen}
             onOpenChange={setGuestPopoverOpen}
             maxGuests={maxCapacity.maxGuests}
@@ -397,13 +398,21 @@ export function PropertyBookingCard({
             <Button
               className="w-full"
               size="lg"
-              disabled={!dateRange?.from || !dateRange?.to || exceedsMaxNights}
+              disabled={
+                !booking.dateRange?.from ||
+                !booking.dateRange?.to ||
+                exceedsMaxNights
+              }
               asChild={
-                !!(dateRange?.from && dateRange?.to && !exceedsMaxNights)
+                !!(
+                  booking.dateRange?.from &&
+                  booking.dateRange?.to &&
+                  !exceedsMaxNights
+                )
               }
               variant={exceedsMaxNights ? 'outline' : 'default'}
             >
-              {dateRange?.from && dateRange?.to ? (
+              {booking.dateRange?.from && booking.dateRange?.to ? (
                 exceedsMaxNights ? (
                   <span>Đổi ngày</span>
                 ) : (
@@ -424,26 +433,28 @@ export function PropertyBookingCard({
         )}
 
         {/* Info Text */}
-        {dateRange?.from && dateRange?.to && !exceedsMaxNights && (
-          <div className="text-center">
-            <p className="text-muted-foreground text-sm">
-              {nights} đêm · {guests} khách
-              {children > 0 && ` (${children} trẻ em)`}
-              {pets > 0 && ` · ${pets} thú cưng`}
-            </p>
-            {isSingleSiteProperty ? (
-              <p className="text-muted-foreground mt-1 text-xs">
-                {isUndesignated
-                  ? 'Vị trí cụ thể sẽ được chọn khi check-in'
-                  : 'Xác nhận để hoàn tất đặt chỗ'}
+        {booking.dateRange?.from &&
+          booking.dateRange?.to &&
+          !exceedsMaxNights && (
+            <div className="text-center">
+              <p className="text-muted-foreground text-sm">
+                {nights} đêm · {booking.guests} khách
+                {children > 0 && ` (${children} trẻ em)`}
+                {booking.pets > 0 && ` · ${booking.pets} thú cưng`}
               </p>
-            ) : (
-              <p className="text-muted-foreground mt-1 text-xs">
-                Giá cụ thể sẽ hiển thị khi chọn vị trí cắm trại
-              </p>
-            )}
-          </div>
-        )}
+              {isSingleSiteProperty ? (
+                <p className="text-muted-foreground mt-1 text-xs">
+                  {isUndesignated
+                    ? 'Vị trí cụ thể sẽ được chọn khi check-in'
+                    : 'Xác nhận để hoàn tất đặt chỗ'}
+                </p>
+              ) : (
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Giá cụ thể sẽ hiển thị khi chọn vị trí cắm trại
+                </p>
+              )}
+            </div>
+          )}
       </CardContent>
     </Card>
   );

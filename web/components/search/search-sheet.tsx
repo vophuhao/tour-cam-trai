@@ -62,9 +62,9 @@ export function SearchSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="top" className="h-auto">
         <SheetHeader>
-          <SheetTitle className="text-center">Tìm kiếm gần đây</SheetTitle>
+          <SheetTitle className="text-center">Tìm kiếm</SheetTitle>
         </SheetHeader>
-        <div className="mt-6 flex justify-center">
+        <div className="mb-6 flex justify-center">
           <SearchBar
             location={location}
             onLocationChange={onLocationChange}

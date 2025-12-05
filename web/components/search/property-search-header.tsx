@@ -9,30 +9,7 @@ import { saveSearchToHistory } from './location-search';
 import { PropertyFilter } from './property-filter';
 import { SearchSheet } from './search-sheet';
 
-interface Activity {
-  _id: string;
-  name: string;
-  icon?: string;
-  category?: string;
-}
-
-interface Amenity {
-  _id: string;
-  name: string;
-  description?: string;
-  icon?: string;
-  category?: string;
-}
-
-interface PropertySearchHeaderProps {
-  activities?: Activity[];
-  amenities?: Amenity[];
-}
-
-export function PropertySearchHeader({
-  activities = [],
-  amenities = [],
-}: PropertySearchHeaderProps) {
+export function PropertySearchHeader() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sheetOpen, setSheetOpen] = useState(false);

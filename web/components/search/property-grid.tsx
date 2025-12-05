@@ -6,6 +6,7 @@ import type { Property } from '@/types/property-site';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 // Lazy load map component to avoid SSR issues with mapbox-gl
@@ -35,10 +36,30 @@ export function PropertyGrid({
   totalResults = 0,
   searchCoordinates,
 }: PropertyGridProps) {
+  const searchParams = useSearchParams();
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(
     null,
   );
   const [hoveredProperty, setHoveredProperty] = useState<Property | null>(null);
+
+  // Build property link with preserved search params (checkIn, checkOut, guests, pets)
+  const buildPropertyLink = (slug: string) => {
+    const params = new URLSearchParams();
+
+    // Preserve booking-related params
+    const checkIn = searchParams.get('checkIn');
+    const checkOut = searchParams.get('checkOut');
+    const guests = searchParams.get('guests');
+    const pets = searchParams.get('pets');
+
+    if (checkIn) params.set('checkIn', checkIn);
+    if (checkOut) params.set('checkOut', checkOut);
+    if (guests) params.set('guests', guests);
+    if (pets) params.set('pets', pets);
+
+    const queryString = params.toString();
+    return `/land/${slug}${queryString ? `?${queryString}` : ''}`;
+  };
 
   // Force map remount when properties array reference changes (e.g., on navigation)
   const mapKey = useMemo(
@@ -94,7 +115,7 @@ export function PropertyGrid({
               onMouseEnter={() => setHoveredProperty(property)}
               onMouseLeave={() => setHoveredProperty(null)}
             >
-              <Link href={`/land/${property.slug || property._id}`}>
+              <Link href={buildPropertyLink(property.slug || property._id)}>
                 <div className="relative h-48 w-full">
                   <Image
                     src={getCoverPhoto(property)}

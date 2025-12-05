@@ -17,18 +17,11 @@ import {
 import { Filter, Sparkles, X } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState, useTransition } from 'react';
+import { AmenitiesFilter } from './amenities-filter';
 
 interface CampingStyle {
   value: string;
   label: string;
-}
-
-// Shared Amenities filters - match Property model structure
-interface SharedAmenityFilter {
-  key: string;
-  label: string;
-  icon: string;
-  paramName: string; // URL param name
 }
 
 interface PropertyFilterProps {
@@ -49,22 +42,6 @@ const sortOptions = [
   { value: 'newest', label: 'Mới nhất' },
 ];
 
-// Shared amenities available at Property level
-// These map to sharedAmenities fields in Property model
-const sharedAmenityFilters: SharedAmenityFilter[] = [
-  { key: 'toilets', label: 'Nhà vệ sinh', icon: '🚻', paramName: 'hasToilets' },
-  { key: 'showers', label: 'Phòng tắm', icon: '🚿', paramName: 'hasShowers' },
-  { key: 'parking', label: 'Bãi đỗ xe', icon: '🅿️', paramName: 'hasParking' },
-  { key: 'wifi', label: 'WiFi', icon: '📶', paramName: 'hasWifi' },
-  {
-    key: 'electricity',
-    label: 'Điện',
-    icon: '⚡',
-    paramName: 'hasElectricity',
-  },
-  { key: 'water', label: 'Nước uống', icon: '💧', paramName: 'hasWater' },
-];
-
 export function PropertyFilter({
   campingStyles = defaultCampingStyles,
 }: PropertyFilterProps) {
@@ -74,17 +51,24 @@ export function PropertyFilter({
   const [isPending, startTransition] = useTransition();
 
   const [typeOpen, setTypeOpen] = useState(false);
-  const [amenityOpen, setAmenityOpen] = useState(false);
 
   // Get current values from URL
   const sort = searchParams.get('sort') || 'reviewCount';
   const selectedCampingStyles = searchParams.getAll('campingStyle');
   const instantBook = searchParams.get('instantBook') === 'true';
 
-  // Get selected shared amenities from URL params
-  const selectedSharedAmenities = sharedAmenityFilters
-    .filter(amenity => searchParams.get(amenity.paramName) === 'true')
-    .map(amenity => amenity.key);
+  // Temporary state for pending camping style changes
+  const [pendingCampingStyles, setPendingCampingStyles] = useState<string[]>(
+    [],
+  );
+
+  // Sync pending state when popover opens
+  const handleTypeOpenChange = (open: boolean) => {
+    setTypeOpen(open);
+    if (open) {
+      setPendingCampingStyles(selectedCampingStyles);
+    }
+  };
 
   const createQueryString = useCallback(
     (updates: Record<string, string | string[] | null>) => {
@@ -124,18 +108,18 @@ export function PropertyFilter({
   };
 
   const handleCampingStyleToggle = (style: string) => {
-    const newStyles = selectedCampingStyles.includes(style)
-      ? selectedCampingStyles.filter(s => s !== style)
-      : [...selectedCampingStyles, style];
-    updateFilters({ campingStyle: newStyles });
+    const newStyles = pendingCampingStyles.includes(style)
+      ? pendingCampingStyles.filter(s => s !== style)
+      : [...pendingCampingStyles, style];
+    setPendingCampingStyles(newStyles);
   };
 
-  const handleSharedAmenityToggle = (amenityKey: string) => {
-    const amenity = sharedAmenityFilters.find(a => a.key === amenityKey);
-    if (!amenity) return;
-
-    const isCurrentlySelected = searchParams.get(amenity.paramName) === 'true';
-    updateFilters({ [amenity.paramName]: isCurrentlySelected ? null : 'true' });
+  const handleApplyCampingStyles = () => {
+    updateFilters({
+      campingStyle:
+        pendingCampingStyles.length > 0 ? pendingCampingStyles : null,
+    });
+    setTypeOpen(false);
   };
 
   const handleInstantBookToggle = () => {
@@ -149,8 +133,8 @@ export function PropertyFilter({
   const hasActiveFilters =
     sort !== 'reviewCount' ||
     selectedCampingStyles.length > 0 ||
-    selectedSharedAmenities.length > 0 ||
-    instantBook;
+    instantBook ||
+    searchParams.getAll('amenities').length > 0;
 
   return (
     <div className="flex items-center gap-3 px-1 py-1">
@@ -172,7 +156,7 @@ export function PropertyFilter({
       </Select>
 
       {/* Camping Style */}
-      <Popover open={typeOpen} onOpenChange={setTypeOpen}>
+      <Popover open={typeOpen} onOpenChange={handleTypeOpenChange}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
@@ -197,7 +181,7 @@ export function PropertyFilter({
                 <div key={style.value} className="flex items-center space-x-2">
                   <Checkbox
                     id={style.value}
-                    checked={selectedCampingStyles.includes(style.value)}
+                    checked={pendingCampingStyles.includes(style.value)}
                     onCheckedChange={() =>
                       handleCampingStyleToggle(style.value)
                     }
@@ -211,53 +195,31 @@ export function PropertyFilter({
                 </div>
               ))}
             </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-
-      {/* Shared Amenities */}
-      <Popover open={amenityOpen} onOpenChange={setAmenityOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className="h-9 cursor-pointer border-gray-300"
-            disabled={isPending}
-            suppressHydrationWarning
-          >
-            <Sparkles className="mr-2 h-4 w-4" />
-            Tiện nghi
-            {selectedSharedAmenities.length > 0 && (
-              <span className="bg-primary ml-1.5 flex h-5 w-5 items-center justify-center rounded-full text-xs text-white">
-                {selectedSharedAmenities.length}
-              </span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[280px] p-4" align="start">
-          <div className="space-y-3">
-            <h4 className="font-semibold">Tiện nghi chung</h4>
-            <div className="space-y-2">
-              {sharedAmenityFilters.map(amenity => (
-                <div key={amenity.key} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={amenity.key}
-                    checked={selectedSharedAmenities.includes(amenity.key)}
-                    onCheckedChange={() =>
-                      handleSharedAmenityToggle(amenity.key)
-                    }
-                  />
-                  <label
-                    htmlFor={amenity.key}
-                    className="cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    {amenity.icon} {amenity.label}
-                  </label>
-                </div>
-              ))}
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => {
+                  setPendingCampingStyles([]);
+                }}
+              >
+                Xóa
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1"
+                onClick={handleApplyCampingStyles}
+              >
+                Áp dụng
+              </Button>
             </div>
           </div>
         </PopoverContent>
       </Popover>
+
+      {/* Amenities Filter */}
+      <AmenitiesFilter />
 
       {/* Instant Book */}
       <Button

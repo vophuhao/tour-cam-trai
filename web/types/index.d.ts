@@ -344,22 +344,6 @@ declare interface Amenity {
   isActive: boolean;
 }
 
-declare interface Activity {
-  _id: string;
-  name: string;
-  description?: string;
-  icon?: string;
-  category:
-    | 'water'
-    | 'hiking'
-    | 'wildlife'
-    | 'winter'
-    | 'adventure'
-    | 'relaxation'
-    | 'other';
-  isActive: boolean;
-}
-
 declare interface Reviews {
   _id: string;
   campsite: {
@@ -419,7 +403,6 @@ declare interface Booking {
   updatedAt: string;
 }
 // Amenity model - Tiện ích có tại campsite
-
 
 declare interface Rating {
   _id: string;

@@ -134,11 +134,8 @@ export default async function PropertyPage({
 
             <Separator className="my-8" />
 
-            {/* Shared Amenities & Activities */}
-            <SharedAmenitiesSection
-              sharedAmenities={property.sharedAmenities}
-              activities={property.activities}
-            />
+            {/* Property Amenities */}
+            <SharedAmenitiesSection amenities={property.amenities} />
 
             <Separator className="my-8" />
           </div>
@@ -152,8 +149,8 @@ export default async function PropertyPage({
                 sites={activeSites}
                 initialGuests={guests}
                 initialPets={pets}
-                checkIn={search.checkIn}
-                checkOut={search.checkOut}
+                initialCheckIn={search.checkIn}
+                initialCheckOut={search.checkOut}
               />
             </div>
           </div>

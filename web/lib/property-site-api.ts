@@ -65,25 +65,9 @@ export async function searchProperties(
   if (filters?.minPrice) params.append('minPrice', filters.minPrice.toString());
   if (filters?.maxPrice) params.append('maxPrice', filters.maxPrice.toString());
 
-  // Amenity/Activity filters
+  // Amenity filters
   if (filters?.amenities && filters.amenities.length > 0)
     params.append('amenities', filters.amenities.join(','));
-  if (filters?.activities && filters.activities.length > 0)
-    params.append('activities', filters.activities.join(','));
-
-  // Shared amenity boolean filters (property-level)
-  if (filters?.hasToilets !== undefined)
-    params.append('hasToilets', filters.hasToilets.toString());
-  if (filters?.hasShowers !== undefined)
-    params.append('hasShowers', filters.hasShowers.toString());
-  if (filters?.hasParking !== undefined)
-    params.append('hasParking', filters.hasParking.toString());
-  if (filters?.hasWifi !== undefined)
-    params.append('hasWifi', filters.hasWifi.toString());
-  if (filters?.hasElectricity !== undefined)
-    params.append('hasElectricity', filters.hasElectricity.toString());
-  if (filters?.hasWater !== undefined)
-    params.append('hasWater', filters.hasWater.toString());
 
   // Geolocation filters
   if (filters?.lat) params.append('lat', filters.lat.toString());
@@ -98,6 +82,7 @@ export async function searchProperties(
 
   // Sorting - backend expects 'sortBy' parameter
   if (filters?.sort) params.append('sortBy', filters.sort);
+  if (filters?.sortBy) params.append('sortBy', filters.sortBy);
 
   // Pagination
   if (filters?.page) params.append('page', filters.page.toString());
@@ -164,8 +149,6 @@ export async function getNearbyProperties(
   if (filters?.maxPrice) params.append('maxPrice', filters.maxPrice.toString());
   if (filters?.amenities)
     params.append('amenities', filters.amenities.join(','));
-  if (filters?.activities)
-    params.append('activities', filters.activities.join(','));
   if (filters?.page) params.append('page', filters.page.toString());
   if (filters?.limit) params.append('limit', filters.limit.toString());
 
@@ -315,12 +298,6 @@ export async function searchSites(
       ? filters.accommodationType
       : [filters.accommodationType];
     params.append('accommodationType', types.join(','));
-  }
-  if (filters?.siteType) {
-    const types = Array.isArray(filters.siteType)
-      ? filters.siteType
-      : [filters.siteType];
-    params.append('siteType', types.join(','));
   }
 
   // Price filters
@@ -535,26 +512,13 @@ export function formatLodgingType(type: string): string {
  */
 export function formatAccommodationType(type: string): string {
   const typeMap: Record<string, string> = {
-    tent: 'Tent Camping',
-    rv: 'RV Camping',
+    tent: 'Tent Site',
+    rv: 'RV Site',
     cabin: 'Cabin',
     yurt: 'Yurt',
     treehouse: 'Treehouse',
     glamping: 'Glamping',
     vehicle: 'Vehicle Camping',
-  };
-  return typeMap[type] || type;
-}
-
-/**
- * Format site type for display
- */
-export function formatSiteType(type: string): string {
-  const typeMap: Record<string, string> = {
-    designated: 'Designated Site',
-    dispersed: 'Dispersed Camping',
-    walk_in: 'Walk-in Site',
-    group: 'Group Site',
   };
   return typeMap[type] || type;
 }

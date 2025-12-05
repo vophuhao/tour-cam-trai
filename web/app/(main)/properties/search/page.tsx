@@ -3,13 +3,6 @@ import { PropertySearchHeader } from '@/components/search/property-search-header
 import { Loader2 } from 'lucide-react';
 import { Suspense } from 'react';
 
-interface Activity {
-  _id: string;
-  name: string;
-  icon?: string;
-  category?: string;
-}
-
 interface ApiResponse<T> {
   success: boolean;
   message?: string;
@@ -26,14 +19,7 @@ interface SearchPageProps {
     minPrice?: string;
     maxPrice?: string;
     campingStyle?: string | string[]; // Can be string or array from URL
-    amenities?: string | string[]; // Legacy - can be string or array from URL
-    // SharedAmenities filters (new PropertyFilter params)
-    hasToilets?: string;
-    hasShowers?: string;
-    hasParking?: string;
-    hasWifi?: string;
-    hasElectricity?: string;
-    hasWater?: string;
+    amenities?: string | string[]; // Amenity IDs
     instantBook?: string;
     sort?: string;
     lat?: string;
@@ -42,29 +28,6 @@ interface SearchPageProps {
     page?: string;
     limit?: string;
   }>;
-}
-
-// Fetch activities for filters
-async function fetchActivities(): Promise<Activity[]> {
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/activities`,
-      {
-        cache: 'force-cache',
-        next: { revalidate: 3600 },
-      },
-    );
-
-    if (!response.ok) {
-      return [];
-    }
-
-    const result: ApiResponse<Activity[]> = await response.json();
-    return result.data || [];
-  } catch (error) {
-    console.error('Failed to fetch activities:', error);
-    return [];
-  }
 }
 
 // Server Component - fetches data with automatic caching
@@ -156,12 +119,10 @@ function SearchLoading() {
 export default async function PropertySearchPage({
   searchParams,
 }: SearchPageProps) {
-  const activities = await fetchActivities();
-
   return (
     <div className="flex flex-col">
       <Suspense fallback={null}>
-        <PropertySearchHeader activities={activities} />
+        <PropertySearchHeader />
       </Suspense>
 
       <Suspense fallback={<SearchLoading />}>
@@ -190,21 +151,14 @@ async function PropertySearchContent({ searchParams }: SearchPageProps) {
         ? params.campingStyle
         : params.campingStyle.split(',').filter(Boolean)
       : undefined,
-    // Handle amenities - legacy, can be string or string[] from URL
+    // Handle amenities - can be string or string[] from URL
     amenities: params.amenities
       ? Array.isArray(params.amenities)
         ? params.amenities
         : params.amenities.split(',').filter(Boolean)
       : undefined,
-    // SharedAmenities boolean filters - only set if explicitly 'true' in URL
-    hasToilets: params.hasToilets === 'true' ? true : undefined,
-    hasShowers: params.hasShowers === 'true' ? true : undefined,
-    hasParking: params.hasParking === 'true' ? true : undefined,
-    hasWifi: params.hasWifi === 'true' ? true : undefined,
-    hasElectricity: params.hasElectricity === 'true' ? true : undefined,
-    hasWater: params.hasWater === 'true' ? true : undefined,
     instantBook: params.instantBook === 'true' ? true : undefined,
-    sort: params.sort,
+    sortBy: params.sort || 'reviewCount', // Backend expects 'sortBy' param
     lat: params.lat ? parseFloat(params.lat) : undefined,
     lng: params.lng ? parseFloat(params.lng) : undefined,
     radius: params.radius ? parseFloat(params.radius) : undefined,

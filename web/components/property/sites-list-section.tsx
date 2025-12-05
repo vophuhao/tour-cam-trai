@@ -1,12 +1,12 @@
 'use client';
 
-import { type DateRangeType } from '@/components/search/date-range-picker';
 import { DateRangePopover } from '@/components/search/date-range-popover';
 import { GuestPopover } from '@/components/search/guest-popover';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { usePropertyBookingState } from '@/hooks/usePropertyBookingState';
 import { getBlockedDates } from '@/lib/client-actions';
 import type { Property, Site } from '@/types/property-site';
 import { useQuery } from '@tanstack/react-query';
@@ -15,7 +15,7 @@ import { vi } from 'date-fns/locale';
 import { CalendarIcon, Dog, MapPin, Users } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const SiteMap = dynamic(
   () => import('@/components/property/site-map').then(mod => mod.SiteMap),
@@ -51,21 +51,29 @@ export function SitesListSection({
   initialGuests = 2,
   initialPets = 0,
 }: SitesListSectionProps) {
-  // Date & Guest State
-  const [dateRange, setDateRange] = useState<DateRangeType | undefined>(() => {
-    if (initialCheckIn && initialCheckOut) {
-      return { from: new Date(initialCheckIn), to: new Date(initialCheckOut) };
-    }
-    return undefined;
+  // Use shared booking state from URL
+  const booking = usePropertyBookingState({
+    initialGuests,
+    initialPets,
+    initialCheckIn,
+    initialCheckOut,
   });
-  const [adults, setAdults] = useState(Math.max(1, initialGuests - 0)); // At least 1 adult
+
+  // Local UI state only
+  // Sync initial values from booking.guests (which comes from URL)
+  const [adults, setAdults] = useState(() => Math.max(1, booking.guests));
   const [children, setChildren] = useState(0);
-  const [pets, setPets] = useState(initialPets);
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const [guestPopoverOpen, setGuestPopoverOpen] = useState(false);
 
-  // Total guests = adults + children
-  const guests = adults + children;
+  // Sync local adults state when booking.guests changes from URL
+  useEffect(() => {
+    if (booking.guests !== adults + children) {
+      // Update adults only if total changed (preserve children if possible)
+      const newAdults = Math.max(1, booking.guests - children);
+      setAdults(newAdults);
+    }
+  }, [booking.guests]); // Only run when URL guests changes
 
   // Filter State
   const [filterType] = useState<string | null>(null);
@@ -74,10 +82,38 @@ export function SitesListSection({
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
   const [hoveredSite, setHoveredSite] = useState<Site | null>(null);
 
+  // Sync adults+children to URL guests
+  const handleGuestsChange = (newAdults: number, newChildren: number) => {
+    setAdults(newAdults);
+    setChildren(newChildren);
+    booking.setGuests(newAdults + newChildren);
+  };
+
   const nights =
-    dateRange?.from && dateRange?.to
-      ? differenceInDays(dateRange.to, dateRange.from)
+    booking.dateRange?.from && booking.dateRange?.to
+      ? differenceInDays(booking.dateRange.to, booking.dateRange.from)
       : 1;
+
+  // Create a map of site ID to reason why it's unavailable (if any)
+  const siteUnavailableReason = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!booking.dateRange?.from || !booking.dateRange?.to) {
+      return map;
+    }
+
+    sites.forEach(site => {
+      // Check booking settings
+      const { minimumNights, maximumNights } = site.bookingSettings;
+
+      if (minimumNights && nights < minimumNights) {
+        map.set(site._id, `Tối thiểu ${minimumNights} đêm`);
+      } else if (maximumNights && nights > maximumNights) {
+        map.set(site._id, `Tối đa ${maximumNights} đêm`);
+      }
+    });
+
+    return map;
+  }, [sites, booking.dateRange, nights]);
 
   // Accommodation type labels
   const typeLabels: Record<string, string> = {
@@ -94,7 +130,7 @@ export function SitesListSection({
   const maxCapacity = useMemo(() => {
     if (sites.length === 0) return { maxGuests: 20, maxPets: 5 };
     const maxGuests = Math.max(...sites.map(s => s.capacity.maxGuests || 20));
-    const maxPets = Math.max(...sites.map(s => s.capacity.maxPets || 5));
+    const maxPets = Math.max(...sites.map(s => s.capacity.maxPets || 0));
     return { maxGuests, maxPets };
   }, [sites]);
 
@@ -108,12 +144,12 @@ export function SitesListSection({
 
   // Fetch blocked dates for all sites when dates are selected
   const availabilityWindow = useMemo(() => {
-    if (!dateRange?.from || !dateRange?.to) return null;
+    if (!booking.dateRange?.from || !booking.dateRange?.to) return null;
     return {
-      checkIn: dateRange.from.toISOString(),
-      checkOut: dateRange.to.toISOString(),
+      checkIn: booking.dateRange.from.toISOString(),
+      checkOut: booking.dateRange.to.toISOString(),
     };
-  }, [dateRange]);
+  }, [booking.dateRange]);
 
   // Fetch blocked dates for each site
   const { data: siteAvailabilities } = useQuery({
@@ -142,7 +178,11 @@ export function SitesListSection({
   // Create a map of site ID to blocked status
   const siteBlockedMap = useMemo(() => {
     const map = new Map<string, boolean>();
-    if (!siteAvailabilities || !dateRange?.from || !dateRange?.to) {
+    if (
+      !siteAvailabilities ||
+      !booking.dateRange?.from ||
+      !booking.dateRange?.to
+    ) {
       return map;
     }
 
@@ -151,11 +191,15 @@ export function SitesListSection({
       // If site has any blocked dates in the selected range, mark as blocked
       const hasBlockedDates =
         result?.data?.blockedDates && result.data.blockedDates.length > 0;
-      map.set(site._id, hasBlockedDates || false);
+
+      // Also mark as blocked if nights exceed booking settings
+      const exceedsBookingSettings = siteUnavailableReason.has(site._id);
+
+      map.set(site._id, hasBlockedDates || exceedsBookingSettings);
     });
 
     return map;
-  }, [siteAvailabilities, sites, dateRange]);
+  }, [siteAvailabilities, sites, booking.dateRange, siteUnavailableReason]);
 
   // Filter sites
   const filteredSites = useMemo(() => {
@@ -167,14 +211,14 @@ export function SitesListSection({
     }
 
     // Filter by capacity
-    if (guests) {
-      result = result.filter(s => s.capacity.maxGuests >= guests);
+    if (booking.guests) {
+      result = result.filter(s => s.capacity.maxGuests >= booking.guests);
     }
 
     // Filter by pets
-    if (petsAllowed && pets > 0) {
+    if (petsAllowed && booking.pets > 0) {
       result = result.filter(
-        s => s.capacity.maxPets && s.capacity.maxPets >= pets,
+        s => s.capacity.maxPets && s.capacity.maxPets >= booking.pets,
       );
     }
 
@@ -184,7 +228,11 @@ export function SitesListSection({
     }
 
     // Filter by availability - exclude blocked sites when dates are selected
-    if (dateRange?.from && dateRange?.to && siteBlockedMap.size > 0) {
+    if (
+      booking.dateRange?.from &&
+      booking.dateRange?.to &&
+      siteBlockedMap.size > 0
+    ) {
       result = result.filter(s => !siteBlockedMap.get(s._id));
     }
 
@@ -192,11 +240,11 @@ export function SitesListSection({
   }, [
     sites,
     filterType,
-    guests,
-    pets,
+    booking.guests,
+    booking.pets,
     petsAllowed,
     instantBook,
-    dateRange,
+    booking.dateRange,
     siteBlockedMap,
   ]);
 
@@ -227,14 +275,14 @@ export function SitesListSection({
                 <p className="mt-1 text-sm text-gray-600">
                   {filteredSites.length} site
                   {filteredSites.length > 1 ? 's' : ''} available
-                  {dateRange?.from && dateRange?.to && (
+                  {booking.dateRange?.from && booking.dateRange?.to && (
                     <>
                       {' '}
                       for{' '}
-                      {format(dateRange.from, 'MMM d', {
+                      {format(booking.dateRange.from, 'MMM d', {
                         locale: vi,
                       })}{' '}
-                      – {format(dateRange.to, 'd', { locale: vi })}
+                      – {format(booking.dateRange.to, 'd', { locale: vi })}
                     </>
                   )}
                 </p>
@@ -245,8 +293,8 @@ export function SitesListSection({
             <div className="mb-4 flex flex-wrap items-center gap-3">
               {/* Date Range */}
               <DateRangePopover
-                dateRange={dateRange}
-                onDateChange={setDateRange}
+                dateRange={booking.dateRange}
+                onDateChange={booking.setDateRange}
                 open={datePopoverOpen}
                 onOpenChange={setDatePopoverOpen}
                 placeholder="Add dates"
@@ -260,10 +308,14 @@ export function SitesListSection({
               <GuestPopover
                 adults={adults}
                 childrenCount={children}
-                pets={pets}
-                onAdultsChange={setAdults}
-                onChildrenChange={setChildren}
-                onPetsChange={setPets}
+                pets={booking.pets}
+                onAdultsChange={newAdults =>
+                  handleGuestsChange(newAdults, children)
+                }
+                onChildrenChange={newChildren =>
+                  handleGuestsChange(adults, newChildren)
+                }
+                onPetsChange={booking.setPets}
                 open={guestPopoverOpen}
                 onOpenChange={setGuestPopoverOpen}
                 maxGuests={maxCapacity.maxGuests}
@@ -408,6 +460,15 @@ export function SitesListSection({
                                           ⚡ Instant
                                         </Badge>
                                       )}
+                                      {/* Show unavailable reason badge */}
+                                      {siteUnavailableReason.has(site._id) && (
+                                        <Badge
+                                          variant="destructive"
+                                          className="text-xs"
+                                        >
+                                          {siteUnavailableReason.get(site._id)}
+                                        </Badge>
+                                      )}
                                     </div>
                                   </div>
                                   {site.stats?.averageRating &&
@@ -498,7 +559,8 @@ export function SitesListSection({
                                 >
                                   <Link
                                     href={
-                                      dateRange?.from && dateRange?.to
+                                      booking.dateRange?.from &&
+                                      booking.dateRange?.to
                                         ? `/checkouts/payment?` +
                                           new URLSearchParams({
                                             siteId: site._id,
@@ -514,36 +576,37 @@ export function SitesListSection({
                                               site.photos?.[0]?.url ||
                                               '',
                                             checkIn:
-                                              dateRange.from.toISOString(),
+                                              booking.dateRange.from.toISOString(),
                                             checkOut:
-                                              dateRange.to.toISOString(),
+                                              booking.dateRange.to.toISOString(),
                                             basePrice:
                                               site.pricing.basePrice.toString(),
                                             nights: nights.toString(),
                                             cleaningFee: (
                                               site.pricing.cleaningFee || 0
                                             ).toString(),
-                                            petFee: pets
+                                            petFee: booking.pets
                                               ? (
                                                   (site.pricing.petFee || 0) *
-                                                  pets
+                                                  booking.pets
                                                 ).toString()
                                               : '0',
                                             additionalGuestFee:
-                                              guests > site.capacity.maxGuests
+                                              booking.guests >
+                                              site.capacity.maxGuests
                                                 ? (
                                                     (site.pricing
                                                       .additionalGuestFee ||
                                                       0) *
-                                                    (guests -
+                                                    (booking.guests -
                                                       site.capacity.maxGuests)
                                                   ).toString()
                                                 : '0',
                                             total: totalPrice.toString(),
                                             currency:
                                               site.pricing.currency || 'VND',
-                                            guests: guests.toString(),
-                                            pets: pets.toString(),
+                                            guests: booking.guests.toString(),
+                                            pets: booking.pets.toString(),
                                             vehicles: '1',
                                           }).toString()
                                         : `/land/${propertySlug}/sites/${site.slug}`
@@ -577,7 +640,7 @@ export function SitesListSection({
                   These aren&apos;t exact matches
                 </h3>
                 <p className="mb-4 text-sm text-gray-600">
-                  {dateRange?.from && dateRange?.to
+                  {booking.dateRange?.from && booking.dateRange?.to
                     ? 'These sites are not available for your selected dates or do not meet all your criteria.'
                     : 'These sites do not meet all your selected criteria.'}
                 </p>
@@ -600,14 +663,15 @@ export function SitesListSection({
                                 className="h-48 w-full object-cover grayscale"
                               />
                               {isBlocked &&
-                                dateRange?.from &&
-                                dateRange?.to && (
+                                booking.dateRange?.from &&
+                                booking.dateRange?.to && (
                                   <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                                     <Badge
                                       variant="destructive"
                                       className="text-sm"
                                     >
-                                      Not available
+                                      {siteUnavailableReason.get(site._id) ||
+                                        'Not available'}
                                     </Badge>
                                   </div>
                                 )}
@@ -639,7 +703,9 @@ export function SitesListSection({
                                 </p>
                                 <p className="text-xs text-gray-400">/ night</p>
                               </div>
-                              {isBlocked && dateRange?.from && dateRange?.to ? (
+                              {isBlocked &&
+                              booking.dateRange?.from &&
+                              booking.dateRange?.to ? (
                                 <Button
                                   size="sm"
                                   variant="outline"

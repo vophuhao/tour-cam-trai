@@ -95,9 +95,8 @@ interface CampsiteFormModalProps {
     onClose: () => void;
     mode: 'create' | 'edit';
     initialData?: any;
-    onSubmit: (data: any) => void; // Change from FormData to any
+    onSubmit: (data: any); // Change from FormData to any
     amenities?: Amenity[];
-    activities?: Activity[];
 }
 
 export default function CampsiteFormModal({
@@ -107,7 +106,6 @@ export default function CampsiteFormModal({
     initialData,
     onSubmit,
     amenities = [],
-    activities = [],
 }: CampsiteFormModalProps) {
     const [currentStep, setCurrentStep] = useState(1);
     const [newImages, setNewImages] = useState<File[]>([]);
@@ -115,7 +113,6 @@ export default function CampsiteFormModal({
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
-    const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
 
     const form = useForm<CampsiteFormValues>({
         resolver: zodResolver(campsiteSchema) as Resolver<CampsiteFormValues>,
@@ -211,11 +208,6 @@ export default function CampsiteFormModal({
                     ? initialData.amenities.map((a: any) => typeof a === 'string' ? a : a._id)
                     : []
             );
-            setSelectedActivities(
-                Array.isArray(initialData.activities)
-                    ? initialData.activities.map((a: any) => typeof a === 'string' ? a : a._id)
-                    : []
-            );
             setCurrentStep(1);
         } else if (isOpen && mode === 'create') {
             form.reset();
@@ -223,7 +215,6 @@ export default function CampsiteFormModal({
             setPreviewUrls([]);
             setNewImages([]);
             setSelectedAmenities([]);
-            setSelectedActivities([]);
             setCurrentStep(1);
         }
     }, [isOpen, initialData, mode, form]);
@@ -311,7 +302,6 @@ export default function CampsiteFormModal({
                 },
 
                 amenities: selectedAmenities,
-                activities: selectedActivities,
 
                 rules: {
                     checkIn: values.rules.checkIn || '14:00',
@@ -405,11 +395,9 @@ export default function CampsiteFormModal({
                         {currentStep === 4 && (
                             <Step4Amenities
                                 amenities={amenities}
-                                activities={activities}
+                                amenities={amenities}
                                 selectedAmenities={selectedAmenities}
                                 setSelectedAmenities={setSelectedAmenities}
-                                selectedActivities={selectedActivities}
-                                setSelectedActivities={setSelectedActivities}
                             />
                         )}
 

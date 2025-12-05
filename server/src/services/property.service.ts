@@ -306,6 +306,11 @@ export class PropertyService {
         };
       }
 
+      // Calculate number of nights
+      const nights = Math.ceil(
+        (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
       // Build site query for availability
       const siteQuery: any = { isActive: true };
 
@@ -316,6 +321,15 @@ export class PropertyService {
       if (pets && pets > 0) {
         siteQuery["capacity.maxPets"] = { $gte: pets };
       }
+
+      // Booking settings filters - nights must be within min/max range
+      siteQuery["bookingSettings.minimumNights"] = { $lte: nights };
+      // maximumNights is optional, so only filter if it exists and is set
+      siteQuery.$or = [
+        { "bookingSettings.maximumNights": { $exists: false } },
+        { "bookingSettings.maximumNights": null },
+        { "bookingSettings.maximumNights": { $gte: nights } },
+      ];
 
       // Find all potentially available sites
       const candidateSites = await SiteModel.find(siteQuery).select("_id property").lean();
