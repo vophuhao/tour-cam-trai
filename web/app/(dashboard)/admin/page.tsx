@@ -15,6 +15,7 @@ import {
   Star,
   Package,
   ShoppingCart,
+  Home,
 } from "lucide-react";
 import {
   LineChart,
@@ -64,10 +65,26 @@ export default function AdminDashboardPage() {
     },
   });
 
-  const { data: topLocations, isLoading: loadingLocations } = useQuery({
-    queryKey: ["admin-dashboard-top-locations"],
+  const { data: orderStats, isLoading: loadingOrders } = useQuery({
+    queryKey: ["admin-dashboard-orders"],
     queryFn: async () => {
-      const response = await getDashboardStats("top-locations");
+      const response = await getDashboardStats("orders");
+      return response.data;
+    },
+  });
+
+  const { data: topProperties, isLoading: loadingProperties } = useQuery({
+    queryKey: ["admin-dashboard-top-properties"],
+    queryFn: async () => {
+      const response = await getDashboardStats("top-properties");
+      return response.data;
+    },
+  });
+
+  const { data: topProducts, isLoading: loadingProducts } = useQuery({
+    queryKey: ["admin-dashboard-top-products"],
+    queryFn: async () => {
+      const response = await getDashboardStats("top-products");
       return response.data;
     },
   });
@@ -80,13 +97,6 @@ export default function AdminDashboardPage() {
     },
   });
 
-  const { data: activities, isLoading: loadingActivities } = useQuery({
-    queryKey: ["admin-dashboard-activities"],
-    queryFn: async () => {
-      const response = await getDashboardStats("activities");
-      return response.data;
-    },
-  });
 
   const { data: growthStats, isLoading: loadingGrowth } = useQuery({
     queryKey: ["admin-dashboard-growth"],
@@ -134,9 +144,10 @@ export default function AdminDashboardPage() {
     loadingOverview ||
     loadingRevenue ||
     loadingBookings ||
-    loadingLocations ||
+    loadingOrders ||
+    loadingProperties ||
+    loadingProducts ||
     loadingHosts ||
-    loadingActivities ||
     loadingGrowth;
 
   if (isLoading) {
@@ -195,11 +206,15 @@ export default function AdminDashboardPage() {
               <div className="mt-4 flex gap-4 text-sm">
                 <div>
                   <p className="text-gray-500">Hosts</p>
-                  <p className="font-semibold">{overviewStats?.users?.hosts || 0}</p>
+                  <p className="font-semibold">
+                    {overviewStats?.users?.hosts || 0}
+                  </p>
                 </div>
                 <div>
                   <p className="text-gray-500">Guests</p>
-                  <p className="font-semibold">{overviewStats?.users?.guests || 0}</p>
+                  <p className="font-semibold">
+                    {overviewStats?.users?.guests || 0}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -215,9 +230,9 @@ export default function AdminDashboardPage() {
                   <p className="text-2xl font-bold text-gray-900">
                     {formatCurrency(overviewStats?.revenue?.total || 0)}
                   </p>
-                  {growthStats?.revenue && (
+                  {growthStats?.revenue?.total && (
                     <div className="mt-2">
-                      {getGrowthBadge(growthStats.revenue.growth)}
+                      {getGrowthBadge(growthStats.revenue.total.growth)}
                     </div>
                   )}
                 </div>
@@ -225,6 +240,20 @@ export default function AdminDashboardPage() {
                   <DollarSign className="h-6 w-6 text-green-600" />
                 </div>
               </div>
+              <div className="mt-4 flex gap-4 text-sm">
+                <div>
+                  <p className="text-gray-500">Booking</p>
+                  <p className="font-semibold text-green-600">
+                    {formatCurrency(overviewStats?.revenue?.booking || 0)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Order</p>
+                  <p className="font-semibold text-blue-600">
+                    {formatCurrency(overviewStats?.revenue?.order || 0)}
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -233,26 +262,32 @@ export default function AdminDashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">
-                    Tổng booking
+                    Booking & Orders
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatNumber(overviewStats?.bookings?.total || 0)}
+                    {formatNumber(
+                      (overviewStats?.bookings?.total || 0) +
+                        (overviewStats?.orders?.total || 0)
+                    )}
                   </p>
-                  {growthStats?.bookings && (
-                    <div className="mt-2">
-                      {getGrowthBadge(growthStats.bookings.growth)}
-                    </div>
-                  )}
                 </div>
                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
                   <Calendar className="h-6 w-6 text-purple-600" />
                 </div>
               </div>
-              <div className="mt-4 text-sm">
-                <p className="text-gray-500">Đang hoạt động</p>
-                <p className="font-semibold">
-                  {overviewStats?.bookings?.active || 0}
-                </p>
+              <div className="mt-4 flex gap-4 text-sm">
+                <div>
+                  <p className="text-gray-500">Bookings</p>
+                  <p className="font-semibold">
+                    {overviewStats?.bookings?.total || 0}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Orders</p>
+                  <p className="font-semibold">
+                    {overviewStats?.orders?.total || 0}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -262,20 +297,31 @@ export default function AdminDashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">
-                    Địa điểm
+                    Properties & Products
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatNumber(overviewStats?.locations?.total || 0)}
+                    {formatNumber(
+                      (overviewStats?.properties?.total || 0) +
+                        (overviewStats?.products?.total || 0)
+                    )}
                   </p>
-                  <div className="mt-2">
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700">
-                      <MapPin className="w-3 h-3 mr-1" />
-                      Đã duyệt
-                    </Badge>
-                  </div>
                 </div>
                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100">
-                  <MapPin className="h-6 w-6 text-orange-600" />
+                  <Home className="h-6 w-6 text-orange-600" />
+                </div>
+              </div>
+              <div className="mt-4 flex gap-4 text-sm">
+                <div>
+                  <p className="text-gray-500">Properties</p>
+                  <p className="font-semibold">
+                    {overviewStats?.properties?.total || 0}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Products</p>
+                  <p className="font-semibold">
+                    {overviewStats?.products?.total || 0}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -290,8 +336,8 @@ export default function AdminDashboardPage() {
                 <Clock className="h-5 w-5 text-yellow-600" />
                 <div>
                   <p className="font-semibold text-yellow-900">
-                    Có {overviewStats.pendingRequests.hosts} yêu cầu trở thành Host
-                    đang chờ duyệt
+                    Có {overviewStats.pendingRequests.hosts} yêu cầu trở thành
+                    Host đang chờ duyệt
                   </p>
                   <p className="text-sm text-yellow-700">
                     Vui lòng xem xét và xử lý các yêu cầu này
@@ -307,8 +353,9 @@ export default function AdminDashboardPage() {
           <TabsList>
             <TabsTrigger value="revenue">Doanh thu</TabsTrigger>
             <TabsTrigger value="bookings">Booking</TabsTrigger>
-            <TabsTrigger value="locations">Top địa điểm</TabsTrigger>
-            <TabsTrigger value="hosts">Top hosts</TabsTrigger>
+            <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="products">Top Products</TabsTrigger>
+            <TabsTrigger value="hosts">Top Hosts</TabsTrigger>
           </TabsList>
 
           <TabsContent value="revenue">
@@ -328,9 +375,23 @@ export default function AdminDashboardPage() {
                     <Legend />
                     <Line
                       type="monotone"
-                      dataKey="revenue"
+                      dataKey="bookingRevenue"
                       stroke="#10b981"
-                      name="Doanh thu"
+                      name="Booking"
+                      strokeWidth={2}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="orderRevenue"
+                      stroke="#3b82f6"
+                      name="Order"
+                      strokeWidth={2}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="totalRevenue"
+                      stroke="#8b5cf6"
+                      name="Tổng"
                       strokeWidth={2}
                     />
                   </LineChart>
@@ -352,17 +413,21 @@ export default function AdminDashboardPage() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={(entry: { _id: any; count: any; }) => `${entry._id}: ${entry.count}`}
+                      label={(props: any) =>
+                        props?.payload ? `${props.payload._id}: ${props.payload.count}` : ""
+                      }
                       outerRadius={150}
                       fill="#8884d8"
                       dataKey="count"
                     >
-                      {(bookingStats?.byStatus || []).map((entry: any, index: number) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                        />
-                      ))}
+                      {(bookingStats?.byStatus || []).map(
+                        (entry: any, index: number) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        )
+                      )}
                     </Pie>
                     <Tooltip />
                     <Legend />
@@ -372,39 +437,135 @@ export default function AdminDashboardPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="locations">
+          <TabsContent value="orders">
             <Card>
               <CardHeader>
-                <CardTitle>Top 10 địa điểm có nhiều booking nhất</CardTitle>
+                <CardTitle>Phân bố đơn hàng theo trạng thái</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
+                  <PieChart>
+                    <Pie
+                      data={orderStats?.byStatus || []}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={(props: any) =>
+                        props?.payload ? `${props.payload._id}: ${props.payload.count}` : ""
+                      }
+                      outerRadius={150}
+                      fill="#8884d8"
+                      dataKey="count"
+                    >
+                      {(orderStats?.byStatus || []).map(
+                        (entry: any, index: number) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        )
+                      )}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="properties">
+            <Card>
+              <CardHeader>
+                <CardTitle>Top 10 properties có doanh thu cao nhất</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {topLocations?.map((location: any, index: number) => (
+                  {topProperties?.map((property: any, index: number) => (
                     <div
-                      key={location._id}
+                      key={property._id}
                       className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
                     >
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-bold">
                         #{index + 1}
                       </div>
+                      {property.photos?.[0] && (
+                        <img
+                          src={property.photos[0]}
+                          alt={property.name}
+                          className="h-12 w-12 rounded object-cover"
+                        />
+                      )}
                       <div className="flex-1">
                         <h4 className="font-semibold text-gray-900">
-                          {location.name}
+                          {property.name}
                         </h4>
                         <p className="text-sm text-gray-500">
-                          {location.address}
+                          {property.location}
                         </p>
                       </div>
                       <div className="text-right">
                         <div className="flex items-center gap-1 text-sm text-gray-500">
                           <Calendar className="h-4 w-4" />
                           <span className="font-semibold text-gray-900">
-                            {location.bookingCount}
+                            {property.bookingCount}
                           </span>
                           bookings
                         </div>
                         <p className="text-sm font-semibold text-green-600">
-                          {formatCurrency(location.revenue)}
+                          {formatCurrency(property.revenue)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="products">
+            <Card>
+              <CardHeader>
+                <CardTitle>Top 10 sản phẩm bán chạy nhất</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {topProducts?.map((product: any, index: number) => (
+                    <div
+                      key={product._id}
+                      className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-bold">
+                        #{index + 1}
+                      </div>
+                      {product.image && (
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="h-12 w-12 rounded object-cover"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900">
+                          {product.name}
+                        </h4>
+                        <p className="text-sm text-gray-500">
+                          Giá: {formatCurrency(product.price)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center gap-1 text-sm text-gray-500 mb-1">
+                          <ShoppingCart className="h-4 w-4" />
+                          <span className="font-semibold text-gray-900">
+                            {product.quantitySold}
+                          </span>
+                          đã bán
+                        </div>
+                        <p className="text-xs text-gray-500 mb-1">
+                          {product.orderCount} đơn hàng
+                        </p>
+                        <p className="text-sm font-semibold text-green-600">
+                          {formatCurrency(product.revenue)}
                         </p>
                       </div>
                     </div>
@@ -426,7 +587,7 @@ export default function AdminDashboardPage() {
                       key={host._id}
                       className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
                     >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-bold">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-700 font-bold">
                         #{index + 1}
                       </div>
                       <Avatar className="h-12 w-12">
@@ -444,8 +605,8 @@ export default function AdminDashboardPage() {
                       <div className="text-right">
                         <div className="flex gap-3 text-sm text-gray-500 mb-1">
                           <span>
-                            <MapPin className="inline h-3 w-3" />{" "}
-                            {host.locationCount}
+                            <Home className="inline h-3 w-3" />{" "}
+                            {host.propertyCount}
                           </span>
                           <span>
                             <Calendar className="inline h-3 w-3" />{" "}
@@ -471,52 +632,8 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {activities?.slice(0, 10).map((activity: any, index: number) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg"
-                >
-                  {activity.type === "booking" && (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100">
-                      <Calendar className="h-4 w-4 text-purple-600" />
-                    </div>
-                  )}
-                  {activity.type === "review" && (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-100">
-                      <Star className="h-4 w-4 text-yellow-600" />
-                    </div>
-                  )}
-                  {activity.type === "user" && (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
-                      <Users className="h-4 w-4 text-blue-600" />
-                    </div>
-                  )}
-
-                  <div className="flex-1">
-                    {activity.type === "booking" && (
-                      <p className="text-sm">
-                        <strong>{activity.data.user?.username}</strong> đã đặt{" "}
-                        <strong>{activity.data.location?.name}</strong>
-                      </p>
-                    )}
-                    {activity.type === "review" && (
-                      <p className="text-sm">
-                        <strong>{activity.data.user?.username}</strong> đã đánh
-                        giá <strong>{activity.data.location?.name}</strong>
-                      </p>
-                    )}
-                    {activity.type === "user" && (
-                      <p className="text-sm">
-                        Người dùng mới <strong>{activity.data.username}</strong>{" "}
-                        đã đăng ký
-                      </p>
-                    )}
-                    <p className="text-xs text-gray-500">
-                      {new Date(activity.createdAt).toLocaleString("vi-VN")}
-                    </p>
-                  </div>
-                </div>
-              ))}
+             
+            
             </div>
           </CardContent>
         </Card>

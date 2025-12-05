@@ -88,8 +88,9 @@ export default function PropertiesPage() {
   });
 
   const statusConfig = {
-    draft: { label: "Bản nháp", color: "bg-gray-100 text-gray-800" },
-    published: { label: "Đã xuất bản", color: "bg-green-100 text-green-800" },
+    active: { label: "Đang hoạt động", color: "bg-green-100 text-green-800" },
+    inactive: { label: "Không hoạt động", color: "bg-gray-100 text-gray-800" },
+    pending_approval: { label: "Chờ duyệt", color: "bg-yellow-100 text-yellow-800" },
     suspended: { label: "Tạm ngưng", color: "bg-red-100 text-red-800" },
   };
 
@@ -237,8 +238,9 @@ export default function PropertiesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                    <SelectItem value="draft">Bản nháp</SelectItem>
-                    <SelectItem value="published">Đã xuất bản</SelectItem>
+                    <SelectItem value="active">Đang hoạt động</SelectItem>
+                    <SelectItem value="inactive">Không hoạt động</SelectItem>
+                    <SelectItem value="pending_approval">Chờ duyệt</SelectItem>
                     <SelectItem value="suspended">Tạm ngưng</SelectItem>
                   </SelectContent>
                 </Select>

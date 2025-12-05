@@ -55,11 +55,11 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
 
   const menuItems: MenuItem[] = [
   { name: 'Dashboard', href: '/host', icon: Home },
-  { name: 'Bookings', href: '/host/bookings', icon: Calendar }, // ✅ Calendar thay BarChart
-  { name: 'Campsites', href: '/host/campsites', icon: Tent }, // ✅ Giữ nguyên
-  { name: 'Đánh giá', href: '/host/reviews', icon: Star }, // ✅ Star thay Users
-  { name: 'Hỗ trợ', href: '/host/support', icon: MessageSquare }, // ✅ MessageSquare thay Settings
-  { name: 'Đăng xuất', icon: LogOut, action: handleLogout }, // ✅ Giữ nguyên
+  { name: 'Bookings', href: '/host/bookings', icon: Calendar }, 
+  { name: 'Properties', href: '/host/properties', icon: Tent }, 
+  { name: 'Đánh giá', href: '/host/reviews', icon: Star },
+  { name: 'Hỗ trợ', href: '/host/support', icon: MessageSquare },
+  { name: 'Đăng xuất', icon: LogOut, action: handleLogout }, 
 ];
 
   return (
