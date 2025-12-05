@@ -1,37 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
-import {
-  Calendar,
-  MapPin,
-  Users,
-  PawPrint,
-  Car,
-  Phone,
-  Mail,
-  MessageSquare,
-  FileText,
-  ChevronLeft,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  CreditCard,
-  Loader2,
-  CircleDollarSign,
-  BanknoteIcon,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -39,21 +10,97 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import { getBookingByCode } from "@/lib/client-actions";
-import jsPDF from "jspdf";
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { getBookingByCode } from '@/lib/client-actions';
+import type { Property, Site } from '@/types/property-site';
+import { format } from 'date-fns';
+import { vi } from 'date-fns/locale';
+import jsPDF from 'jspdf';
+import {
+  AlertCircle,
+  BanknoteIcon,
+  Calendar,
+  Car,
+  CheckCircle2,
+  ChevronLeft,
+  CircleDollarSign,
+  Clock,
+  CreditCard,
+  FileText,
+  Loader2,
+  MapPin,
+  PawPrint,
+  Users,
+  XCircle,
+} from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+
+// Backend Booking type for host detail view
+interface BookingData {
+  _id: string;
+  code: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded';
+  checkIn: string;
+  checkOut: string;
+  numberOfGuests: number;
+  numberOfPets?: number;
+  numberOfVehicles?: number;
+  nights: number;
+  paymentStatus: 'pending' | 'paid' | 'refunded' | 'failed';
+  paymentMethod?: string;
+  guestMessage?: string;
+  hostMessage?: string;
+
+  // Property-Site architecture (populated)
+  property: Partial<Property>;
+  site: Partial<Site>;
+
+  guest: {
+    _id: string;
+    username: string;
+    email: string;
+    avatarUrl?: string;
+    fullName?: string;
+  };
+
+  host: {
+    _id: string;
+    username: string;
+    email: string;
+    avatarUrl?: string;
+  };
+
+  pricing: {
+    basePrice: number;
+    totalNights: number;
+    subtotal: number;
+    cleaningFee?: number;
+    petFee?: number;
+    extraGuestFee?: number;
+    serviceFee: number;
+    tax: number;
+    total: number;
+  };
+
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function BookingDetailPage() {
   const params = useParams();
   const router = useRouter();
   const code = params.code as string;
 
-  const [booking, setBooking] = useState<any>(null);
+  const [booking, setBooking] = useState<BookingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState("");
+  const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -67,8 +114,8 @@ export default function BookingDetailPage() {
       const res = await getBookingByCode(code);
       setBooking(res.data);
     } catch (error) {
-      console.error("Error fetching booking:", error);
-      toast.error("Không thể tải thông tin booking");
+      console.error('Error fetching booking:', error);
+      toast.error('Không thể tải thông tin booking');
     } finally {
       setLoading(false);
     }
@@ -76,28 +123,31 @@ export default function BookingDetailPage() {
 
   const handleCancelBooking = async () => {
     if (!cancelReason.trim()) {
-      toast.error("Vui lòng nhập lý do hủy");
+      toast.error('Vui lòng nhập lý do hủy');
       return;
     }
 
     try {
       setCancelling(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings/${booking._id}/cancel`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/bookings/${booking._id}/cancel`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ cancellationReason: cancelReason }),
         },
-        credentials: "include",
-        body: JSON.stringify({ cancellationReason: cancelReason }),
-      });
+      );
 
-      if (!res.ok) throw new Error("Không thể hủy booking");
+      if (!res.ok) throw new Error('Không thể hủy booking');
 
-      toast.success("Đã hủy booking thành công");
+      toast.success('Đã hủy booking thành công');
       setCancelDialogOpen(false);
       fetchBooking();
     } catch (error) {
-      toast.error("Có lỗi xảy ra khi hủy booking");
+      toast.error('Có lỗi xảy ra khi hủy booking');
     } finally {
       setCancelling(false);
     }
@@ -139,13 +189,18 @@ export default function BookingDetailPage() {
       // Header
       doc.setFontSize(20);
       doc.setFont('DejaVu', 'normal'); // Dùng normal thay vì bold
-      doc.text("HÓA ĐƠN ĐẶT CHỖ", 105, 20, { align: "center" });
+      doc.text('HÓA ĐƠN ĐẶT CHỖ', 105, 20, { align: 'center' });
 
       doc.setFontSize(10);
-      doc.text("TOUR CẮM TRẠI VIỆT NAM", 105, 28, { align: "center" });
-      doc.text("Website: tour-cam-trai.vn | Email: support@tour-cam-trai.vn", 105, 34, {
-        align: "center",
-      });
+      doc.text('TOUR CẮM TRẠI VIỆT NAM', 105, 28, { align: 'center' });
+      doc.text(
+        'Website: tour-cam-trai.vn | Email: support@tour-cam-trai.vn',
+        105,
+        34,
+        {
+          align: 'center',
+        },
+      );
 
       // Line
       doc.setLineWidth(0.5);
@@ -154,16 +209,16 @@ export default function BookingDetailPage() {
       // Booking Info
       let y = 50;
       doc.setFontSize(12);
-      doc.text("THÔNG TIN ĐẶT CHỖ", 20, y);
+      doc.text('THÔNG TIN ĐẶT CHỖ', 20, y);
 
       y += 8;
       doc.setFontSize(10);
 
       const bookingInfo = [
         `Mã booking: ${booking.code}`,
-        `Ngày tạo: ${format(new Date(booking.createdAt), "dd/MM/yyyy HH:mm", { locale: vi })}`,
+        `Ngày tạo: ${format(new Date(booking.createdAt), 'dd/MM/yyyy HH:mm', { locale: vi })}`,
         `Trạng thái: ${getStatusLabel(booking.status)}`,
-        `Thanh toán: ${getPaymentStatusLabel(booking.paymentStatus)}`
+        `Thanh toán: ${getPaymentStatusLabel(booking.paymentStatus)}`,
       ];
 
       bookingInfo.forEach(info => {
@@ -173,7 +228,7 @@ export default function BookingDetailPage() {
 
       // Campsite Info
       y += 6;
-      doc.text("ĐỊA ĐIỂM", 20, y);
+      doc.text('ĐỊA ĐIỂM', 20, y);
       y += 8;
       doc.text(`Tên: ${booking.property.name}`, 20, y);
       y += 6;
@@ -185,14 +240,14 @@ export default function BookingDetailPage() {
 
       // Booking Details
       y += 6;
-      doc.text("CHI TIẾT ĐẶT CHỖ", 20, y);
+      doc.text('CHI TIẾT ĐẶT CHỖ', 20, y);
       y += 8;
 
       const bookingDetails = [
-        `Check-in: ${format(new Date(booking.checkIn), "dd/MM/yyyy HH:mm")}`,
-        `Check-out: ${format(new Date(booking.checkOut), "dd/MM/yyyy HH:mm")}`,
+        `Check-in: ${format(new Date(booking.checkIn), 'dd/MM/yyyy HH:mm')}`,
+        `Check-out: ${format(new Date(booking.checkOut), 'dd/MM/yyyy HH:mm')}`,
         `Số đêm: ${booking.nights} đêm`,
-        `Số khách: ${booking.numberOfGuests} người`
+        `Số khách: ${booking.numberOfGuests} người`,
       ];
 
       if (booking.numberOfPets > 0) {
@@ -209,7 +264,7 @@ export default function BookingDetailPage() {
 
       // Pricing
       y += 6;
-      doc.text("CHI TIẾT GIÁ", 20, y);
+      doc.text('CHI TIẾT GIÁ', 20, y);
       y += 8;
 
       const pricing = [
@@ -217,17 +272,17 @@ export default function BookingDetailPage() {
           label: `Giá cơ bản (${formatPrice(booking.pricing.basePrice)} x ${booking.pricing.totalNights} đêm)`,
           value: booking.pricing.subtotal,
         },
-        { label: "Phí vệ sinh", value: booking.pricing.cleaningFee },
-        { label: "Phí thú cưng", value: booking.pricing.petFee },
-        { label: "Phí khách thêm", value: booking.pricing.extraGuestFee },
-        { label: "Phí dịch vụ", value: booking.pricing.serviceFee },
-        { label: "Thuế", value: booking.pricing.tax },
+        { label: 'Phí vệ sinh', value: booking.pricing.cleaningFee },
+        { label: 'Phí thú cưng', value: booking.pricing.petFee },
+        { label: 'Phí khách thêm', value: booking.pricing.extraGuestFee },
+        { label: 'Phí dịch vụ', value: booking.pricing.serviceFee },
+        { label: 'Thuế', value: booking.pricing.tax },
       ];
 
-      pricing.forEach((item) => {
+      pricing.forEach(item => {
         if (item.value > 0) {
           doc.text(item.label, 20, y);
-          doc.text(formatPrice(item.value), 190, y, { align: "right" });
+          doc.text(formatPrice(item.value), 190, y, { align: 'right' });
           y += 6;
         }
       });
@@ -238,18 +293,18 @@ export default function BookingDetailPage() {
       doc.line(20, y, 190, y);
       y += 8;
       doc.setFontSize(12);
-      doc.text("TỔNG CỘNG", 20, y);
-      doc.text(formatPrice(booking.pricing.total), 190, y, { align: "right" });
+      doc.text('TỔNG CỘNG', 20, y);
+      doc.text(formatPrice(booking.pricing.total), 190, y, { align: 'right' });
 
       // Guest Info
       y += 12;
       doc.setFontSize(10);
-      doc.text("THÔNG TIN KHÁCH HÀNG", 20, y);
+      doc.text('THÔNG TIN KHÁCH HÀNG', 20, y);
       y += 8;
 
       const guestInfo = [
-        `Họ tên: ${booking.guest.name || "N/A"}`,
-        `Email: ${booking.guest.email}`
+        `Họ tên: ${booking.guest.name || 'N/A'}`,
+        `Email: ${booking.guest.email}`,
       ];
 
       if (booking.guest.phone) {
@@ -265,43 +320,45 @@ export default function BookingDetailPage() {
       y += 9;
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
-      doc.text("Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi!", 105, y, { align: "center" });
+      doc.text('Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi!', 105, y, {
+        align: 'center',
+      });
 
       // Save
       doc.save(`hoa-don-${booking.code}.pdf`);
-      toast.success("Đã xuất hóa đơn PDF thành công");
+      toast.success('Đã xuất hóa đơn PDF thành công');
     } catch (error) {
-      console.error("Error exporting PDF:", error);
-      toast.error("Không thể xuất hóa đơn");
+      console.error('Error exporting PDF:', error);
+      toast.error('Không thể xuất hóa đơn');
     } finally {
       setExporting(false);
     }
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
     }).format(price);
   };
 
   const getStatusLabel = (status: string) => {
     const labels: any = {
-      pending: "Chờ xác nhận",
-      confirmed: "Đã xác nhận",
-      cancelled: "Đã hủy",
-      completed: "Hoàn thành",
-      refunded: "Đã hoàn tiền",
+      pending: 'Chờ xác nhận',
+      confirmed: 'Đã xác nhận',
+      cancelled: 'Đã hủy',
+      completed: 'Hoàn thành',
+      refunded: 'Đã hoàn tiền',
     };
     return labels[status] || status;
   };
 
   const getPaymentStatusLabel = (status: string) => {
     const labels: any = {
-      pending: "Chờ thanh toán",
-      paid: "Đã thanh toán",
-      failed: "Thanh toán thất bại",
-      refunded: "Đã hoàn tiền",
+      pending: 'Chờ thanh toán',
+      paid: 'Đã thanh toán',
+      failed: 'Thanh toán thất bại',
+      refunded: 'Đã hoàn tiền',
     };
     return labels[status] || status;
   };
@@ -320,65 +377,68 @@ export default function BookingDetailPage() {
 
   const statusConfig = {
     pending: {
-      label: "Chờ xác nhận",
-      color: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      label: 'Chờ xác nhận',
+      color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
       icon: Clock,
     },
     confirmed: {
-      label: "Đã xác nhận",
-      color: "bg-green-100 text-green-800 border-green-200",
+      label: 'Đã xác nhận',
+      color: 'bg-green-100 text-green-800 border-green-200',
       icon: CheckCircle2,
     },
     cancelled: {
-      label: "Đã hủy",
-      color: "bg-red-100 text-red-800 border-red-200",
+      label: 'Đã hủy',
+      color: 'bg-red-100 text-red-800 border-red-200',
       icon: XCircle,
     },
     completed: {
-      label: "Hoàn thành",
-      color: "bg-blue-100 text-blue-800 border-blue-200",
+      label: 'Hoàn thành',
+      color: 'bg-blue-100 text-blue-800 border-blue-200',
       icon: CheckCircle2,
     },
     refunded: {
-      label: "Đã hoàn tiền",
-      color: "bg-purple-100 text-purple-800 border-purple-200",
+      label: 'Đã hoàn tiền',
+      color: 'bg-purple-100 text-purple-800 border-purple-200',
       icon: AlertCircle,
     },
   };
 
   const paymentStatusConfig = {
     pending: {
-      label: "Chờ thanh toán",
-      color: "bg-gradient-to-r from-yellow-400 to-orange-400",
-      textColor: "text-white",
+      label: 'Chờ thanh toán',
+      color: 'bg-gradient-to-r from-yellow-400 to-orange-400',
+      textColor: 'text-white',
       icon: CircleDollarSign,
-      glow: "shadow-lg shadow-yellow-200",
+      glow: 'shadow-lg shadow-yellow-200',
     },
     paid: {
-      label: "Đã thanh toán",
-      color: "bg-gradient-to-r from-emerald-400 to-green-500",
-      textColor: "text-white",
+      label: 'Đã thanh toán',
+      color: 'bg-gradient-to-r from-emerald-400 to-green-500',
+      textColor: 'text-white',
       icon: CheckCircle2,
-      glow: "shadow-lg shadow-emerald-200",
+      glow: 'shadow-lg shadow-emerald-200',
     },
     failed: {
-      label: "Thanh toán thất bại",
-      color: "bg-gradient-to-r from-red-400 to-rose-500",
-      textColor: "text-white",
+      label: 'Thanh toán thất bại',
+      color: 'bg-gradient-to-r from-red-400 to-rose-500',
+      textColor: 'text-white',
       icon: XCircle,
-      glow: "shadow-lg shadow-red-200",
+      glow: 'shadow-lg shadow-red-200',
     },
     refunded: {
-      label: "Đã hoàn tiền",
-      color: "bg-gradient-to-r from-purple-400 to-pink-500",
-      textColor: "text-white",
+      label: 'Đã hoàn tiền',
+      color: 'bg-gradient-to-r from-purple-400 to-pink-500',
+      textColor: 'text-white',
       icon: BanknoteIcon,
-      glow: "shadow-lg shadow-purple-200",
+      glow: 'shadow-lg shadow-purple-200',
     },
   };
 
   const status = statusConfig[booking.status as keyof typeof statusConfig];
-  const paymentStatus = paymentStatusConfig[booking.paymentStatus as keyof typeof paymentStatusConfig];
+  const paymentStatus =
+    paymentStatusConfig[
+      booking.paymentStatus as keyof typeof paymentStatusConfig
+    ];
   const StatusIcon = status.icon;
   const PaymentIcon = paymentStatus.icon;
 
@@ -394,21 +454,27 @@ export default function BookingDetailPage() {
             </Link>
           </Button>
 
-          <div className="flex items-start justify-between flex-wrap gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Chi tiết booking</h1>
-              <p className="mt-1 text-sm text-gray-500">Mã booking: {booking.code}</p>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Chi tiết booking
+              </h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Mã booking: {booking.code}
+              </p>
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className={`${status.color}  px-4 py-2 rounded-full font-semibold text-sm flex items-center gap-2 `}>
+            <div className="flex flex-wrap items-center gap-3">
+              <div
+                className={`${status.color} flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold`}
+              >
                 <StatusIcon className="mr-1.5 h-4 w-4" />
                 {status.label}
               </div>
 
               {/* ✨ Payment Status - Nổi bật hơn */}
               <div
-                className={`${paymentStatus.color} ${paymentStatus.textColor} ${paymentStatus.glow} px-4 py-2 rounded-full font-semibold text-sm flex items-center gap-2 `}
+                className={`${paymentStatus.color} ${paymentStatus.textColor} ${paymentStatus.glow} flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold`}
               >
                 <PaymentIcon className="h-5 w-5" />
                 {paymentStatus.label}
@@ -419,35 +485,44 @@ export default function BookingDetailPage() {
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6 lg:col-span-2">
             {/* Payment Status Card - Nổi bật */}
-            {booking.paymentStatus === "pending" && booking.payOSCheckoutUrl && (
-              <Card className="border-2 border-yellow-300 bg-gradient-to-r from-yellow-50 to-orange-50">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-500">
-                      <CircleDollarSign className="h-6 w-6 text-white" />
+            {booking.paymentStatus === 'pending' &&
+              booking.payOSCheckoutUrl && (
+                <Card className="border-2 border-yellow-300 bg-gradient-to-r from-yellow-50 to-orange-50">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-500">
+                        <CircleDollarSign className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900">
+                          Booking chưa thanh toán
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Vui lòng thanh toán để xác nhận booking
+                        </p>
+                      </div>
+                      <Button
+                        size="lg"
+                        asChild
+                        className="bg-yellow-600 hover:bg-yellow-700"
+                      >
+                        <a
+                          href={booking.payOSCheckoutUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          Thanh toán ngay
+                        </a>
+                      </Button>
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">
-                        Booking chưa thanh toán
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Vui lòng thanh toán để xác nhận booking
-                      </p>
-                    </div>
-                    <Button size="lg" asChild className="bg-yellow-600 hover:bg-yellow-700">
-                      <a href={booking.payOSCheckoutUrl} target="_blank" rel="noopener noreferrer">
-                        <CreditCard className="mr-2 h-4 w-4" />
-                        Thanh toán ngay
-                      </a>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                  </CardContent>
+                </Card>
+              )}
 
-            {booking.paymentStatus === "paid" && (
+            {booking.paymentStatus === 'paid' && (
               <Card className="border-2 border-emerald-300 bg-gradient-to-r from-emerald-50 to-green-50">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-4">
@@ -459,7 +534,8 @@ export default function BookingDetailPage() {
                         Thanh toán thành công
                       </h3>
                       <p className="text-sm text-gray-600">
-                        {booking.paidAt && `Thanh toán lúc ${format(new Date(booking.paidAt), "dd/MM/yyyy HH:mm", { locale: vi })}`}
+                        {booking.paidAt &&
+                          `Thanh toán lúc ${format(new Date(booking.paidAt), 'dd/MM/yyyy HH:mm', { locale: vi })}`}
                       </p>
                     </div>
                   </div>
@@ -476,23 +552,34 @@ export default function BookingDetailPage() {
                 <div className="flex gap-4">
                   <div className="relative h-32 w-32 flex-shrink-0 overflow-hidden rounded-lg">
                     <Image
-                      src={booking.site.photos?.[0].url || "/placeholder.jpg"}
+                      src={booking.site.photos?.[0].url || '/placeholder.jpg'}
                       alt={booking.site.name}
                       fill
                       className="object-cover"
                     />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold">{booking.site.name}</h3>
+                    <h3 className="text-lg font-semibold">
+                      {booking.site.name}
+                    </h3>
                     <div className="mt-2 flex items-start gap-2 text-sm text-gray-600">
                       <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
                       <span>
-                        {booking.property.location.address}, {booking.property.location.commune},{" "}
-                        {booking.property.location.district}, {booking.property.location.province}
+                        {booking.property.location.address},{' '}
+                        {booking.property.location.commune},{' '}
+                        {booking.property.location.district},{' '}
+                        {booking.property.location.province}
                       </span>
                     </div>
-                    <Button variant="outline" size="sm" className="mt-3" asChild>
-                      <Link href={`/land/${booking.property.slug}`}>Xem chi tiết</Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      asChild
+                    >
+                      <Link href={`/land/${booking.property.slug}`}>
+                        Xem chi tiết
+                      </Link>
                     </Button>
                   </div>
                 </div>
@@ -509,9 +596,15 @@ export default function BookingDetailPage() {
                   <div className="flex items-start gap-3">
                     <Calendar className="mt-0.5 h-5 w-5 text-gray-400" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">Nhận phòng</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        Nhận phòng
+                      </p>
                       <p className="text-sm text-gray-600">
-                        {format(new Date(booking.checkIn), "dd/MM/yyyy - HH:mm", { locale: vi })}
+                        {format(
+                          new Date(booking.checkIn),
+                          'dd/MM/yyyy - HH:mm',
+                          { locale: vi },
+                        )}
                       </p>
                     </div>
                   </div>
@@ -519,9 +612,15 @@ export default function BookingDetailPage() {
                   <div className="flex items-start gap-3">
                     <Calendar className="mt-0.5 h-5 w-5 text-gray-400" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">Trả phòng</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        Trả phòng
+                      </p>
                       <p className="text-sm text-gray-600">
-                        {format(new Date(booking.checkOut), "dd/MM/yyyy - HH:mm", { locale: vi })}
+                        {format(
+                          new Date(booking.checkOut),
+                          'dd/MM/yyyy - HH:mm',
+                          { locale: vi },
+                        )}
                       </p>
                     </div>
                   </div>
@@ -529,16 +628,24 @@ export default function BookingDetailPage() {
                   <div className="flex items-start gap-3">
                     <Users className="mt-0.5 h-5 w-5 text-gray-400" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">Số khách</p>
-                      <p className="text-sm text-gray-600">{booking.numberOfGuests} người</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        Số khách
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {booking.numberOfGuests} người
+                      </p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3">
                     <Clock className="mt-0.5 h-5 w-5 text-gray-400" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">Số đêm</p>
-                      <p className="text-sm text-gray-600">{booking.nights} đêm</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        Số đêm
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {booking.nights} đêm
+                      </p>
                     </div>
                   </div>
 
@@ -546,8 +653,12 @@ export default function BookingDetailPage() {
                     <div className="flex items-start gap-3">
                       <PawPrint className="mt-0.5 h-5 w-5 text-gray-400" />
                       <div>
-                        <p className="text-sm font-medium text-gray-900">Thú cưng</p>
-                        <p className="text-sm text-gray-600">{booking.numberOfPets} con</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          Thú cưng
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {booking.numberOfPets} con
+                        </p>
                       </div>
                     </div>
                   )}
@@ -556,8 +667,12 @@ export default function BookingDetailPage() {
                     <div className="flex items-start gap-3">
                       <Car className="mt-0.5 h-5 w-5 text-gray-400" />
                       <div>
-                        <p className="text-sm font-medium text-gray-900">Phương tiện</p>
-                        <p className="text-sm text-gray-600">{booking.numberOfVehicles} xe</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          Phương tiện
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {booking.numberOfVehicles} xe
+                        </p>
                       </div>
                     </div>
                   )}
@@ -567,8 +682,10 @@ export default function BookingDetailPage() {
                   <>
                     <Separator />
                     <div>
-                      <p className="text-sm font-medium text-gray-900 mb-2">Lời nhắn từ khách</p>
-                      <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                      <p className="mb-2 text-sm font-medium text-gray-900">
+                        Lời nhắn từ khách
+                      </p>
+                      <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
                         {booking.guestMessage}
                       </p>
                     </div>
@@ -579,8 +696,10 @@ export default function BookingDetailPage() {
                   <>
                     <Separator />
                     <div>
-                      <p className="text-sm font-medium text-gray-900 mb-2">Phản hồi từ chủ nhà</p>
-                      <p className="text-sm text-gray-600 bg-emerald-50 p-3 rounded-lg">
+                      <p className="mb-2 text-sm font-medium text-gray-900">
+                        Phản hồi từ chủ nhà
+                      </p>
+                      <p className="rounded-lg bg-emerald-50 p-3 text-sm text-gray-600">
                         {booking.hostMessage}
                       </p>
                     </div>
@@ -590,22 +709,28 @@ export default function BookingDetailPage() {
             </Card>
 
             {/* Cancellation Info */}
-            {booking.status === "cancelled" && (
+            {booking.status === 'cancelled' && (
               <Card className="border-red-200 bg-red-50">
                 <CardHeader>
-                  <CardTitle className="text-red-900">Thông tin hủy booking</CardTitle>
+                  <CardTitle className="text-red-900">
+                    Thông tin hủy booking
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-red-700">Thời gian hủy:</span>
                     <span className="font-medium text-red-900">
-                      {format(new Date(booking.cancelledAt), "dd/MM/yyyy HH:mm", { locale: vi })}
+                      {format(
+                        new Date(booking.cancelledAt),
+                        'dd/MM/yyyy HH:mm',
+                        { locale: vi },
+                      )}
                     </span>
                   </div>
                   {booking.cancellationReason && (
                     <div>
-                      <p className="text-sm text-red-700 mb-1">Lý do hủy:</p>
-                      <p className="text-sm text-red-900 bg-white p-3 rounded-lg">
+                      <p className="mb-1 text-sm text-red-700">Lý do hủy:</p>
+                      <p className="rounded-lg bg-white p-3 text-sm text-red-900">
                         {booking.cancellationReason}
                       </p>
                     </div>
@@ -625,43 +750,56 @@ export default function BookingDetailPage() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">
-                    {formatPrice(booking.pricing.basePrice)} x {booking.pricing.totalNights} đêm
+                    {formatPrice(booking.pricing.basePrice)} x{' '}
+                    {booking.pricing.totalNights} đêm
                   </span>
-                  <span className="font-medium">{formatPrice(booking.pricing.subtotal)}</span>
+                  <span className="font-medium">
+                    {formatPrice(booking.pricing.subtotal)}
+                  </span>
                 </div>
 
                 {booking.pricing.cleaningFee > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Phí vệ sinh</span>
-                    <span className="font-medium">{formatPrice(booking.pricing.cleaningFee)}</span>
+                    <span className="font-medium">
+                      {formatPrice(booking.pricing.cleaningFee)}
+                    </span>
                   </div>
                 )}
 
                 {booking.pricing.petFee > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Phí thú cưng</span>
-                    <span className="font-medium">{formatPrice(booking.pricing.petFee)}</span>
+                    <span className="font-medium">
+                      {formatPrice(booking.pricing.petFee)}
+                    </span>
                   </div>
                 )}
 
                 {booking.pricing.extraGuestFee > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Phí khách thêm</span>
-                    <span className="font-medium">{formatPrice(booking.pricing.extraGuestFee)}</span>
+                    <span className="font-medium">
+                      {formatPrice(booking.pricing.extraGuestFee)}
+                    </span>
                   </div>
                 )}
 
                 {booking.pricing.serviceFee > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Phí dịch vụ</span>
-                    <span className="font-medium">{formatPrice(booking.pricing.serviceFee)}</span>
+                    <span className="font-medium">
+                      {formatPrice(booking.pricing.serviceFee)}
+                    </span>
                   </div>
                 )}
 
                 {booking.pricing.tax > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Thuế</span>
-                    <span className="font-medium">{formatPrice(booking.pricing.tax)}</span>
+                    <span className="font-medium">
+                      {formatPrice(booking.pricing.tax)}
+                    </span>
                   </div>
                 )}
 
@@ -669,7 +807,9 @@ export default function BookingDetailPage() {
 
                 <div className="flex justify-between text-base font-semibold">
                   <span>Tổng cộng</span>
-                  <span className="text-emerald-600">{formatPrice(booking.pricing.total)}</span>
+                  <span className="text-emerald-600">
+                    {formatPrice(booking.pricing.total)}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -691,10 +831,11 @@ export default function BookingDetailPage() {
                   ) : (
                     <FileText className="mr-2 h-4 w-4" />
                   )}
-                  {exporting ? "Đang xuất..." : "Xuất hóa đơn PDF"}
+                  {exporting ? 'Đang xuất...' : 'Xuất hóa đơn PDF'}
                 </Button>
 
-                {(booking.status === "pending" || booking.status === "confirmed") && (
+                {(booking.status === 'pending' ||
+                  booking.status === 'confirmed') && (
                   <Button
                     variant="destructive"
                     className="w-full"
@@ -705,7 +846,7 @@ export default function BookingDetailPage() {
                   </Button>
                 )}
 
-                {booking.status === "completed" && !booking.reviewed && (
+                {booking.status === 'completed' && !booking.reviewed && (
                   <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
                     Viết đánh giá
                   </Button>
@@ -727,7 +868,11 @@ export default function BookingDetailPage() {
                     <div className="flex-1">
                       <p className="text-sm font-medium">Đã tạo booking</p>
                       <p className="text-xs text-gray-500">
-                        {format(new Date(booking.createdAt), "dd/MM/yyyy HH:mm", { locale: vi })}
+                        {format(
+                          new Date(booking.createdAt),
+                          'dd/MM/yyyy HH:mm',
+                          { locale: vi },
+                        )}
                       </p>
                     </div>
                   </div>
@@ -740,7 +885,11 @@ export default function BookingDetailPage() {
                       <div className="flex-1">
                         <p className="text-sm font-medium">Đã thanh toán</p>
                         <p className="text-xs text-gray-500">
-                          {format(new Date(booking.paidAt), "dd/MM/yyyy HH:mm", { locale: vi })}
+                          {format(
+                            new Date(booking.paidAt),
+                            'dd/MM/yyyy HH:mm',
+                            { locale: vi },
+                          )}
                         </p>
                       </div>
                     </div>
@@ -754,7 +903,11 @@ export default function BookingDetailPage() {
                       <div className="flex-1">
                         <p className="text-sm font-medium">Đã hủy</p>
                         <p className="text-xs text-gray-500">
-                          {format(new Date(booking.cancelledAt), "dd/MM/yyyy HH:mm", { locale: vi })}
+                          {format(
+                            new Date(booking.cancelledAt),
+                            'dd/MM/yyyy HH:mm',
+                            { locale: vi },
+                          )}
                         </p>
                       </div>
                     </div>
@@ -772,7 +925,8 @@ export default function BookingDetailPage() {
           <DialogHeader>
             <DialogTitle>Hủy booking</DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn hủy booking này? Vui lòng cho biết lý do hủy.
+              Bạn có chắc chắn muốn hủy booking này? Vui lòng cho biết lý do
+              hủy.
             </DialogDescription>
           </DialogHeader>
 
@@ -780,13 +934,16 @@ export default function BookingDetailPage() {
             <Textarea
               placeholder="Nhập lý do hủy booking..."
               value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
+              onChange={e => setCancelReason(e.target.value)}
               rows={4}
             />
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setCancelDialogOpen(false)}
+            >
               Đóng
             </Button>
             <Button
@@ -794,7 +951,7 @@ export default function BookingDetailPage() {
               onClick={handleCancelBooking}
               disabled={cancelling || !cancelReason.trim()}
             >
-              {cancelling ? "Đang hủy..." : "Xác nhận hủy"}
+              {cancelling ? 'Đang hủy...' : 'Xác nhận hủy'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -24,9 +24,8 @@ export class Container {
   resolve<T>(token: symbol): T {
     const provider = this.providers.get(token);
     if (!provider) {
-      throw new Error(
-        `No provider registered for token: ${String(token.description || token.toString())}`
-      );
+      const tokenDesc = token ? String(token.description || token.toString()) : "undefined";
+      throw new Error(`No provider registered for token: ${tokenDesc}`);
     }
 
     if (provider.useValue !== undefined) {

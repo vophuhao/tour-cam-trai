@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { Booking } from '@/types/property-site';
 import apiClient from './api-client';
 
 // ==================== PROPERTY-SITE API ====================
@@ -416,16 +417,18 @@ export async function createBooking(data: {
   numberOfPets?: number;
   numberOfVehicles?: number;
   guestMessage?: string;
-  paymentMethod: 'card' | 'bank_transfer' | 'momo' | 'zalopay';
-}): Promise<ApiResponse> {
+  paymentMethod: 'card';
+}): Promise<ApiResponse<Booking>> {
   return apiClient.post('/bookings', data);
 }
 
-export async function getBooking(id: string): Promise<ApiResponse> {
+export async function getBooking(id: string): Promise<ApiResponse<Booking>> {
   return apiClient.get(`/bookings/${id}`);
 }
 
-export async function getBookingByCode(code: string): Promise<ApiResponse> {
+export async function getBookingByCode(
+  code: string,
+): Promise<ApiResponse<Booking>> {
   return apiClient.post(`/bookings/${code}/code`);
 }
 
@@ -434,8 +437,30 @@ export async function getUserBookings(params?: {
   role?: 'guest' | 'host';
   page?: number;
   limit?: number;
-}): Promise<ApiResponse> {
+}): Promise<ApiResponse<Booking[]>> {
   return apiClient.get('/bookings', { params });
+}
+
+export async function confirmBooking(
+  bookingId: string,
+  hostMessage?: string,
+): Promise<ApiResponse<Booking>> {
+  return apiClient.post(`/bookings/${bookingId}/confirm`, { hostMessage });
+}
+
+export async function cancelBooking(
+  bookingId: string,
+  data: {
+    cancellationReason: string;
+  },
+): Promise<ApiResponse<Booking>> {
+  return apiClient.post(`/bookings/${bookingId}/cancel`, data);
+}
+
+export async function completeBooking(
+  bookingId: string,
+): Promise<ApiResponse<Booking>> {
+  return apiClient.post(`/bookings/${bookingId}/complete`);
 }
 
 export async function getAllAmenities(): Promise<ApiResponse<Amenity[]>> {
@@ -509,7 +534,7 @@ export async function getPropertyReviews(
   propertyId: string,
   page = 1,
   limit = 10,
-): Promise<ApiResponse> {
+): Promise<PaginatedResponse<any>> {
   return apiClient.get(`/properties/${propertyId}/reviews`, {
     params: { page, limit },
   });
@@ -519,7 +544,7 @@ export async function getSiteReviews(
   siteId: string,
   page = 1,
   limit = 10,
-): Promise<ApiResponse> {
+): Promise<PaginatedResponse<any>> {
   return apiClient.get(`/sites/${siteId}/reviews`, {
     params: { page, limit },
   });

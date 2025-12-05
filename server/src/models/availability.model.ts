@@ -68,16 +68,14 @@ export interface FavoriteDocument extends mongoose.Document {
 
 const favoriteSchema = new mongoose.Schema<FavoriteDocument>(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     property: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Property",
-      index: true,
     },
     site: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Site",
-      index: true,
     },
     notes: { type: String, trim: true, maxlength: 500 },
   },

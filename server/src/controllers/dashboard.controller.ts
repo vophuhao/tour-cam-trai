@@ -2,15 +2,15 @@ import { catchErrors } from "@/errors";
 import { BookingModel } from "@/models/booking.model";
 import HostModel from "@/models/host.modal";
 import { OrderModel } from "@/models/order.model";
-import { PropertyModel } from "@/models/property.model";
 import ProductModel from "@/models/product.model";
+import { PropertyModel } from "@/models/property.model";
 import { ReviewModel } from "@/models/review.model";
 import UserModel from "@/models/user.model";
 import { ResponseUtil } from "@/utils";
 
 export default class DashboardController {
   // Thống kê tổng quan
-  getOverviewStats = catchErrors(async (req, res) => {
+  getOverviewStats = catchErrors(async (_req, res) => {
     const [
       totalUsers,
       totalHosts,
@@ -131,7 +131,7 @@ export default class DashboardController {
     const monthlyData = Array.from({ length: 12 }, (_, i) => {
       const bookingData = bookingRevenueByMonth.find((r: any) => r._id === i + 1);
       const orderData = orderRevenueByMonth.find((r: any) => r._id === i + 1);
-      
+
       return {
         month: i + 1,
         bookingRevenue: bookingData?.revenue || 0,
@@ -377,7 +377,7 @@ export default class DashboardController {
   });
 
   // Growth stats (so với tháng trước)
-  getGrowthStats = catchErrors(async (req, res) => {
+  getGrowthStats = catchErrors(async (_req, res) => {
     const now = new Date();
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -396,22 +396,27 @@ export default class DashboardController {
     ] = await Promise.all([
       UserModel.countDocuments({ createdAt: { $gte: thisMonth } }),
       UserModel.countDocuments({ createdAt: { $gte: lastMonth, $lt: thisMonth } }),
-      
+
       BookingModel.countDocuments({ createdAt: { $gte: thisMonth } }),
       BookingModel.countDocuments({ createdAt: { $gte: lastMonth, $lt: thisMonth } }),
-      
+
       OrderModel.countDocuments({ createdAt: { $gte: thisMonth } }),
       OrderModel.countDocuments({ createdAt: { $gte: lastMonth, $lt: thisMonth } }),
-      
+
       BookingModel.aggregate([
         { $match: { status: { $in: ["confirmed", "completed"] }, createdAt: { $gte: thisMonth } } },
         { $group: { _id: null, total: { $sum: "$pricing.total" } } },
       ]),
       BookingModel.aggregate([
-        { $match: { status: { $in: ["confirmed", "completed"] }, createdAt: { $gte: lastMonth, $lt: thisMonth } } },
+        {
+          $match: {
+            status: { $in: ["confirmed", "completed"] },
+            createdAt: { $gte: lastMonth, $lt: thisMonth },
+          },
+        },
         { $group: { _id: null, total: { $sum: "$pricing.total" } } },
       ]),
-      
+
       OrderModel.aggregate([
         { $match: { orderStatus: "completed", createdAt: { $gte: thisMonth } } },
         { $group: { _id: null, total: { $sum: "$grandTotal" } } },

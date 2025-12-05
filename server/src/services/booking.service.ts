@@ -82,14 +82,6 @@ export class BookingService {
       );
     }
 
-    // Check pet policy (from property)
-    if (numberOfPets > 0) {
-      appAssert(
-        property.petPolicy?.allowed,
-        ErrorFactory.badRequest("Property không cho phép thú cưng")
-      );
-    }
-
     // Check availability
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
@@ -244,7 +236,18 @@ export class BookingService {
   async getBooking(bookingId: string, userId: string): Promise<BookingDocument> {
     const booking = await BookingModel.findById(bookingId)
       .populate("property", "name location photos")
-      .populate("site", "name accommodationType photos pricing")
+      .populate({
+        path: "site",
+        select: "name accommodationType photos pricing slug",
+        populate: {
+          path: "property",
+          select: "name location photos slug host",
+          populate: {
+            path: "host",
+            select: "fullName username avatarUrl",
+          },
+        },
+      })
       .populate("guest", "username email avatarUrl")
       .populate("host", "username email avatarUrl");
 
@@ -329,6 +332,51 @@ export class BookingService {
     appAssert(now >= booking.checkOut, ErrorFactory.badRequest("Chưa đến ngày checkout"));
 
     await booking.complete();
+
+    // Unblock dates when booking is completed
+    // This releases the dates back to availability pool
+    await this.unblockDatesForBooking(booking.site.toString(), booking.checkIn, booking.checkOut);
+
+    return booking;
+  }
+
+  /**
+   * Refund booking (admin or host action)
+   */
+  async refundBooking(
+    bookingId: string,
+    userId: string,
+    refundAmount?: number
+  ): Promise<BookingDocument> {
+    const booking = await BookingModel.findById(bookingId);
+    appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
+
+    // Check permission (host or admin)
+    const isHost = booking.host.toString() === userId;
+    // Admin check would go here if needed
+    appAssert(isHost, ErrorFactory.forbidden("Bạn không có quyền refund booking này"));
+
+    // Check status
+    appAssert(
+      booking.status === "confirmed" || booking.status === "cancelled",
+      ErrorFactory.badRequest("Không thể refund booking này")
+    );
+
+    // Check payment status
+    appAssert(
+      booking.paymentStatus === "paid",
+      ErrorFactory.badRequest("Booking chưa được thanh toán")
+    );
+
+    // Set refund
+    booking.status = "refunded";
+    booking.paymentStatus = "refunded";
+    booking.refundAmount = refundAmount || booking.pricing.total;
+    await booking.save();
+
+    // Unblock dates when booking is refunded
+    await this.unblockDatesForBooking(booking.site.toString(), booking.checkIn, booking.checkOut);
+
     return booking;
   }
 
@@ -382,9 +430,20 @@ export class BookingService {
     const skip = (page - 1) * limit;
     const [bookings, total] = await Promise.all([
       BookingModel.find(query)
-        .populate("site", "name slug photos location")
-        .populate("guest", "name email avatar")
-        .populate("host", "name email avatar")
+        .populate({
+          path: "site",
+          select: "name slug photos accommodationType pricing",
+          populate: {
+            path: "property",
+            select: "name location photos slug host",
+            populate: {
+              path: "host",
+              select: "fullName username",
+            },
+          },
+        })
+        .populate("guest", "username email avatarUrl")
+        .populate("host", "username email avatarUrl")
         .sort(sortOption)
         .skip(skip)
         .limit(limit)

@@ -1,7 +1,6 @@
 import FeaturedDestinations from '@/components/home/featured-destinations';
 import FeaturedProducts from '@/components/home/featured-products';
 import HeroSection from '@/components/home/hero-section';
-import Newsletter from '@/components/home/newsletter';
 import RevealOnScroll from '@/components/reveal-on-scroll';
 import { StaggerContainer, StaggerItem } from '@/components/stagger-animation';
 import { Button } from '@/components/ui/button';
@@ -377,8 +376,6 @@ export default function HomePage() {
           </StaggerContainer>
         </div>
       </section>
-
-      <Newsletter />
     </div>
   );
 }

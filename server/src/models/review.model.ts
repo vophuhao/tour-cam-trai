@@ -91,7 +91,8 @@ const reviewSchema = new mongoose.Schema<ReviewDocument>(
       amenities: { type: Number, required: true, min: 1, max: 5 },
     },
 
-    overallRating: { type: Number, required: true, min: 1, max: 5 },
+    // overallRating is calculated automatically in pre-save hook, so not required in schema
+    overallRating: { type: Number, min: 1, max: 5 },
 
     title: { type: String, trim: true, maxlength: 100 },
     comment: { type: String, required: true, trim: true, maxlength: 2000 },
@@ -152,9 +153,10 @@ reviewSchema.methods.calculateOverallRating = function (this: ReviewDocument): n
   );
 };
 
-// Auto-calculate overall rating before save
-reviewSchema.pre("save", function (next) {
-  if (this.isModified("propertyRatings") || this.isModified("siteRatings")) {
+// Auto-calculate overall rating before validation
+reviewSchema.pre("validate", function (next) {
+  // Always calculate overallRating if propertyRatings and siteRatings are present
+  if (this.propertyRatings && this.siteRatings) {
     this.overallRating = this.calculateOverallRating();
   }
   next();

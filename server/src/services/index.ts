@@ -15,9 +15,9 @@ export { default as OrderService } from "@/services/order.service";
 export { default as CartService } from "@/services/cart.service";
 
 // Hipcamp-style services
-export { CampsiteService } from "@/services/campsite.service";
+export { AmenityService } from "@/services/amenity.service";
 export { BookingService } from "@/services/booking.service";
-export { ReviewService } from "@/services/review.service";
-export { AmenityService, ActivityService } from "@/services/amenity.service";
+export { CampsiteService } from "@/services/campsite.service";
 export { PropertyService } from "@/services/property.service";
+export { ReviewService } from "@/services/review.service";
 export { SiteService } from "@/services/site.service";

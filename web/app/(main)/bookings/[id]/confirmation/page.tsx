@@ -1,5 +1,6 @@
 'use client';
 
+import { ReviewDialog } from '@/components/reviews/review-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,39 +12,74 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { getBooking } from '@/lib/client-actions';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  cancelBooking,
+  completeBooking,
+  getBooking,
+} from '@/lib/client-actions';
 import { useAuthStore } from '@/store/auth.store';
-import { useQuery } from '@tanstack/react-query';
+import type { Property, Site } from '@/types/property-site';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import {
+  AlertCircle,
   ArrowLeft,
   Calendar,
+  CheckCircle,
   Clock,
-  HelpCircle,
   Home,
   Loader2,
   MapPin,
-  PencilLine,
-  Plus,
+  Star,
   Users,
+  XCircle,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
-// Type definition for booking data
+// Backend Booking type matching the populated response
 interface BookingData {
   _id: string;
-  status: string;
+  code?: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded';
   checkIn: string;
   checkOut: string;
   numberOfGuests: number;
-  numberOfPets: number;
-  numberOfVehicles: number;
+  numberOfPets?: number;
+  numberOfVehicles?: number;
   nights: number;
-  paymentMethod: string;
+  paymentStatus?: 'pending' | 'paid' | 'refunded' | 'failed';
+  paymentMethod?: string;
   guestMessage?: string;
+  hostMessage?: string;
+
+  // New Property-Site architecture
+  property?: Partial<Property>;
+  site?: Partial<Site> & {
+    property?: Partial<Property> & {
+      host?: {
+        _id: string;
+        fullName: string;
+        username: string;
+        avatarUrl?: string;
+      };
+    };
+  };
+
+  // Legacy campsite support (for backward compatibility)
   campsite?: {
     _id: string;
     name: string;
@@ -62,18 +98,37 @@ interface BookingData {
       avatar?: string;
     };
   };
+
   guest?: {
     _id: string;
-    name: string;
-    avatar?: string;
+    username: string;
+    email: string;
+    avatarUrl?: string;
   };
+
+  host?: {
+    _id: string;
+    username: string;
+    email: string;
+    avatarUrl?: string;
+  };
+
   pricing?: {
+    basePrice: number;
+    totalNights: number;
     subtotal: number;
-    cleaningFee: number;
+    cleaningFee?: number;
+    petFee?: number;
+    extraGuestFee?: number;
     serviceFee: number;
     tax: number;
     total: number;
   };
+
+  reviewed?: boolean;
+  review?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function ConfirmationPage() {
@@ -81,12 +136,106 @@ export default function ConfirmationPage() {
   const params = useParams();
   const bookingId = params.id as string;
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
+
+  // Cancel dialog state
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState('');
+
+  // Review dialog state
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['booking', bookingId],
     queryFn: () => getBooking(bookingId),
     enabled: !!bookingId,
   });
+
+  // Cancel booking mutation
+  const cancelMutation = useMutation({
+    mutationFn: (cancellationReason: string) =>
+      cancelBooking(bookingId, { cancellationReason }),
+    onMutate: async () => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['booking', bookingId] });
+
+      // Snapshot previous value for rollback
+      const previousBooking = queryClient.getQueryData(['booking', bookingId]);
+
+      return { previousBooking };
+    },
+    onSuccess: () => {
+      toast.success('Đã hủy đặt chỗ thành công', {
+        description:
+          'Chúng tôi sẽ xử lý hoàn tiền trong vòng 5-7 ngày làm việc.',
+      });
+
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['user-bookings'] });
+
+      // Close dialog and reset form
+      setIsCancelDialogOpen(false);
+      setCancellationReason('');
+    },
+    onError: (error: Error, _variables, context) => {
+      // Rollback on error
+      if (context?.previousBooking) {
+        queryClient.setQueryData(
+          ['booking', bookingId],
+          context.previousBooking,
+        );
+      }
+
+      toast.error('Không thể hủy đặt chỗ', {
+        description: error?.message || 'Vui lòng thử lại sau.',
+      });
+    },
+    onSettled: () => {
+      // Always refetch after mutation
+      queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
+    },
+  });
+
+  // Complete booking mutation
+  const completeMutation = useMutation({
+    mutationFn: () => completeBooking(bookingId),
+    onSuccess: () => {
+      toast.success('Đã hoàn thành chuyến đi', {
+        description: 'Bạn có thể đánh giá trải nghiệm của mình ngay bây giờ.',
+      });
+
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['user-bookings'] });
+    },
+    onError: (error: Error) => {
+      toast.error('Không thể hoàn thành chuyến đi', {
+        description: error?.message || 'Vui lòng thử lại sau.',
+      });
+    },
+  });
+
+  const handleCancelBooking = () => {
+    if (!cancellationReason.trim()) {
+      toast.error('Vui lòng nhập lý do hủy');
+      return;
+    }
+
+    if (cancellationReason.trim().length < 10) {
+      toast.error('Lý do hủy phải có ít nhất 10 ký tự');
+      return;
+    }
+
+    if (cancellationReason.trim().length > 500) {
+      toast.error('Lý do hủy không được vượt quá 500 ký tự');
+      return;
+    }
+
+    cancelMutation.mutate(cancellationReason);
+  };
 
   const booking = data?.data as BookingData | undefined;
 
@@ -122,29 +271,54 @@ export default function ConfirmationPage() {
     );
   }
 
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
+  const getStatusBadge = (status: BookingData['status']) => {
+    const styles: Record<BookingData['status'], string> = {
       pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
       confirmed: 'bg-green-100 text-green-800 border-green-200',
       cancelled: 'bg-red-100 text-red-800 border-red-200',
       completed: 'bg-blue-100 text-blue-800 border-blue-200',
+      refunded: 'bg-gray-100 text-gray-800 border-gray-200',
     };
-    const labels: Record<string, string> = {
+    const labels: Record<BookingData['status'], string> = {
       pending: 'Chờ xác nhận',
       confirmed: 'Đã xác nhận',
       cancelled: 'Đã hủy',
       completed: 'Hoàn thành',
+      refunded: 'Đã hoàn tiền',
     };
     return (
-      <Badge className={`${styles[status] || styles.pending} px-3 py-1`}>
-        {labels[status] || status}
-      </Badge>
+      <Badge className={`${styles[status]} px-3 py-1`}>{labels[status]}</Badge>
     );
   };
 
-  const campsiteImages = booking.campsite?.images || [
-    '/placeholder-campsite.jpg',
-  ];
+  // Get images: prefer site photos, fallback to property photos, then campsite images
+  const siteImages =
+    booking.site?.photos?.map(p => p.url) ||
+    booking.property?.photos?.map(p => p.url) ||
+    booking.campsite?.images ||
+    [];
+  const images =
+    siteImages.length > 0 ? siteImages : ['/placeholder-campsite.jpg'];
+
+  // Get property and site info (support both new and legacy structure)
+  const property = booking.site?.property || booking.property;
+  const site = booking.site;
+  const siteName = site?.name || booking.campsite?.name || 'Site';
+  const propertyName = property?.name || booking.campsite?.host?.name || '';
+  const location = property?.location || booking.campsite?.location;
+
+  // Booking times - prefer site booking settings, fallback to campsite or defaults
+  const checkInTime =
+    site?.bookingSettings?.checkInTime ||
+    booking.campsite?.checkInTime ||
+    '14:00';
+  const checkOutTime =
+    site?.bookingSettings?.checkOutTime ||
+    booking.campsite?.checkOutTime ||
+    '12:00';
+
+  // Check if cancellable (only pending/confirmed bookings can be cancelled)
+  const isCancellable = ['pending', 'confirmed'].includes(booking.status);
 
   return (
     <div className="min-h-screen bg-white">
@@ -177,12 +351,12 @@ export default function ConfirmationPage() {
           className="h-full w-full"
         >
           <CarouselContent className="ml-0 h-full">
-            {campsiteImages.map((image, index) => (
+            {images.map((image, index) => (
               <CarouselItem key={index} className="h-full pl-1 md:basis-1/2">
                 <div className="relative h-[300px] w-full md:h-[450px]">
                   <Image
-                    src={image || '/placeholder-campsite.jpg'}
-                    alt={`${booking.campsite?.name} - Ảnh ${index + 1}`}
+                    src={image}
+                    alt={`${siteName} - Ảnh ${index + 1}`}
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover"
@@ -206,29 +380,86 @@ export default function ConfirmationPage() {
             <div className="mb-4 flex items-center gap-4">
               {getStatusBadge(booking.status)}
               <span className="text-muted-foreground text-sm">
-                Mã xác nhận #{booking._id.slice(-7).toUpperCase()}
+                Mã xác nhận:{' '}
+                {booking.code || `#${booking._id.slice(-7).toUpperCase()}`}
               </span>
             </div>
 
             {/* Trip Title */}
             <h1 className="mb-6 text-2xl font-bold md:text-3xl">
-              Chuyến đi sắp tới của bạn đến {booking.campsite?.name}
+              Chuyến đi sắp tới của bạn đến {siteName}
+              {propertyName && (
+                <span className="text-muted-foreground mt-2 block text-lg font-normal">
+                  tại {propertyName}
+                </span>
+              )}
             </h1>
 
             {/* Action Buttons */}
             <div className="mb-8 flex flex-col gap-3 sm:flex-row">
-              <Button className="flex-1 bg-emerald-500 hover:bg-emerald-600">
-                <Plus className="mr-2 h-4 w-4" />
-                Thêm dịch vụ
-              </Button>
-              <Button variant="outline" className="flex-1">
-                <PencilLine className="mr-2 h-4 w-4" />
-                Chỉnh sửa chuyến đi
-              </Button>
-              <Button variant="outline" className="flex-1">
+              {/* Show Complete Trip button for confirmed bookings after checkout */}
+              {booking.status === 'confirmed' &&
+                new Date(booking.checkOut) < new Date() &&
+                !booking.reviewed && (
+                  <Button
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    onClick={() => completeMutation.mutate()}
+                    disabled={completeMutation.isPending}
+                  >
+                    {completeMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Đang xử lý...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Hoàn thành chuyến đi
+                      </>
+                    )}
+                  </Button>
+                )}
+
+              {/* Show Review button for completed bookings without review */}
+              {booking.status === 'completed' && !booking.reviewed && (
+                <Button
+                  className="flex-1 bg-yellow-600 hover:bg-yellow-700"
+                  onClick={() => setIsReviewDialogOpen(true)}
+                >
+                  <Star className="mr-2 h-4 w-4" />
+                  Đánh giá chuyến đi
+                </Button>
+              )}
+
+              {/* {['pending', 'confirmed'].includes(booking.status) && (
+                <>
+                  <Button className="flex-1 bg-emerald-500 hover:bg-emerald-600">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Thêm dịch vụ
+                  </Button>
+                  <Button variant="outline" className="flex-1">
+                    <PencilLine className="mr-2 h-4 w-4" />
+                    Chỉnh sửa chuyến đi
+                  </Button>
+                </>
+              )} */}
+
+              {isCancellable && (
+                <Button
+                  variant="outline"
+                  className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => setIsCancelDialogOpen(true)}
+                  disabled={cancelMutation.isPending}
+                >
+                  <XCircle className="mr-2 h-4 w-4" />
+                  Hủy đặt chỗ
+                </Button>
+              )}
+
+              {/* <Button variant="outline" className="flex-1">
                 <HelpCircle className="mr-2 h-4 w-4" />
                 Trợ giúp
-              </Button>
+              </Button> */}
             </div>
 
             {/* Trip Details */}
@@ -259,9 +490,7 @@ export default function ConfirmationPage() {
                 <Clock className="text-muted-foreground mt-1 h-5 w-5" />
                 <div>
                   <p className="font-medium">Check-in</p>
-                  <p className="text-muted-foreground">
-                    Sau {booking.campsite?.checkInTime || '14:00'}
-                  </p>
+                  <p className="text-muted-foreground">Sau {checkInTime}</p>
                 </div>
               </div>
 
@@ -272,9 +501,7 @@ export default function ConfirmationPage() {
                 <Clock className="text-muted-foreground mt-1 h-5 w-5" />
                 <div>
                   <p className="font-medium">Check-out</p>
-                  <p className="text-muted-foreground">
-                    Trước {booking.campsite?.checkOutTime || '12:00'}
-                  </p>
+                  <p className="text-muted-foreground">Trước {checkOutTime}</p>
                 </div>
               </div>
 
@@ -286,8 +513,8 @@ export default function ConfirmationPage() {
                 <div>
                   <p className="font-medium">Địa điểm</p>
                   <p className="text-muted-foreground">
-                    {booking.campsite?.location?.address ||
-                      `${booking.campsite?.location?.city}, ${booking.campsite?.location?.state}`}
+                    {location?.address ||
+                      `${location?.city || ''}, ${location?.state || ''}`}
                   </p>
                 </div>
               </div>
@@ -301,9 +528,11 @@ export default function ConfirmationPage() {
                   <p className="font-medium">Khách</p>
                   <p className="text-muted-foreground">
                     {booking.numberOfGuests} người lớn
-                    {booking.numberOfPets > 0 &&
+                    {booking.numberOfPets &&
+                      booking.numberOfPets > 0 &&
                       `, ${booking.numberOfPets} thú cưng`}
-                    {booking.numberOfVehicles > 0 &&
+                    {booking.numberOfVehicles &&
+                      booking.numberOfVehicles > 0 &&
                       `, ${booking.numberOfVehicles} xe`}
                   </p>
                 </div>
@@ -339,24 +568,24 @@ export default function ConfirmationPage() {
                 <div className="mb-4 flex items-center gap-3">
                   <Avatar className="h-12 w-12">
                     <AvatarImage
-                      src={booking.guest?.avatar || user?.avatarUrl}
-                      alt={booking.guest?.name || user?.username || 'Bạn'}
+                      src={booking.guest?.avatarUrl || user?.avatarUrl}
+                      alt={booking.guest?.username || user?.username || 'Bạn'}
                     />
                     <AvatarFallback>
-                      {(booking.guest?.name || user?.username || 'U')
+                      {(booking.guest?.username || user?.username || 'U')
                         .charAt(0)
                         .toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <span className="font-medium">
-                    {booking.guest?.name || user?.username || 'Bạn'}
+                    {booking.guest?.username || user?.username || 'Bạn'}
                   </span>
                 </div>
 
                 <Button
                   variant="default"
                   className="w-full bg-emerald-500 hover:bg-emerald-600"
-                  onClick={() => router.push('/profile')}
+                  onClick={() => router.push(`/u/${user?.username}`)}
                 >
                   Xem hồ sơ
                 </Button>
@@ -365,6 +594,150 @@ export default function ConfirmationPage() {
           </div>
         </div>
       </div>
+
+      {/* Cancel Booking Dialog */}
+      <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              Xác nhận hủy đặt chỗ
+            </DialogTitle>
+            <DialogDescription className="text-left">
+              Bạn có chắc chắn muốn hủy đặt chỗ này? Hành động này không thể
+              hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Booking Summary */}
+            <div className="bg-muted/50 rounded-lg border p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="font-medium">
+                  {siteName}
+                  {propertyName && (
+                    <span className="text-muted-foreground ml-1 text-sm">
+                      - {propertyName}
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="text-muted-foreground text-sm">
+                <p>
+                  {format(new Date(booking.checkIn), 'dd/MM/yyyy', {
+                    locale: vi,
+                  })}{' '}
+                  -{' '}
+                  {format(new Date(booking.checkOut), 'dd/MM/yyyy', {
+                    locale: vi,
+                  })}
+                </p>
+                <p className="mt-1">
+                  {booking.nights} đêm • {booking.numberOfGuests} khách
+                </p>
+                <p className="text-foreground mt-2 font-semibold">
+                  Tổng: {booking.pricing?.total.toLocaleString('vi-VN')} ₫
+                </p>
+              </div>
+            </div>
+
+            {/* Cancellation Reason */}
+            <div className="space-y-2">
+              <label
+                htmlFor="cancellation-reason"
+                className="text-sm font-medium"
+              >
+                Lý do hủy <span className="text-red-500">*</span>
+              </label>
+              <Textarea
+                id="cancellation-reason"
+                placeholder="Vui lòng cho chúng tôi biết lý do bạn muốn hủy đặt chỗ này... (tối thiểu 10 ký tự)"
+                value={cancellationReason}
+                onChange={e => setCancellationReason(e.target.value)}
+                className="min-h-[100px] resize-none"
+                disabled={cancelMutation.isPending}
+                maxLength={500}
+              />
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground text-xs">
+                  Thông tin này giúp chúng tôi cải thiện dịch vụ
+                </p>
+                <p
+                  className={`text-xs ${
+                    cancellationReason.length < 10
+                      ? 'text-red-600'
+                      : cancellationReason.length > 450
+                        ? 'text-orange-600'
+                        : 'text-muted-foreground'
+                  }`}
+                >
+                  {cancellationReason.length}/500
+                </p>
+              </div>
+            </div>
+
+            {/* Refund Info */}
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+              <p className="text-sm text-blue-900">
+                <strong>Chính sách hoàn tiền:</strong> Tiền sẽ được hoàn lại vào
+                tài khoản của bạn trong vòng 5-7 ngày làm việc.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsCancelDialogOpen(false);
+                setCancellationReason('');
+              }}
+              disabled={cancelMutation.isPending}
+            >
+              Giữ đặt chỗ
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleCancelBooking}
+              disabled={
+                cancelMutation.isPending ||
+                !cancellationReason.trim() ||
+                cancellationReason.trim().length < 10
+              }
+            >
+              {cancelMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                <>
+                  <XCircle className="mr-2 h-4 w-4" />
+                  Xác nhận hủy
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Review Dialog */}
+      {booking.status === 'completed' &&
+        !booking.reviewed &&
+        property?._id &&
+        site?._id && (
+          <ReviewDialog
+            open={isReviewDialogOpen}
+            onOpenChange={setIsReviewDialogOpen}
+            bookingId={bookingId}
+            propertyId={property._id}
+            siteId={site._id}
+            propertyName={propertyName}
+            siteName={siteName}
+          />
+        )}
     </div>
   );
 }

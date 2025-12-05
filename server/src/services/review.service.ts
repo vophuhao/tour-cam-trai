@@ -1,5 +1,5 @@
 import { ErrorFactory } from "@/errors";
-import { BookingModel, PropertyModel, SiteModel, ReviewModel, type ReviewDocument } from "@/models";
+import { BookingModel, PropertyModel, ReviewModel, SiteModel, type ReviewDocument } from "@/models";
 import appAssert from "@/utils/app-assert";
 import type {
   CreateReviewInput,
@@ -74,8 +74,8 @@ export class ReviewService {
     const review = await ReviewModel.findById(reviewId)
       .populate("property", "name slug location photos")
       .populate("site", "name slug accommodationType photos")
-      .populate("guest", "name avatar")
-      .populate("host", "name");
+      .populate("guest", "username avatarUrl")
+      .populate("host", "username");
 
     appAssert(review, ErrorFactory.resourceNotFound("Review"));
     return review!;
@@ -144,7 +144,7 @@ export class ReviewService {
       ReviewModel.find(query)
         .populate("property", "name slug images")
         .populate("site", "name slug images")
-        .populate("guest", "fullName email avatar")
+        .populate("guest", "username email avatarUrl")
         .sort(sortOption)
         .skip(skip)
         .limit(limit),
@@ -246,7 +246,28 @@ export class ReviewService {
       isPublished: true,
     });
 
-    if (reviews.length === 0) return;
+    if (reviews.length === 0) {
+      // Reset ratings if no reviews
+      await PropertyModel.findByIdAndUpdate(propertyId, {
+        rating: {
+          average: 0,
+          count: 0,
+          breakdown: {
+            location: 0,
+            communication: 0,
+            value: 0,
+          },
+        },
+        "stats.totalReviews": 0,
+        "stats.averageRating": 0,
+        "stats.ratings": {
+          location: 0,
+          communication: 0,
+          value: 0,
+        },
+      });
+      return;
+    }
 
     // Calculate average ratings from propertyRatings
     const totalRatings = reviews.reduce(
@@ -267,19 +288,22 @@ export class ReviewService {
     const average =
       (totalRatings.location + totalRatings.communication + totalRatings.value) / (count * 3);
 
-    const propertyRating = {
-      average,
-      count,
-      breakdown: {
-        location: totalRatings.location / count,
-        communication: totalRatings.communication / count,
-        value: totalRatings.value / count,
-      },
+    const breakdown = {
+      location: totalRatings.location / count,
+      communication: totalRatings.communication / count,
+      value: totalRatings.value / count,
     };
 
-    // Update property
+    // Update property rating AND stats
     await PropertyModel.findByIdAndUpdate(propertyId, {
-      rating: propertyRating,
+      rating: {
+        average,
+        count,
+        breakdown,
+      },
+      "stats.totalReviews": count,
+      "stats.averageRating": average,
+      "stats.ratings": breakdown,
     });
   }
 
@@ -293,7 +317,21 @@ export class ReviewService {
       isPublished: true,
     });
 
-    if (reviews.length === 0) return;
+    if (reviews.length === 0) {
+      // Reset ratings if no reviews
+      await SiteModel.findByIdAndUpdate(siteId, {
+        rating: {
+          average: 0,
+          count: 0,
+          breakdown: {
+            cleanliness: 0,
+            accuracy: 0,
+            amenities: 0,
+          },
+        },
+      });
+      return;
+    }
 
     // Calculate average ratings from siteRatings
     const totalRatings = reviews.reduce(

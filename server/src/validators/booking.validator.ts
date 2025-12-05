@@ -81,8 +81,14 @@ export const updatePaymentSchema = z.object({
   transactionId: z.string().optional(),
 });
 
+// Validator cho refund booking
+export const refundBookingSchema = z.object({
+  refundAmount: z.number().min(0).optional(), // If not provided, refund full amount
+});
+
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 export type ConfirmBookingInput = z.infer<typeof confirmBookingSchema>;
 export type CancelBookingInput = z.infer<typeof cancelBookingSchema>;
 export type SearchBookingInput = z.infer<typeof searchBookingSchema>;
 export type UpdatePaymentInput = z.infer<typeof updatePaymentSchema>;
+export type RefundBookingInput = z.infer<typeof refundBookingSchema>;

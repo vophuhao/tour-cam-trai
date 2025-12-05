@@ -45,7 +45,10 @@ export function PropertyOverview({ property }: PropertyOverviewProps) {
         {property.rating && (
           <div className="flex items-center gap-1">
             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-            <span className="font-semibold">{property.rating.average}</span>
+            <span className="font-semibold">
+              {' '}
+              {property.rating.average.toFixed(1)}
+            </span>
             <span className="text-muted-foreground">
               ({property.rating.count} đánh giá)
             </span>

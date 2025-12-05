@@ -234,49 +234,68 @@ export interface Site {
 /**
  * Updated Booking Type
  * Now references both Property and Site
+ * Matches backend BookingDocument interface
  */
 
 export interface Booking {
   _id: string;
+  code?: string; // Booking code (e.g., HDB05122546106)
+
+  // References
   property: string | Property;
   site: string | Site;
   guest: string | User;
   host: string | User;
 
+  // Booking Details
   checkIn: string;
   checkOut: string;
   nights: number;
 
+  // Guest Info
   numberOfGuests: number;
   numberOfPets?: number;
   numberOfVehicles?: number;
 
+  // Pricing Breakdown (matches backend exactly)
   pricing: {
-    basePrice: number;
+    basePrice: number; // Base price per night
     totalNights: number;
-    subtotal: number;
+    subtotal: number; // basePrice * nights
     cleaningFee?: number;
     petFee?: number;
-    vehicleFee?: number;
-    serviceFee: number;
+    extraGuestFee?: number;
+    serviceFee: number; // Platform fee
     tax: number;
-    total: number;
+    total: number; // Final total
   };
 
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
-  payment?: {
-    method: string;
-    status: 'pending' | 'paid' | 'refunded';
-    transactionId?: string;
-  };
+  // Status
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded';
 
-  specialRequests?: string;
-  guestNotes?: string;
-  hostNotes?: string;
+  // Payment
+  paymentStatus?: 'pending' | 'paid' | 'refunded' | 'failed';
+  paymentMethod?: 'card';
+  transactionId?: string;
+  paidAt?: string;
+  payOSOrderCode?: number;
+  payOSCheckoutUrl?: string;
 
+  // Communication
+  guestMessage?: string; // Guest's message/request
+  hostMessage?: string; // Host's response
+
+  // Cancellation
+  cancelledBy?: string | User;
+  cancelledAt?: string;
+  cancellationReason?: string;
+  refundAmount?: number;
+
+  // Review
   reviewed?: boolean;
   review?: string | Review;
 
+  // Timestamps
   createdAt: string;
   updatedAt: string;
 }
