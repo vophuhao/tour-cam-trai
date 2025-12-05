@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -35,12 +35,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  getPropertyById,
-  getPropertySites,
-  deleteSite,
-} from "@/lib/client-actions";
-import { toast } from "sonner";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -50,62 +44,97 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import {
+  getPropertyById,
+  deleteSite,
+  getSitesByProperty,
+} from "@/lib/client-actions";
 
 export default function PropertySitesPage() {
-  const params = useParams();
+  const params = useParams() as any;
   const router = useRouter();
-  const propertyId = params.propertyId as string;
+  const propertyId = params?.id ?? params?.propertyId;
+
+  const [property, setProperty] = useState<any | null>(null);
+  const [sites, setSites] = useState<any[] | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [siteToDelete, setSiteToDelete] = useState<string | null>(null);
 
-  const { data: property } = useQuery({
-    queryKey: ["property", propertyId],
-    queryFn: async () => {
-      const response = await getPropertyById(propertyId);
-      return response.data;
-    },
-  });
+  useEffect(() => {
+    if (!propertyId) return;
+    let mounted = true;
 
-  const {
-    data: sites,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["property-sites", propertyId],
-    queryFn: async () => {
-      const response = await getPropertySites(propertyId);
-      return response.data;
-    },
-  });
+    setLoading(true);
+    (async () => {
+      try {
+        const p = await getPropertyById(propertyId);
+        if (mounted && p?.success) setProperty(p.data ?? null);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
 
-  const handleDeleteSite = async () => {
-    if (!siteToDelete) return;
+    return () => {
+      mounted = false;
+    };
+  }, [propertyId]);
 
+  const fetchSites = async () => {
+    if (!propertyId) return;
+    setLoading(true);
     try {
-      await deleteSite(propertyId, siteToDelete);
-      toast.success("Xóa site thành công!");
-      refetch();
-      setDeleteDialogOpen(false);
-      setSiteToDelete(null);
-    } catch (error: any) {
-      toast.error(
-        error.response?.data?.message || "Có lỗi xảy ra khi xóa site"
-      );
+      const res = await getSitesByProperty(propertyId);
+
+      if (res?.success) setSites(res.data.sites ?? []);
+      else setSites([]);
+    } catch (err) {
+      console.error(err);
+      setSites([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filteredSites = sites?.filter((site: any) => {
-    const matchesSearch = site.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" ||
-      site.bookingSettings?.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  useEffect(() => {
+    fetchSites();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId]);
+
+  const handleDeleteSite = async () => {
+    if (!siteToDelete || !propertyId) return;
+    try {
+      await deleteSite(propertyId, siteToDelete);
+      toast.success("Xóa site thành công!");
+      setDeleteDialogOpen(false);
+      setSiteToDelete(null);
+      await fetchSites();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || "Có lỗi xảy ra khi xóa site");
+    }
+  };
+
+  const filteredSites = useMemo(() => {
+    if (!sites) return [];
+    return sites.filter((site) => {
+      const matchesSearch =
+        !searchQuery ||
+        (site.name ?? "")
+          .toString()
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase());
+      const matchesStatus =
+        statusFilter === "all" || site.bookingSettings?.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [sites, searchQuery, statusFilter]);
 
   const statusConfig = {
     available: {
@@ -133,9 +162,9 @@ export default function PropertySitesPage() {
     group: "Group Site",
   };
 
-  if (isLoading) {
+  if (loading && sites === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent mx-auto" />
           <p className="mt-4 text-gray-600">Đang tải...</p>
@@ -145,139 +174,34 @@ export default function PropertySitesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
+    <div className="min-h-screen ">
+      <div className="bg-white ">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/host/properties"
-            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Quay lại danh sách properties
-          </Link>
-
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Sites - {property?.name}
-              </h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Quản lý các vị trí cắm trại trong property này
-              </p>
+              <Link
+                href="/host/properties"
+                className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-2"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Quay lại properties
+              </Link>         
             </div>
-            <Button
-              className="bg-emerald-600 hover:bg-emerald-700"
-              onClick={() =>
-                router.push(`/host/properties/${propertyId}/sites/new`)
-              }
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Thêm Site mới
-            </Button>
+
+            <div className="flex items-center gap-2">
+              <Button
+                className="bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => router.push(`/host/properties/${propertyId}/sites/new`)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Thêm Site mới
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Stats */}
-        {sites && sites.length > 0 && (
-          <div className="grid gap-6 md:grid-cols-4 mb-8">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Tổng Sites
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
-                      {sites.length}
-                    </p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
-                    <Eye className="h-6 w-6 text-emerald-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Đang hoạt động
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
-                      {
-                        sites.filter(
-                          (s: any) => s.bookingSettings?.status === "available"
-                        ).length
-                      }
-                    </p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                    <TrendingUp className="h-6 w-6 text-green-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Sức chứa TB
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
-                      {Math.round(
-                        sites.reduce(
-                          (sum: number, s: any) =>
-                            sum + (s.capacity?.maxGuests || 0),
-                          0
-                        ) / sites.length
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-                    <Users className="h-6 w-6 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Giá TB/đêm
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
-                      {new Intl.NumberFormat("vi-VN", {
-                        style: "currency",
-                        currency: "VND",
-                        notation: "compact",
-                      }).format(
-                        sites.reduce(
-                          (sum: number, s: any) =>
-                            sum + (s.pricing?.basePrice || 0),
-                          0
-                        ) / sites.length
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
-                    <DollarSign className="h-6 w-6 text-purple-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Filters */}
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row gap-4">
@@ -292,6 +216,7 @@ export default function PropertySitesPage() {
                   />
                 </div>
               </div>
+
               <div className="w-full sm:w-48">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger>
@@ -310,118 +235,102 @@ export default function PropertySitesPage() {
           </CardContent>
         </Card>
 
-        {/* Sites List */}
         {filteredSites && filteredSites.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-6">
             {filteredSites.map((site: any) => {
-              const status =
-                statusConfig[
-                  site.bookingSettings?.status as keyof typeof statusConfig
-                ] || statusConfig.available;
-
+              const statusKey = (site.bookingSettings?.status ?? "available") as keyof typeof statusConfig;
+              const status = statusConfig[statusKey] || statusConfig.available;
               return (
-                <Card
-                  key={site._id}
-                  className="overflow-hidden hover:shadow-lg transition-shadow"
-                >
-                  <div className="relative h-48">
-                    <Image
-                      src={site.photos?.[0]?.url || "/placeholder.jpg"}
-                      alt={site.name}
-                      fill
-                      className="object-cover"
-                    />
-                    <div className="absolute top-3 right-3 flex gap-2">
-                      <Badge className={status.color}>
-                        <div className={`h-2 w-2 rounded-full ${status.dot} mr-1.5`} />
-                        {status.label}
-                      </Badge>
+                <Card key={site._id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="flex flex-col sm:flex-row">
+                    <div className="relative w-full sm:w-56 h-44 sm:h-auto flex-shrink-0 bg-gray-100">
+                      <Image
+                        src={site.photos?.[0]?.url || "/placeholder.jpg"}
+                        alt={site.name}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                      <div className="absolute top-3 right-3 flex gap-2">
+                        <Badge className={status.color}>
+                          <div className={`h-2 w-2 rounded-full ${status.dot} mr-1.5`} />
+                          {status.label}
+                        </Badge>
+                      </div>
+                      <div className="absolute top-3 left-3">
+                        <Badge variant="secondary">
+                          {siteTypeLabels[site.accommodationType] ?? site.accommodationType ?? "Site"}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="absolute top-3 left-3">
-                      <Badge variant="secondary">
-                        {siteTypeLabels[site.siteType]}
-                      </Badge>
-                    </div>
+
+                    <CardContent className="p-4 flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3 className="text-xl font-semibold text-gray-900 mb-1">{site.name}</h3>
+                            <p className="text-sm text-gray-600 line-clamp-3 max-w-2xl">{site.description}</p>
+                          </div>
+                          <div className="hidden sm:flex flex-col items-end text-right space-y-2">
+                            <p className="text-sm text-gray-500">Giá/đêm</p>
+                            <p className="text-lg font-semibold text-emerald-600">
+                              {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(site.pricing?.basePrice || 0)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-3 gap-3 text-center sm:text-left">
+                          <div className="bg-gray-50 rounded-lg p-2">
+                            <p className="text-xs text-gray-600">Khách</p>
+                            <p className="text-sm font-semibold text-gray-900">{site.capacity?.maxGuests || 0}</p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-2">
+                            <p className="text-xs text-gray-600">Xe</p>
+                            <p className="text-sm font-semibold text-gray-900">{site.capacity?.maxVehicles || 0}</p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-2">
+                            <p className="text-xs text-gray-600">Số lều</p>
+                            <p className="text-sm font-semibold text-gray-900">{site.capacity?.maxTents ?? "-"}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center gap-2">
+                        <Button variant="outline" size="sm" className="flex-1" asChild>
+                          <Link href={`/host/properties/${property?._id }/sites/${site._id}`}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Xem chi tiết
+                          </Link>
+                        </Button>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => router.push(`/host/properties/${propertyId}/sites/${site._id}/edit`)}
+                            >
+                              <Settings className="mr-2 h-4 w-4" />
+                              Chỉnh sửa
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSiteToDelete(site._id);
+                                setDeleteDialogOpen(true);
+                              }}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Xóa site
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardContent>
                   </div>
-
-                  <CardContent className="p-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {site.name}
-                    </h3>
-
-                    <p className="text-sm text-gray-600 line-clamp-2 mb-4">
-                      {site.description}
-                    </p>
-
-                    <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-xs text-gray-600">Khách</p>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {site.capacity?.maxGuests || 0}
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-xs text-gray-600">Xe</p>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {site.capacity?.maxVehicles || 0}
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-xs text-gray-600">Giá/đêm</p>
-                        <p className="text-sm font-semibold text-emerald-600">
-                          {new Intl.NumberFormat("vi-VN", {
-                            style: "currency",
-                            currency: "VND",
-                            notation: "compact",
-                          }).format(site.pricing?.basePrice || 0)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        asChild
-                      >
-                        <Link href={`/land/${property.slug}?site=${site.slug}`}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Xem chi tiết
-                        </Link>
-                      </Button>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() =>
-                              router.push(
-                                `/host/properties/${propertyId}/sites/${site._id}/edit`
-                              )
-                            }
-                          >
-                            <Settings className="mr-2 h-4 w-4" />
-                            Chỉnh sửa
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSiteToDelete(site._id);
-                              setDeleteDialogOpen(true);
-                            }}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Xóa site
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </CardContent>
                 </Card>
               );
             })}
@@ -431,9 +340,7 @@ export default function PropertySitesPage() {
             <CardContent className="py-16 text-center">
               <Eye className="mx-auto h-16 w-16 text-gray-400 mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {searchQuery || statusFilter !== "all"
-                  ? "Không tìm thấy site nào"
-                  : "Chưa có site nào"}
+                {searchQuery || statusFilter !== "all" ? "Không tìm thấy site nào" : "Chưa có site nào"}
               </h3>
               <p className="text-sm text-gray-600 mb-6">
                 {searchQuery || statusFilter !== "all"
@@ -441,12 +348,7 @@ export default function PropertySitesPage() {
                   : "Bắt đầu bằng cách tạo site đầu tiên cho property này"}
               </p>
               {!searchQuery && statusFilter === "all" && (
-                <Button
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                  onClick={() =>
-                    router.push(`/host/properties/${propertyId}/sites/new`)
-                  }
-                >
+                <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => router.push(`/host/properties/${propertyId}/sites/new`)}>
                   <Plus className="mr-2 h-4 w-4" />
                   Tạo Site mới
                 </Button>
@@ -456,22 +358,15 @@ export default function PropertySitesPage() {
         )}
       </div>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận xóa site</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa site này? Hành động này không thể hoàn
-              tác.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Bạn có chắc chắn muốn xóa site này? Hành động này không thể hoàn tác.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteSite}
-              className="bg-red-600 hover:bg-red-700"
-            >
+            <AlertDialogAction onClick={handleDeleteSite} className="bg-red-600 hover:bg-red-700">
               Xóa
             </AlertDialogAction>
           </AlertDialogFooter>

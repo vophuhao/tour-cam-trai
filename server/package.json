@@ -23,7 +23,8 @@
     "seed:availability": "ts-node -r tsconfig-paths/register src/seeds/seedAvailability.ts",
     "migrate:property-site": "ts-node -r tsconfig-paths/register src/scripts/migrate-to-property-site.ts",
     "migrate:rollback": "ts-node -r tsconfig-paths/register src/scripts/rollback-property-site.ts",
-    "validate:migration": "ts-node -r tsconfig-paths/register src/scripts/validate-migration.ts"
+    "validate:migration": "ts-node -r tsconfig-paths/register src/scripts/validate-migration.ts",
+    "migrate:concurrent-bookings": "ts-node -r tsconfig-paths/register src/scripts/migrate-concurrent-bookings.ts"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -1,21 +1,18 @@
 'use client';
 
-import {
-  DateRangePicker,
-  type DateRangeType,
-} from '@/components/search/date-range-picker';
+import { type DateRangeType } from '@/components/search/date-range-picker';
+import { DateRangePopover } from '@/components/search/date-range-popover';
+import { GuestPopover } from '@/components/search/guest-popover';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getBlockedDates } from '@/lib/client-actions';
 import type { Property, Site } from '@/types/property-site';
+import { useQuery } from '@tanstack/react-query';
 import { differenceInDays, format } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { CalendarIcon, Dog, MapPin, Minus, Plus, Users } from 'lucide-react';
+import { CalendarIcon, Dog, MapPin, Users } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
@@ -93,6 +90,73 @@ export function SitesListSection({
     vehicle: 'Vehicle',
   };
 
+  // Get max capacity from sites
+  const maxCapacity = useMemo(() => {
+    if (sites.length === 0) return { maxGuests: 20, maxPets: 5 };
+    const maxGuests = Math.max(...sites.map(s => s.capacity.maxGuests || 20));
+    const maxPets = Math.max(...sites.map(s => s.capacity.maxPets || 5));
+    return { maxGuests, maxPets };
+  }, [sites]);
+
+  // Collect all site IDs to check their availability
+  const siteIdsForAvailability = useMemo(() => {
+    if (sites.length > 0) {
+      return sites.filter(s => s.isActive).map(s => s._id);
+    }
+    return [];
+  }, [sites]);
+
+  // Fetch blocked dates for all sites when dates are selected
+  const availabilityWindow = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) return null;
+    return {
+      checkIn: dateRange.from.toISOString(),
+      checkOut: dateRange.to.toISOString(),
+    };
+  }, [dateRange]);
+
+  // Fetch blocked dates for each site
+  const { data: siteAvailabilities } = useQuery({
+    queryKey: [
+      'site-blocked-dates',
+      siteIdsForAvailability,
+      availabilityWindow,
+    ],
+    queryFn: async () => {
+      if (siteIdsForAvailability.length === 0 || !availabilityWindow) return [];
+      const results = await Promise.all(
+        siteIdsForAvailability.map(siteId =>
+          getBlockedDates(
+            siteId,
+            availabilityWindow.checkIn,
+            availabilityWindow.checkOut,
+          ),
+        ),
+      );
+      return results;
+    },
+    enabled: siteIdsForAvailability.length > 0 && !!availabilityWindow,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Create a map of site ID to blocked status
+  const siteBlockedMap = useMemo(() => {
+    const map = new Map<string, boolean>();
+    if (!siteAvailabilities || !dateRange?.from || !dateRange?.to) {
+      return map;
+    }
+
+    sites.forEach((site, index) => {
+      const result = siteAvailabilities[index];
+      // If site has any blocked dates in the selected range, mark as blocked
+      const hasBlockedDates =
+        result?.data?.blockedDates && result.data.blockedDates.length > 0;
+      map.set(site._id, hasBlockedDates || false);
+    });
+
+    return map;
+  }, [siteAvailabilities, sites, dateRange]);
+
   // Filter sites
   const filteredSites = useMemo(() => {
     let result = sites.filter(site => site.isActive);
@@ -119,8 +183,22 @@ export function SitesListSection({
       result = result.filter(s => s.bookingSettings.instantBook);
     }
 
+    // Filter by availability - exclude blocked sites when dates are selected
+    if (dateRange?.from && dateRange?.to && siteBlockedMap.size > 0) {
+      result = result.filter(s => !siteBlockedMap.get(s._id));
+    }
+
     return result;
-  }, [sites, filterType, guests, pets, petsAllowed, instantBook]);
+  }, [
+    sites,
+    filterType,
+    guests,
+    pets,
+    petsAllowed,
+    instantBook,
+    dateRange,
+    siteBlockedMap,
+  ]);
 
   // Group sites by accommodation type
   const groupedSites = useMemo(() => {
@@ -135,45 +213,6 @@ export function SitesListSection({
 
   const accommodationTypes = Object.keys(groupedSites);
 
-  // Get max capacity from sites
-  const maxCapacity = useMemo(() => {
-    if (sites.length === 0) return { maxGuests: 20, maxPets: 5 };
-    const maxGuests = Math.max(...sites.map(s => s.capacity.maxGuests || 20));
-    const maxPets = Math.max(...sites.map(s => s.capacity.maxPets || 5));
-    return { maxGuests, maxPets };
-  }, [sites]);
-
-  const handleDateChange = (newDateRange?: DateRangeType) => {
-    setDateRange(newDateRange);
-    if (newDateRange?.from && newDateRange?.to) {
-      setDatePopoverOpen(false);
-    }
-  };
-
-  const handleGuestChange = (
-    type: 'adults' | 'children' | 'pets',
-    delta: number,
-  ) => {
-    if (type === 'adults') {
-      const newValue = Math.max(1, adults + delta);
-      // Check if total guests would exceed capacity
-      if (newValue + children <= maxCapacity.maxGuests) {
-        setAdults(newValue);
-      }
-    } else if (type === 'children') {
-      const newValue = Math.max(0, children + delta);
-      // Check if total guests would exceed capacity
-      if (adults + newValue <= maxCapacity.maxGuests) {
-        setChildren(newValue);
-      }
-    } else {
-      const newValue = Math.max(0, pets + delta);
-      if (newValue <= maxCapacity.maxPets) {
-        setPets(newValue);
-      }
-    }
-  };
-
   return (
     <div className="relative" id="sites">
       {/* Sites List + Map Layout */}
@@ -184,151 +223,66 @@ export function SitesListSection({
             {/* Select a site header */}
             <div className="mb-6">
               <h2 className="text-2xl font-bold sm:text-3xl">Select a site</h2>
+              {filteredSites.length > 0 && (
+                <p className="mt-1 text-sm text-gray-600">
+                  {filteredSites.length} site
+                  {filteredSites.length > 1 ? 's' : ''} available
+                  {dateRange?.from && dateRange?.to && (
+                    <>
+                      {' '}
+                      for{' '}
+                      {format(dateRange.from, 'MMM d', {
+                        locale: vi,
+                      })}{' '}
+                      – {format(dateRange.to, 'd', { locale: vi })}
+                    </>
+                  )}
+                </p>
+              )}
             </div>
 
             {/* Date & Guest Selectors Row */}
             <div className="mb-4 flex flex-wrap items-center gap-3">
               {/* Date Range */}
-              <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="h-11 justify-start border-gray-300 bg-white px-4"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4 text-gray-600" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <span className="font-normal">
-                          {format(dateRange.from, 'MMM d', { locale: vi })} –{' '}
-                          {format(dateRange.to, 'd', { locale: vi })}
-                        </span>
-                      ) : (
-                        format(dateRange.from, 'MMM d', { locale: vi })
-                      )
-                    ) : (
-                      <span className="font-normal">Add dates</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-5" align="start">
-                  <DateRangePicker
-                    date={dateRange}
-                    onDateChange={handleDateChange}
-                  />
-                </PopoverContent>
-              </Popover>
+              <DateRangePopover
+                dateRange={dateRange}
+                onDateChange={setDateRange}
+                open={datePopoverOpen}
+                onOpenChange={setDatePopoverOpen}
+                placeholder="Add dates"
+                buttonClassName="h-11 border-gray-300 bg-white px-4"
+                align="start"
+                dateFormat="MMM d"
+                icon={<CalendarIcon className="mr-2 h-4 w-4 text-gray-600" />}
+              />
 
               {/* Guests */}
-              <Popover
+              <GuestPopover
+                adults={adults}
+                childrenCount={children}
+                pets={pets}
+                onAdultsChange={setAdults}
+                onChildrenChange={setChildren}
+                onPetsChange={setPets}
                 open={guestPopoverOpen}
                 onOpenChange={setGuestPopoverOpen}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="h-11 justify-start border-gray-300 bg-white px-4"
-                  >
-                    <Users className="mr-2 h-4 w-4 text-gray-600" />
-                    <span className="font-normal">
-                      {guests} guest{guests > 1 ? 's' : ''}
-                      {children > 0 && ` (${children} children)`}
-                    </span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80" align="start">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Guests</p>
-                        <p className="text-muted-foreground text-xs">
-                          Ages 13 or above
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 rounded-full"
-                          onClick={() => handleGuestChange('adults', -1)}
-                          disabled={adults <= 1}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="w-8 text-center">{adults}</span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 rounded-full"
-                          onClick={() => handleGuestChange('adults', 1)}
-                          disabled={adults + children >= maxCapacity.maxGuests}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Children</p>
-                        <p className="text-muted-foreground text-xs">
-                          Ages 0-12
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 rounded-full"
-                          onClick={() => handleGuestChange('children', -1)}
-                          disabled={children <= 0}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="w-8 text-center">{children}</span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 rounded-full"
-                          onClick={() => handleGuestChange('children', 1)}
-                          disabled={adults + children >= maxCapacity.maxGuests}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Pets</p>
-                        <p className="text-muted-foreground text-xs">
-                          Max {maxCapacity.maxPets}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 rounded-full"
-                          onClick={() => handleGuestChange('pets', -1)}
-                          disabled={pets <= 0}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="w-8 text-center">{pets}</span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 rounded-full"
-                          onClick={() => handleGuestChange('pets', 1)}
-                          disabled={pets >= maxCapacity.maxPets}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                maxGuests={maxCapacity.maxGuests}
+                maxPets={maxCapacity.maxPets}
+                buttonClassName="h-11 border-gray-300 bg-white px-4"
+                align="start"
+                icon={<Users className="mr-2 h-4 w-4 text-gray-600" />}
+                labels={{
+                  adults: 'Guests',
+                  adultsSubtext: 'Ages 13 or above',
+                  children: 'Children',
+                  childrenSubtext: 'Ages 0-12',
+                  pets: 'Pets',
+                  petsSubtext: `Max ${maxCapacity.maxPets}`,
+                  guestsText: guests =>
+                    `${guests} guest${guests > 1 ? 's' : ''}`,
+                  childrenText: children => `${children} children`,
+                }}
+              />
             </div>
 
             {/* Filter Buttons Row */}
@@ -336,7 +290,7 @@ export function SitesListSection({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-full border-gray-300"
+                className="h-9 rounded-full border-gray-300 hover:border-orange-500 hover:bg-orange-50"
               >
                 <MapPin className="mr-1 h-4 w-4" />
                 Camping style
@@ -344,25 +298,34 @@ export function SitesListSection({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-full border-gray-300"
+                className="h-9 rounded-full border-gray-300 hover:border-orange-500 hover:bg-orange-50"
               >
                 Amenities
               </Button>
               <Button
-                variant="outline"
+                variant={petsAllowed ? 'default' : 'outline'}
                 size="sm"
-                className="h-9 rounded-full border-gray-300"
+                className={`h-9 rounded-full transition-all ${
+                  petsAllowed
+                    ? 'bg-orange-600 hover:bg-orange-700'
+                    : 'border-gray-300 hover:border-orange-500 hover:bg-orange-50'
+                }`}
                 onClick={() => setPetsAllowed(!petsAllowed)}
               >
+                <Dog className="mr-1 h-4 w-4" />
                 Pets allowed
               </Button>
               <Button
-                variant="outline"
+                variant={instantBook ? 'default' : 'outline'}
                 size="sm"
-                className="h-9 rounded-full border-gray-300"
+                className={`h-9 rounded-full transition-all ${
+                  instantBook
+                    ? 'bg-orange-600 hover:bg-orange-700'
+                    : 'border-gray-300 hover:border-orange-500 hover:bg-orange-50'
+                }`}
                 onClick={() => setInstantBook(!instantBook)}
               >
-                Instant book
+                ⚡ Instant book
               </Button>
             </div>
 
@@ -397,10 +360,10 @@ export function SitesListSection({
                       return (
                         <Card
                           key={site._id}
-                          className={`cursor-pointer overflow-hidden border transition-all hover:shadow-md ${
+                          className={`group cursor-pointer overflow-hidden border transition-all duration-200 ${
                             selectedSite?._id === site._id
-                              ? 'ring-2 ring-orange-500'
-                              : ''
+                              ? 'shadow-lg ring-2 ring-orange-500'
+                              : 'hover:border-orange-200 hover:shadow-md'
                           }`}
                           onClick={() => setSelectedSite(site)}
                           onMouseEnter={() => setHoveredSite(site)}
@@ -409,15 +372,21 @@ export function SitesListSection({
                           <div className="flex gap-4 p-4">
                             {/* Site Image */}
                             {site.photos && site.photos.length > 0 && (
-                              <div className="relative h-48 w-72 shrink-0 overflow-hidden rounded-lg">
+                              <div className="relative h-48 w-72 shrink-0 overflow-hidden rounded-lg bg-gray-100">
                                 <img
                                   src={
                                     site.photos.find(p => p.isCover)?.url ||
                                     site.photos[0].url
                                   }
                                   alt={site.name}
-                                  className="h-full w-full object-cover"
+                                  className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                  loading="lazy"
                                 />
+                                {site.photos.length > 1 && (
+                                  <div className="absolute right-2 bottom-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white backdrop-blur-sm">
+                                    +{site.photos.length - 1} photos
+                                  </div>
+                                )}
                               </div>
                             )}
 
@@ -426,9 +395,21 @@ export function SitesListSection({
                               <div>
                                 {/* Title & Rating */}
                                 <div className="mb-2 flex items-start justify-between">
-                                  <h4 className="text-lg font-bold">
-                                    {site.name}
-                                  </h4>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <h4 className="text-lg font-bold">
+                                        {site.name}
+                                      </h4>
+                                      {site.bookingSettings.instantBook && (
+                                        <Badge
+                                          variant="secondary"
+                                          className="text-xs"
+                                        >
+                                          ⚡ Instant
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
                                   {site.stats?.averageRating &&
                                     site.stats.averageRating > 0 && (
                                       <div className="flex items-center gap-1">
@@ -497,15 +478,17 @@ export function SitesListSection({
                                       / night
                                     </span>
                                   </p>
-                                  {dateRange?.from && dateRange?.to && (
-                                    <p className="text-xs text-gray-500">
-                                      €{totalPrice} total incl. taxes and fees
-                                    </p>
-                                  )}
-                                  {sitesInGroup.length > 1 && (
-                                    <p className="mt-1 text-sm font-medium text-orange-600">
-                                      {sitesInGroup.length} sites left
-                                    </p>
+
+                                  {site.capacity.maxConcurrentBookings > 1 && (
+                                    <div className="mt-1 flex items-center gap-2">
+                                      <div className="flex items-center gap-1">
+                                        <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
+                                        <span className="text-sm font-medium text-green-700">
+                                          {site.capacity.maxConcurrentBookings}{' '}
+                                          spots available
+                                        </span>
+                                      </div>
+                                    </div>
                                   )}
                                 </div>
                                 <Button
@@ -593,105 +576,97 @@ export function SitesListSection({
                 <h3 className="mb-4 text-xl font-bold">
                   These aren&apos;t exact matches
                 </h3>
+                <p className="mb-4 text-sm text-gray-600">
+                  {dateRange?.from && dateRange?.to
+                    ? 'These sites are not available for your selected dates or do not meet all your criteria.'
+                    : 'These sites do not meet all your selected criteria.'}
+                </p>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {sites
                     .filter(s => !filteredSites.includes(s) && s.isActive)
                     .slice(0, 3)
-                    .map(site => (
-                      <Card key={site._id} className="overflow-hidden">
-                        {site.photos && site.photos.length > 0 && (
-                          <img
-                            src={site.photos[0].url}
-                            alt={site.name}
-                            className="h-48 w-full object-cover"
-                          />
-                        )}
-                        <CardContent className="p-4">
-                          <div className="mb-2 flex items-center justify-between">
-                            <h4 className="font-bold">{site.name}</h4>
-                            {site.stats?.averageRating && (
-                              <span className="text-sm">
-                                👍{' '}
-                                {Math.round(
-                                  (site.stats.averageRating / 5) * 100,
+                    .map(site => {
+                      const isBlocked = siteBlockedMap.get(site._id);
+                      return (
+                        <Card
+                          key={site._id}
+                          className="overflow-hidden opacity-75"
+                        >
+                          {site.photos && site.photos.length > 0 && (
+                            <div className="relative">
+                              <img
+                                src={site.photos[0].url}
+                                alt={site.name}
+                                className="h-48 w-full object-cover grayscale"
+                              />
+                              {isBlocked &&
+                                dateRange?.from &&
+                                dateRange?.to && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                    <Badge
+                                      variant="destructive"
+                                      className="text-sm"
+                                    >
+                                      Not available
+                                    </Badge>
+                                  </div>
                                 )}
-                                %
-                              </span>
-                            )}
-                          </div>
-                          <p className="mb-3 text-sm text-gray-600">
-                            {typeLabels[site.accommodationType]} · Sleeps{' '}
-                            {site.capacity.maxGuests}
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-lg font-bold">
-                                €{site.pricing.basePrice}
-                              </p>
-                              <p className="text-xs text-gray-500">/ night</p>
                             </div>
-                            <Button
-                              size="sm"
-                              className="bg-orange-600 hover:bg-orange-700"
-                              asChild
-                            >
-                              <Link
-                                href={
-                                  dateRange?.from && dateRange?.to
-                                    ? `/checkouts/payment?` +
-                                      new URLSearchParams({
-                                        siteId: site._id,
-                                        propertyId:
-                                          typeof site.property === 'string'
-                                            ? site.property
-                                            : site.property._id,
-                                        name: site.name,
-                                        location: `${property.location.city}, ${property.location.state}`,
-                                        image:
-                                          site.photos?.[0]?.url ||
-                                          site.images?.[0] ||
-                                          '',
-                                        checkIn: dateRange.from.toISOString(),
-                                        checkOut: dateRange.to.toISOString(),
-                                        basePrice:
-                                          site.pricing.basePrice.toString(),
-                                        nights: nights.toString(),
-                                        cleaningFee: (
-                                          site.pricing.cleaningFee || 0
-                                        ).toString(),
-                                        petFee: pets
-                                          ? (
-                                              (site.pricing.petFee || 0) * pets
-                                            ).toString()
-                                          : '0',
-                                        additionalGuestFee:
-                                          guests > site.capacity.maxGuests
-                                            ? (
-                                                (site.pricing
-                                                  .additionalGuestFee || 0) *
-                                                (guests -
-                                                  site.capacity.maxGuests)
-                                              ).toString()
-                                            : '0',
-                                        total: (
-                                          site.pricing.basePrice * nights
-                                        ).toString(),
-                                        currency:
-                                          site.pricing.currency || 'VND',
-                                        guests: guests.toString(),
-                                        pets: pets.toString(),
-                                        vehicles: '1',
-                                      }).toString()
-                                    : `/land/${propertySlug}/sites/${site.slug}`
-                                }
-                              >
-                                Reserve
-                              </Link>
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          )}
+                          <CardContent className="p-4">
+                            <div className="mb-2 flex items-center justify-between">
+                              <h4 className="font-bold text-gray-600">
+                                {site.name}
+                              </h4>
+                              {site.stats?.averageRating && (
+                                <span className="text-sm text-gray-500">
+                                  👍{' '}
+                                  {Math.round(
+                                    (site.stats.averageRating / 5) * 100,
+                                  )}
+                                  %
+                                </span>
+                              )}
+                            </div>
+                            <p className="mb-3 text-sm text-gray-500">
+                              {typeLabels[site.accommodationType]} · Sleeps{' '}
+                              {site.capacity.maxGuests}
+                            </p>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-lg font-bold text-gray-600">
+                                  €{site.pricing.basePrice}
+                                </p>
+                                <p className="text-xs text-gray-400">/ night</p>
+                              </div>
+                              {isBlocked && dateRange?.from && dateRange?.to ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled
+                                  className="cursor-not-allowed"
+                                >
+                                  Unavailable
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-gray-400 text-gray-600 hover:bg-gray-100"
+                                  asChild
+                                >
+                                  <Link
+                                    href={`/land/${propertySlug}/sites/${site.slug}`}
+                                  >
+                                    View details
+                                  </Link>
+                                </Button>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                 </div>
               </div>
             )}
@@ -700,7 +675,7 @@ export function SitesListSection({
 
         {/* Map Sidebar */}
         <div className="hidden lg:block lg:w-[45%]">
-          <div className="sticky top-0 h-screen">
+          <div className="sticky top-0 h-screen overflow-hidden rounded-2xl">
             <SiteMap
               sites={filteredSites}
               property={property}

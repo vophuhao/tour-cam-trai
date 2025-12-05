@@ -23,9 +23,6 @@ siteRoutes.get("/", siteController.searchSites); // Alias
 // Sites by property (must be before /:idOrSlug to avoid matching "property" as ID)
 siteRoutes.get("/property/:propertyId", siteController.getSitesByProperty);
 
-// Group availability check (must be before /:id routes)
-siteRoutes.get("/group/:groupId/availability", siteController.checkGroupAvailability);
-
 // Site reviews routes (must be before /:idOrSlug)
 siteRoutes.get("/:siteId/reviews", reviewController.getSiteReviews);
 siteRoutes.get("/:siteId/reviews/stats", reviewController.getSiteReviewStats);

@@ -105,18 +105,15 @@ export default function PropertiesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen ">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
                 Quản lý Properties
               </h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Quản lý các địa điểm cắm trại của bạn
-              </p>
             </div>
             <Button
               className="bg-emerald-600 hover:bg-emerald-700"

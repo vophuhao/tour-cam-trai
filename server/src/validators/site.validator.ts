@@ -1,77 +1,5 @@
 import { z } from "zod";
 
-// Site-specific amenities sub-schema
-const siteAmenitiesSchema = z.object({
-  electrical: z
-    .object({
-      available: z.boolean().default(false),
-      amperage: z.enum(["15", "20", "30", "50"]).optional(),
-      plugType: z.enum(["standard", "rv", "both"]).optional(),
-    })
-    .optional(),
-  waterHookup: z
-    .object({
-      available: z.boolean().default(false),
-      type: z.enum(["potable", "non-potable"]).optional(),
-    })
-    .optional(),
-  sewerHookup: z
-    .object({
-      available: z.boolean().default(false),
-      type: z.enum(["full", "gray-only"]).optional(),
-    })
-    .optional(),
-  firePit: z
-    .object({
-      available: z.boolean().default(false),
-      type: z.enum(["ground", "ring", "grill", "none"]).optional(),
-    })
-    .optional(),
-  furniture: z
-    .object({
-      available: z.boolean().default(false),
-      items: z.array(z.enum(["picnic-table", "chairs", "benches", "hammock"])).optional(),
-    })
-    .optional(),
-  bedding: z
-    .object({
-      available: z.boolean().default(false),
-      type: z.enum(["mattress", "cot", "platform", "none"]).optional(),
-      bedCount: z.number().int().min(0).optional(),
-    })
-    .optional(),
-  kitchen: z
-    .object({
-      available: z.boolean().default(false),
-      items: z.array(z.enum(["stove", "refrigerator", "sink", "cookware", "utensils"])).optional(),
-    })
-    .optional(),
-  privateBathroom: z
-    .object({
-      available: z.boolean().default(false),
-      hasShower: z.boolean().optional(),
-      hasToilet: z.boolean().optional(),
-      isIndoor: z.boolean().optional(),
-    })
-    .optional(),
-  climateControl: z
-    .object({
-      heating: z.boolean().default(false),
-      cooling: z.boolean().default(false),
-      type: z.enum(["wood-stove", "electric", "propane", "ac", "fan"]).optional(),
-    })
-    .optional(),
-  wifi: z.boolean().default(false),
-  tv: z.boolean().default(false),
-  accessibility: z
-    .object({
-      wheelchairAccessible: z.boolean().default(false),
-      adaCompliant: z.boolean().default(false),
-      features: z.array(z.string()).optional(),
-    })
-    .optional(),
-});
-
 // Capacity sub-schema
 const capacitySchema = z.object({
   maxGuests: z.number().int().min(1).max(100),
@@ -83,16 +11,11 @@ const capacitySchema = z.object({
   maxTents: z.number().int().min(0).optional(),
   maxRVs: z.number().int().min(0).optional(),
   rvMaxLength: z.number().min(0).optional(), // feet
-});
 
-// Dimensions sub-schema
-const dimensionsSchema = z.object({
-  length: z.number().min(0).optional(), // meters
-  width: z.number().min(0).optional(), // meters
-  area: z.number().min(0).optional(), // square meters
-  isPaved: z.boolean().default(false),
-  isLevel: z.boolean().default(false),
-  shadeLevel: z.enum(["none", "partial", "full"]).optional(),
+  // Concurrent Bookings (designated vs undesignated)
+  // 1 = designated (only 1 booking at a time)
+  // 2+ = undesignated (multiple concurrent bookings, "X sites left")
+  maxConcurrentBookings: z.number().int().min(1).max(100).default(1),
 });
 
 // Pricing sub-schema
@@ -128,8 +51,8 @@ const pricingSchema = z.object({
 
 // Booking settings sub-schema
 const bookingSettingsSchema = z.object({
-  minNights: z.number().int().min(1).default(1),
-  maxNights: z.number().int().min(1).optional(),
+  minimumNights: z.number().int().min(1).default(1),
+  maximumNights: z.number().int().min(1).optional(),
   checkInTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/), // HH:MM format
   checkOutTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
   allowInstantBook: z.boolean().default(false),
@@ -144,10 +67,7 @@ export const createSiteSchema = z.object({
   // Basic Info
   name: z.string().min(2).max(200),
   slug: z.string().min(2).max(200).optional(),
-  description: z.string().min(20).max(3000).optional(),
-
-  // Site Type
-  siteType: z.enum(["designated", "undesignated"]).default("designated"),
+  description: z.string().max(2000).optional(),
 
   // Accommodation Type
   accommodationType: z.enum([
@@ -156,65 +76,112 @@ export const createSiteSchema = z.object({
     "cabin",
     "yurt",
     "treehouse",
-    "glamping-tent",
-    "tiny-house",
-    "a-frame",
+    "tiny_home",
+    "safari_tent",
+    "bell_tent",
+    "glamping_pod",
     "dome",
+    "airstream",
+    "vintage_trailer",
     "van",
-    "other",
   ]),
 
-  lodgingProvided: z.boolean().default(false),
+  lodgingProvided: z.enum(["bring_your_own", "structure_provided", "vehicle_provided"]).optional(),
 
-  // Location (within property)
+  // Site Location (within property)
   siteLocation: z
     .object({
-      description: z.string().max(500).optional(),
       coordinates: z
         .object({
           type: z.literal("Point").default("Point"),
           coordinates: z.tuple([z.number(), z.number()]), // [lng, lat]
         })
         .optional(),
-      distanceFromParking: z.number().min(0).optional(), // meters
-      distanceFromWater: z.number().min(0).optional(),
-      distanceFromToilets: z.number().min(0).optional(),
+      mapPinLabel: z.string().max(50).optional(),
+      relativeDescription: z.string().max(200).optional(),
     })
     .optional(),
 
-  // Capacity
-  capacity: capacitySchema,
+  terrain: z.enum(["forest", "beach", "mountain", "desert", "farm"]).optional(),
 
-  // Dimensions
-  dimensions: dimensionsSchema.optional(),
+  // Capacity
+  capacity: z.object({
+    maxGuests: z.number().int().min(1),
+    maxAdults: z.number().int().min(0).optional(),
+    maxChildren: z.number().int().min(0).optional(),
+    maxInfants: z.number().int().min(0).optional(),
+    maxPets: z.number().int().min(0).optional(),
+    maxVehicles: z.number().int().min(0).optional(),
+    maxTents: z.number().int().min(0).optional(),
+    maxRVs: z.number().int().min(0).optional(),
+    rvMaxLength: z.number().min(0).optional(),
+    maxConcurrentBookings: z.number().int().min(1).max(100).default(1),
+  }),
 
   // Pricing
-  pricing: pricingSchema,
+  pricing: z.object({
+    basePrice: z.number().min(0),
+    weekendPrice: z.number().min(0).optional(),
+    weeklyDiscount: z.number().min(0).max(100).optional(),
+    monthlyDiscount: z.number().min(0).max(100).optional(),
+    additionalGuestFee: z.number().min(0).optional(),
+    petFee: z.number().min(0).optional(),
+    vehicleFee: z.number().min(0).optional(),
+    cleaningFee: z.number().min(0).optional(),
+    depositAmount: z.number().min(0).optional(),
+    currency: z.string().default("VND"),
+    seasonalPricing: z
+      .array(
+        z.object({
+          name: z.string(),
+          startDate: z.coerce.date(),
+          endDate: z.coerce.date(),
+          price: z.number().min(0),
+        })
+      )
+      .optional(),
+  }),
 
   // Booking Settings
-  bookingSettings: bookingSettingsSchema,
+  bookingSettings: z.object({
+    minimumNights: z.number().int().min(1).default(1),
+    maximumNights: z.number().int().min(1).optional(),
+    checkInTime: z.string().default("14:00"),
+    checkOutTime: z.string().default("11:00"),
+    instantBook: z.boolean().default(false),
+    advanceNotice: z.number().min(0).default(24),
+    preparationTime: z.number().min(0).optional(),
+    allowSameDayBooking: z.boolean().default(false),
+  }),
 
-  // Media
-  photos: z.array(z.string()).min(0).max(50).optional(),
-  videos: z.array(z.string()).max(10).optional(),
-  coverPhoto: z.string().optional(),
+  // Photos
+  photos: z
+    .array(
+      z.object({
+        url: z.string().url(),
+        caption: z.string().max(200).optional(),
+        isCover: z.boolean().default(false),
+        order: z.number().int().min(0).default(0),
+      })
+    )
+    .optional(),
 
-  // Site-specific amenities
-  amenities: siteAmenitiesSchema.optional(),
-
-  // What's included
-  included: z.array(z.string()).optional(),
+  // Amenities (array of Amenity IDs)
+  amenities: z.array(z.string()).optional(),
 
   // What to bring
-  whatToBring: z.array(z.string()).optional(),
+  guestsShouldBring: z.array(z.string()).optional(),
 
   // Site-specific rules
-  siteRules: z.array(z.string()).optional(),
+  siteSpecificRules: z.array(z.string().max(500)).optional(),
 
   // Status
+  status: z.enum(["active", "inactive", "maintenance", "suspended"]).default("active"),
   isActive: z.boolean().default(true),
-  isAvailable: z.boolean().default(true),
+  isAvailableForBooking: z.boolean().default(true),
+  unavailableReason: z.string().max(500).optional(),
 });
+
 
 export const updateSiteSchema = createSiteSchema.partial();
 
@@ -226,18 +193,6 @@ export const searchSiteSchema = z.object({
   // Search
   search: z.string().optional(),
 
-  // Site type filter
-  siteType: z
-    .union([
-      z.enum(["designated", "undesignated"]),
-      z.array(z.enum(["designated", "undesignated"])),
-    ])
-    .optional()
-    .transform((val) => {
-      if (typeof val === "string") return [val];
-      return val;
-    }),
-
   // Accommodation type filter
   accommodationType: z
     .union([
@@ -247,12 +202,14 @@ export const searchSiteSchema = z.object({
         "cabin",
         "yurt",
         "treehouse",
-        "glamping-tent",
-        "tiny-house",
-        "a-frame",
+        "tiny_home",
+        "safari_tent",
+        "bell_tent",
+        "glamping_pod",
         "dome",
+        "airstream",
+        "vintage_trailer",
         "van",
-        "other",
       ]),
       z.array(
         z.enum([
@@ -261,12 +218,14 @@ export const searchSiteSchema = z.object({
           "cabin",
           "yurt",
           "treehouse",
-          "glamping-tent",
-          "tiny-house",
-          "a-frame",
+          "tiny_home",
+          "safari_tent",
+          "bell_tent",
+          "glamping_pod",
           "dome",
+          "airstream",
+          "vintage_trailer",
           "van",
-          "other",
         ])
       ),
     ])
@@ -286,16 +245,16 @@ export const searchSiteSchema = z.object({
   minPrice: z.coerce.number().min(0).optional(),
   maxPrice: z.coerce.number().min(0).optional(),
 
-  // Amenity filters
-  hasElectrical: z.coerce.boolean().optional(),
-  hasWaterHookup: z.coerce.boolean().optional(),
-  hasSewerHookup: z.coerce.boolean().optional(),
-  hasFirePit: z.coerce.boolean().optional(),
-  hasBedding: z.coerce.boolean().optional(),
-  hasKitchen: z.coerce.boolean().optional(),
-  hasPrivateBathroom: z.coerce.boolean().optional(),
-  hasWifi: z.coerce.boolean().optional(),
-  wheelchairAccessible: z.coerce.boolean().optional(),
+  // Amenity filters (array of amenity IDs)
+  // Deprecated individual amenity filters removed (hasElectrical, hasWaterHookup, etc.)
+  // Use amenities array instead
+  amenities: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((val) => {
+      if (typeof val === "string") return val.split(",").map((v) => v.trim());
+      return val;
+    }),
 
   // Availability filters
   checkIn: z.string().optional(), // ISO date

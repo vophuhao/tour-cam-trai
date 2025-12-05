@@ -120,6 +120,10 @@ export function SiteMap({
         const isHovered = hoveredSite?._id === site._id;
         const isActive = isSelected || isHovered;
 
+        // Check if this is an undesignated site (maxConcurrentBookings > 1)
+        const maxConcurrentBookings = site.capacity.maxConcurrentBookings ?? 1;
+        const isUndesignated = maxConcurrentBookings > 1;
+
         return (
           <Marker
             key={site._id}
@@ -136,15 +140,20 @@ export function SiteMap({
                 isActive ? 'z-50 scale-125' : 'hover:scale-110'
               }`}
             >
-              {/* Price Badge */}
+              {/* Price Badge with Sites Info */}
               <div
-                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
+                className={`flex flex-col items-center gap-0.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
                   isActive
                     ? 'border-black bg-black text-white shadow-md'
                     : 'border-gray-300 bg-white text-gray-900 hover:border-black hover:bg-black hover:text-white hover:shadow-md'
                 }`}
               >
-                {formatPrice(site.pricing.basePrice)}
+                <span>{formatPrice(site.pricing.basePrice)}</span>
+                {isUndesignated && (
+                  <span className="text-[10px] font-normal opacity-80">
+                    {maxConcurrentBookings} sites
+                  </span>
+                )}
               </div>
             </div>
           </Marker>

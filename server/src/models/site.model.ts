@@ -10,11 +10,6 @@ export interface SiteDocument extends mongoose.Document {
   slug: string; // property-slug + site-slug
   description?: string;
 
-  // Site Type
-  siteType: "designated" | "undesignated";
-  // designated = guests chọn site cụ thể khi book
-  // undesignated = guests chọn bất kỳ site nào trong group khi arrive
-
   // Accommodation Type
   accommodationType:
     | "tent"
@@ -31,7 +26,7 @@ export interface SiteDocument extends mongoose.Document {
     | "vintage_trailer"
     | "van";
 
-  lodgingProvided: "bring_your_own" | "structure_provided" | "vehicle_provided";
+  lodgingProvided?: "bring_your_own" | "structure_provided" | "vehicle_provided";
 
   // Site-specific Location
   siteLocation?: {
@@ -42,6 +37,7 @@ export interface SiteDocument extends mongoose.Document {
     mapPinLabel?: string; // "Site A", "1"
     relativeDescription?: string; // "Near the river", "In the meadow"
   };
+  terrain?: "forest" | "beach" | "mountain" | "desert" | "farm";
 
   // Capacity
   capacity: {
@@ -54,16 +50,11 @@ export interface SiteDocument extends mongoose.Document {
     maxTents?: number;
     maxRVs?: number;
     rvMaxLength?: number; // feet
-  };
 
-  // Site Dimensions
-  dimensions?: {
-    length?: number; // feet
-    width?: number;
-    area?: number; // square feet
-    isPaved: boolean;
-    isLevel: boolean;
-    shade: "full" | "partial" | "none";
+    // Concurrent Bookings (Hipcamp-style designated/undesignated)
+    // maxConcurrentBookings = 1 → designated (chỉ 1 booking tại 1 thời điểm)
+    // maxConcurrentBookings > 1 → undesignated (nhiều bookings đồng thời, "X sites left")
+    maxConcurrentBookings: number;
   };
 
   // Pricing (per-site)
@@ -109,102 +100,13 @@ export interface SiteDocument extends mongoose.Document {
     uploadedAt?: Date;
   }>;
 
-  // Site-specific Amenities
-  amenities: {
-    // Electrical
-    electrical?: {
-      available: boolean;
-      amperage?: number; // 15, 30, 50
-      outlets?: number;
-    };
-
-    // Water
-    water?: {
-      hookup: boolean;
-      nearby: boolean;
-      distance?: number; // feet if nearby
-    };
-
-    // Sewer
-    sewer?: {
-      hookup: boolean;
-      dumpStation: boolean;
-      distance?: number;
-    };
-
-    // Fire
-    firePit: boolean;
-    fireRing: boolean;
-    firewood?: "provided" | "available_for_purchase" | "bring_your_own" | "not_allowed";
-
-    // Furniture
-    furniture?: string[]; // ["picnic_table", "chairs", "hammock", "grill"]
-
-    // Shelter
-    shelter?: {
-      type: "none" | "tent_pad" | "platform" | "covered_area";
-      size?: string;
-    };
-
-    // Bedding (for structures)
-    bedding?: {
-      provided: boolean;
-      bedType?: "king" | "queen" | "twin" | "bunk";
-      bedCount?: number;
-    };
-
-    // Kitchen (for cabins/structures)
-    kitchen?: {
-      available: boolean;
-      appliances?: string[]; // ["stove", "refrigerator", "microwave"]
-      cookware: boolean;
-      dishes: boolean;
-    };
-
-    // Private Bathroom
-    privateBathroom?: {
-      available: boolean;
-      indoor: boolean;
-      toilet: boolean;
-      shower: boolean;
-      hotWater: boolean;
-    };
-
-    // Climate Control
-    climateControl?: {
-      heating: boolean;
-      airConditioning: boolean;
-      fan: boolean;
-    };
-
-    // Connectivity
-    wifi: boolean;
-    tv: boolean;
-
-    // Accessibility
-    accessible: boolean;
-    wheelchairAccessible: boolean;
-
-    // Other
-    other?: string[];
-  };
-
-  // What's included (glamping)
-  included?: string[]; // ["towels", "linens", "toiletries", "coffee"]
+  amenities: mongoose.Types.ObjectId[];
 
   // What to bring
   guestsShouldBring?: string[]; // ["sleeping_bag", "tent", "cooking_equipment"]
 
   // Site-specific Rules
   siteSpecificRules?: string[];
-
-  // Accessibility
-  accessibility?: {
-    wheelchairAccessible: boolean;
-    mobilityAidAccessible: boolean;
-    serviceAnimalsAllowed: boolean;
-    accessibilityNotes?: string;
-  };
 
   // Stats
   stats: {
@@ -236,13 +138,6 @@ export interface SiteDocument extends mongoose.Document {
   isAvailableForBooking: boolean;
   unavailableReason?: string;
 
-  // Grouped Sites (for undesignated)
-  groupedSiteInfo?: {
-    isGrouped: boolean;
-    groupId?: mongoose.Types.ObjectId; // ID of listing umbrella
-    totalSitesInGroup?: number;
-  };
-
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -270,15 +165,6 @@ const siteSchema = new mongoose.Schema<SiteDocument>(
     slug: { type: String, required: true, index: true },
     description: { type: String, maxlength: 2000 },
 
-    // Site Type
-    siteType: {
-      type: String,
-      enum: ["designated", "undesignated"],
-      required: true,
-      default: "designated",
-      index: true,
-    },
-
     // Accommodation Type
     accommodationType: {
       type: String,
@@ -304,7 +190,7 @@ const siteSchema = new mongoose.Schema<SiteDocument>(
     lodgingProvided: {
       type: String,
       enum: ["bring_your_own", "structure_provided", "vehicle_provided"],
-      required: true,
+      required: false,
     },
 
     // Site Location
@@ -316,6 +202,8 @@ const siteSchema = new mongoose.Schema<SiteDocument>(
       mapPinLabel: { type: String, maxlength: 50 },
       relativeDescription: { type: String, maxlength: 200 },
     },
+    
+    terrain: { type: String, enum: ["forest", "beach", "mountain", "desert", "farm"] },
 
     // Capacity
     capacity: {
@@ -328,16 +216,16 @@ const siteSchema = new mongoose.Schema<SiteDocument>(
       maxTents: { type: Number, min: 0 },
       maxRVs: { type: Number, min: 0 },
       rvMaxLength: { type: Number, min: 0 }, // feet
-    },
 
-    // Dimensions
-    dimensions: {
-      length: { type: Number, min: 0 },
-      width: { type: Number, min: 0 },
-      area: { type: Number, min: 0 },
-      isPaved: { type: Boolean, default: false },
-      isLevel: { type: Boolean, default: true },
-      shade: { type: String, enum: ["full", "partial", "none"], default: "partial" },
+      // Concurrent Bookings (designated vs undesignated)
+      maxConcurrentBookings: {
+        type: Number,
+        required: true,
+        default: 1,
+        min: 1,
+        max: 100,
+        index: true,
+      },
     },
 
     // Pricing
@@ -387,79 +275,13 @@ const siteSchema = new mongoose.Schema<SiteDocument>(
     ],
 
     // Site Amenities
-    amenities: {
-      electrical: {
-        available: { type: Boolean, default: false },
-        amperage: { type: Number, min: 0 },
-        outlets: { type: Number, min: 0 },
-      },
-      water: {
-        hookup: { type: Boolean, default: false },
-        nearby: { type: Boolean, default: false },
-        distance: { type: Number, min: 0 },
-      },
-      sewer: {
-        hookup: { type: Boolean, default: false },
-        dumpStation: { type: Boolean, default: false },
-        distance: { type: Number, min: 0 },
-      },
-      firePit: { type: Boolean, default: false },
-      fireRing: { type: Boolean, default: false },
-      firewood: {
-        type: String,
-        enum: ["provided", "available_for_purchase", "bring_your_own", "not_allowed"],
-      },
-      furniture: [{ type: String }],
-      shelter: {
-        type: { type: String, enum: ["none", "tent_pad", "platform", "covered_area"] },
-        size: { type: String },
-      },
-      bedding: {
-        provided: { type: Boolean, default: false },
-        bedType: { type: String, enum: ["king", "queen", "twin", "bunk"] },
-        bedCount: { type: Number, min: 0 },
-      },
-      kitchen: {
-        available: { type: Boolean, default: false },
-        appliances: [{ type: String }],
-        cookware: { type: Boolean, default: false },
-        dishes: { type: Boolean, default: false },
-      },
-      privateBathroom: {
-        available: { type: Boolean, default: false },
-        indoor: { type: Boolean, default: false },
-        toilet: { type: Boolean, default: false },
-        shower: { type: Boolean, default: false },
-        hotWater: { type: Boolean, default: false },
-      },
-      climateControl: {
-        heating: { type: Boolean, default: false },
-        airConditioning: { type: Boolean, default: false },
-        fan: { type: Boolean, default: false },
-      },
-      wifi: { type: Boolean, default: false },
-      tv: { type: Boolean, default: false },
-      accessible: { type: Boolean, default: false },
-      wheelchairAccessible: { type: Boolean, default: false },
-      other: [{ type: String }],
-    },
-
-    // What's included
-    included: [{ type: String }],
+    amenities: [{ type: mongoose.Schema.Types.ObjectId, ref: "Amenity" }],
 
     // What to bring
     guestsShouldBring: [{ type: String }],
 
     // Site-specific Rules
     siteSpecificRules: [{ type: String, maxlength: 500 }],
-
-    // Accessibility
-    accessibility: {
-      wheelchairAccessible: { type: Boolean, default: false },
-      mobilityAidAccessible: { type: Boolean, default: false },
-      serviceAnimalsAllowed: { type: Boolean, default: true },
-      accessibilityNotes: { type: String, maxlength: 500 },
-    },
 
     // Stats
     stats: {
@@ -495,13 +317,6 @@ const siteSchema = new mongoose.Schema<SiteDocument>(
     isActive: { type: Boolean, default: true, index: true },
     isAvailableForBooking: { type: Boolean, default: true },
     unavailableReason: { type: String, maxlength: 500 },
-
-    // Grouped Sites
-    groupedSiteInfo: {
-      isGrouped: { type: Boolean, default: false },
-      groupId: { type: mongoose.Schema.Types.ObjectId },
-      totalSitesInGroup: { type: Number, min: 0 },
-    },
 
     // Timestamps
     lastBookedAt: { type: Date },

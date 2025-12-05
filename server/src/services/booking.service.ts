@@ -14,7 +14,6 @@ import type {
   SearchBookingInput,
 } from "@/validators/booking.validator";
 import mongoose from "mongoose";
-import SiteService from "./site.service";
 
 const { PayOS } = require("@payos/node");
 
@@ -169,8 +168,16 @@ export class BookingService {
     // Calculate total
     await booking.calculateTotal();
     // Block dates in availability calendar
+    // NOTE: Only block for DESIGNATED sites (maxConcurrentBookings = 1)
+    // Undesignated sites handle availability through concurrent booking count
     if (siteId) {
-      await this.blockDatesForBooking(siteId, checkInDate, checkOutDate);
+      const maxConcurrent = site!.capacity.maxConcurrentBookings || 1;
+      if (maxConcurrent === 1) {
+        // Designated site: Block dates in availability calendar
+        await this.blockDatesForBooking(siteId, checkInDate, checkOutDate);
+      }
+      // For undesignated sites (maxConcurrent > 1), availability is managed
+      // by counting bookings in getBlockedDates(), not by Availability records
     }
     // Auto-confirm if instant book
     if (site!.bookingSettings.instantBook) {
@@ -511,6 +518,8 @@ export class BookingService {
     checkOut: Date
   ): Promise<void> {
     // Remove availability records for booked dates
+    // Only applies to designated sites (maxConcurrentBookings = 1)
+    // Undesignated sites don't create availability blocks
     await AvailabilityModel.deleteMany({
       site: siteId,
       date: { $gte: checkIn, $lt: checkOut },
@@ -545,35 +554,8 @@ export class BookingService {
   }
 
   /**
-   * Book undesignated site (guest books any available site in group)
-   * Auto-assigns an available site from the group
+   * REMOVED: bookUndesignatedSite()
+   * No longer needed - maxConcurrentBookings handles this automatically
+   * Just use createBooking() directly - it will check capacity
    */
-  async bookUndesignatedSite(
-    guestId: string,
-    groupId: string,
-    input: Omit<CreateBookingInput, "site"> & { property: string }
-  ): Promise<BookingDocument> {
-    const { property: propertyId, checkIn, checkOut } = input;
-
-    // Check if group has any available sites
-    const groupAvailability = await SiteService.checkGroupAvailability(groupId, checkIn, checkOut);
-
-    appAssert(
-      groupAvailability.isAvailable && groupAvailability.availableSiteIds,
-      ErrorFactory.conflict(
-        groupAvailability.reason || "Không có site nào available trong group này"
-      )
-    );
-
-    // Auto-select first available site
-    const selectedSiteId = groupAvailability.availableSiteIds[0];
-
-    // Create booking with the auto-selected site
-    const booking = await this.createBooking(guestId, {
-      ...input,
-      site: selectedSiteId,
-    });
-
-    return booking;
-  }
 }

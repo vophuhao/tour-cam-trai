@@ -225,33 +225,7 @@ export function PropertyPolicies({ data, onChange }: PropertyPoliciesProps) {
               {data.refundPolicy?.length || 0}/1000 ký tự
             </p>
           </CardContent>
-        </Card>
-
-        {/* Payment Methods */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Phương thức thanh toán</CardTitle>
-            <CardDescription>
-              Chọn các phương thức thanh toán bạn chấp nhận
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {PAYMENT_METHODS.map((method) => (
-                <div key={method.value} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={method.value}
-                    checked={data.paymentMethods?.includes(method.value)}
-                    onCheckedChange={() => togglePaymentMethod(method.value)}
-                  />
-                  <Label htmlFor={method.value} className="font-normal">
-                    {method.label}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        </Card>      
       </div>
     </div>
   );

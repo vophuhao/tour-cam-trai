@@ -62,14 +62,14 @@ export class SiteService {
       query = { slug: idOrSlug, property: propertyId };
     }
 
-    const site = await SiteModel.findOne(query).populate("property", "name host location").lean();
+    const site = await SiteModel.findOne(query).populate("property", "name host location");
 
     appAssert(site, ErrorFactory.resourceNotFound("Site"));
 
     // Increment view count
-    await SiteModel.findByIdAndUpdate(site!._id, { $inc: { "stats.views": 1 } });
+    await SiteModel.findByIdAndUpdate(site._id, { $inc: { "stats.viewCount": 1 } });
 
-    return site!;
+    return site;
   }
 
   /**
@@ -115,7 +115,6 @@ export class SiteService {
     if (input.name && input.name !== site.name) {
       input.slug = this.generateSlug(input.name);
     }
-
     Object.assign(site, input);
     await site.save();
 
@@ -175,7 +174,6 @@ export class SiteService {
     const {
       property,
       search,
-      siteType,
       accommodationType,
       minGuests,
       maxGuests,
@@ -183,15 +181,7 @@ export class SiteService {
       allowRVs,
       minPrice,
       maxPrice,
-      hasElectrical,
-      hasWaterHookup,
-      hasSewerHookup,
-      hasFirePit,
-      hasBedding,
-      hasKitchen,
-      hasPrivateBathroom,
-      hasWifi,
-      wheelchairAccessible,
+      amenities, // Now expects array of amenity IDs
       checkIn,
       checkOut,
       instantBookOnly,
@@ -211,11 +201,6 @@ export class SiteService {
     // Text search
     if (search) {
       query.$or = [{ name: new RegExp(search, "i") }, { description: new RegExp(search, "i") }];
-    }
-
-    // Site type filter
-    if (siteType && siteType.length > 0) {
-      query.siteType = { $in: siteType };
     }
 
     // Accommodation type filter
@@ -238,23 +223,18 @@ export class SiteService {
       };
     }
 
-    // Amenity filters
-    if (hasElectrical) query["amenities.electrical.available"] = true;
-    if (hasWaterHookup) query["amenities.waterHookup.available"] = true;
-    if (hasSewerHookup) query["amenities.sewerHookup.available"] = true;
-    if (hasFirePit) query["amenities.firePit.available"] = true;
-    if (hasBedding) query["amenities.bedding.available"] = true;
-    if (hasKitchen) query["amenities.kitchen.available"] = true;
-    if (hasPrivateBathroom) query["amenities.privateBathroom.available"] = true;
-    if (hasWifi) query["amenities.wifi"] = true;
-    if (wheelchairAccessible) query["amenities.accessibility.wheelchairAccessible"] = true;
+    // Amenity filters - Now uses ObjectId[] refs to Amenity model
+    // Filter by amenity IDs array
+    if (amenities && amenities.length > 0) {
+      query.amenities = { $in: amenities };
+    }
 
     // Booking settings
-    if (instantBookOnly) query["bookingSettings.allowInstantBook"] = true;
+    if (instantBookOnly) query["bookingSettings.instantBook"] = true;
 
     // Status filters
     if (isActive !== undefined) query.isActive = isActive;
-    if (isAvailable !== undefined) query.isAvailable = isAvailable;
+    if (isAvailable !== undefined) query.isAvailableForBooking = isAvailable;
 
     // Rating filter
     if (minRating) query["rating.average"] = { $gte: minRating };
@@ -302,6 +282,7 @@ export class SiteService {
         .skip(skip)
         .limit(limit)
         .populate("property", "name host location")
+        .populate("amenities", "name icon category")
         .lean(),
       SiteModel.countDocuments(query),
     ]);
@@ -319,12 +300,22 @@ export class SiteService {
 
   /**
    * Get all blocked dates for a site (for calendar display)
+   * Now supports maxConcurrentBookings - only blocks when capacity is full
    */
   async getBlockedDates(siteId: string, startDate: string, endDate: string) {
     const start = new Date(startDate);
     const end = new Date(endDate);
 
+    // Get site with capacity info
+    const site = await SiteModel.findById(siteId);
+    appAssert(site, ErrorFactory.resourceNotFound("Site"));
+
+    const maxConcurrent = site.capacity.maxConcurrentBookings || 1;
+    const isUndesignated = maxConcurrent > 1;
+
     // Get all availability records where isAvailable = false
+    // NOTE: For UNDESIGNATED sites, we IGNORE these records as they shouldn't exist
+    // Only DESIGNATED sites use Availability records for blocking
     const blockedRecords = await AvailabilityModel.find({
       site: siteId,
       date: { $gte: start, $lte: end },
@@ -339,27 +330,64 @@ export class SiteService {
       checkOut: { $gte: start },
     }).lean();
 
-    // Combine blocked dates from availability records and bookings
     const allBlockedDates = new Set<string>();
 
-    // Add dates from availability records
-    blockedRecords.forEach((record) => {
-      allBlockedDates.add(record.date.toISOString());
-    });
-
-    // Add dates from bookings (expand booking range to individual dates)
-    bookings.forEach((booking) => {
-      const bookingStart = new Date(booking.checkIn);
-      const bookingEnd = new Date(booking.checkOut);
-      const currentDate = new Date(bookingStart);
-
-      while (currentDate < bookingEnd) {
-        if (currentDate >= start && currentDate <= end) {
-          allBlockedDates.add(currentDate.toISOString());
-        }
-        currentDate.setDate(currentDate.getDate() + 1);
+    // Add dates from availability records (ONLY for designated sites)
+    // For undesignated sites, ignore availability records
+    if (!isUndesignated) {
+      blockedRecords.forEach((record) => {
+        allBlockedDates.add(record.date.toISOString());
+      });
+    } else {
+      // Log warning if undesignated site has availability blocks (shouldn't happen)
+      if (blockedRecords.length > 0) {
+        console.log(
+          `[getBlockedDates] WARNING: Undesignated site ${site.name} has ${blockedRecords.length} availability blocks - these will be IGNORED`
+        );
       }
-    });
+    }
+
+    // For bookings, only block dates when capacity is FULL
+    if (maxConcurrent === 1) {
+      // Designated site (capacity = 1): Block all booked dates
+      bookings.forEach((booking) => {
+        const bookingStart = new Date(booking.checkIn);
+        const bookingEnd = new Date(booking.checkOut);
+        const currentDate = new Date(bookingStart);
+
+        while (currentDate < bookingEnd) {
+          if (currentDate >= start && currentDate <= end) {
+            allBlockedDates.add(currentDate.toISOString());
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      });
+    } else {
+      // Undesignated site (capacity > 1): Only block dates when concurrent bookings >= maxConcurrent
+      // Build a map of date -> booking count
+      const dateBookingCount = new Map<string, number>();
+
+      bookings.forEach((booking) => {
+        const bookingStart = new Date(booking.checkIn);
+        const bookingEnd = new Date(booking.checkOut);
+        const currentDate = new Date(bookingStart);
+
+        while (currentDate < bookingEnd) {
+          if (currentDate >= start && currentDate <= end) {
+            const dateKey = currentDate.toISOString();
+            dateBookingCount.set(dateKey, (dateBookingCount.get(dateKey) || 0) + 1);
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      });
+
+      // Only block dates where booking count >= maxConcurrent
+      dateBookingCount.forEach((count, dateKey) => {
+        if (count >= maxConcurrent) {
+          allBlockedDates.add(dateKey);
+        }
+      });
+    }
 
     return {
       blockedDates: Array.from(allBlockedDates),
@@ -369,13 +397,29 @@ export class SiteService {
 
   /**
    * Check site availability for date range
+   * Now supports maxConcurrentBookings (designated vs undesignated)
    */
-  async checkAvailability(siteId: string, checkIn: string, checkOut: string) {
+  async checkAvailability(
+    siteId: string,
+    checkIn: string,
+    checkOut: string
+  ): Promise<{
+    isAvailable: boolean;
+    reason?: string;
+    blockedDates?: Date[];
+    spotsLeft?: number; // How many concurrent bookings are still available
+  }> {
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
 
-    // Check for existing bookings
-    const existingBooking = await BookingModel.findOne({
+    // Get site with capacity.maxConcurrentBookings
+    const site = await SiteModel.findById(siteId);
+    appAssert(site, ErrorFactory.resourceNotFound("Site"));
+
+    const maxConcurrent = site.capacity.maxConcurrentBookings || 1;
+
+    // Count existing bookings for this date range
+    const existingBookingsCount = await BookingModel.countDocuments({
       site: siteId,
       status: { $in: ["pending", "confirmed"] },
       $or: [
@@ -386,14 +430,19 @@ export class SiteService {
       ],
     });
 
-    if (existingBooking) {
+    // Check if capacity is full
+    if (existingBookingsCount >= maxConcurrent) {
       return {
         isAvailable: false,
-        reason: "Site already booked for these dates",
+        reason:
+          maxConcurrent === 1
+            ? "Site already booked for these dates"
+            : `All ${maxConcurrent} spots are booked for these dates`,
+        spotsLeft: 0,
       };
     }
 
-    // Check availability records
+    // Check availability records (blocked dates)
     const blockedDates = await AvailabilityModel.find({
       site: siteId,
       date: { $gte: checkInDate, $lt: checkOutDate },
@@ -405,65 +454,13 @@ export class SiteService {
         isAvailable: false,
         reason: "Site is blocked for some dates in this range",
         blockedDates: blockedDates.map((d) => d.date),
+        spotsLeft: 0,
       };
     }
 
     return {
       isAvailable: true,
-    };
-  }
-
-  /**
-   * Check group availability for undesignated sites
-   * Returns true if at least 1 site in the group is available
-   */
-  async checkGroupAvailability(
-    groupId: string,
-    checkIn: string,
-    checkOut: string
-  ): Promise<{
-    isAvailable: boolean;
-    availableSiteIds?: string[];
-    totalAvailable?: number;
-    reason?: string;
-  }> {
-    const checkInDate = new Date(checkIn);
-    const checkOutDate = new Date(checkOut);
-
-    // Get all sites in the group
-    const sitesInGroup = await SiteModel.find({
-      "groupedSiteInfo.groupId": groupId,
-      "groupedSiteInfo.isGrouped": true,
-      isActive: true,
-    });
-
-    appAssert(sitesInGroup.length > 0, ErrorFactory.resourceNotFound("Undesignated group"));
-
-    // Check availability for each site in parallel
-    const availabilityChecks = await Promise.all(
-      sitesInGroup.map(async (site) => {
-        const availability = await this.checkAvailability(site._id.toString(), checkIn, checkOut);
-        return {
-          siteId: site._id.toString(),
-          isAvailable: availability.isAvailable,
-        };
-      })
-    );
-
-    // Filter available sites
-    const availableSites = availabilityChecks.filter((check) => check.isAvailable);
-
-    if (availableSites.length === 0) {
-      return {
-        isAvailable: false,
-        reason: "Tất cả các site trong group đã được đặt cho khoảng thời gian này",
-      };
-    }
-
-    return {
-      isAvailable: true,
-      availableSiteIds: availableSites.map((s) => s.siteId),
-      totalAvailable: availableSites.length,
+      spotsLeft: maxConcurrent - existingBookingsCount,
     };
   }
 
@@ -542,19 +539,19 @@ export class SiteService {
 
     // Apply discounts
     let discount = 0;
-    if (nights >= 28 && site!.pricing.discounts?.monthly) {
-      discount = (subtotal * site!.pricing.discounts.monthly) / 100;
-    } else if (nights >= 7 && site!.pricing.discounts?.weekly) {
-      discount = (subtotal * site!.pricing.discounts.weekly) / 100;
+    if (nights >= 28 && site!.pricing.monthlyDiscount) {
+      discount = (subtotal * site!.pricing.monthlyDiscount) / 100;
+    } else if (nights >= 7 && site!.pricing.weeklyDiscount) {
+      discount = (subtotal * site!.pricing.weeklyDiscount) / 100;
     }
 
     // Calculate fees
-    const fees = site!.pricing.fees || {};
-    const cleaningFee = fees.cleaningFee || 0;
-    const petFee = fees.petFee || 0;
+    const cleaningFee = site!.pricing.cleaningFee || 0;
+    const petFee = site!.pricing.petFee || 0;
+    const additionalGuestFee = site!.pricing.additionalGuestFee || 0;
     const extraGuestFee =
       guestCount > site!.capacity.maxGuests
-        ? (guestCount - site!.capacity.maxGuests) * (fees.extraGuestFee || 0)
+        ? (guestCount - site!.capacity.maxGuests) * additionalGuestFee
         : 0;
 
     const total = subtotal - discount + cleaningFee + petFee + extraGuestFee;

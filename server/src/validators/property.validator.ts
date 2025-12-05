@@ -1,35 +1,8 @@
 import { z } from "zod";
 
-// Shared amenities sub-schema - matches Property model
-const sharedAmenitiesSchema = z.object({
-  toilets: z
-    .object({
-      type: z.enum(["none", "portable", "flush", "vault", "composting"]),
-      count: z.number().int().min(0),
-      isShared: z.boolean(),
-    })
-    .optional(),
-  showers: z
-    .object({
-      type: z.enum(["none", "outdoor", "indoor", "hot", "cold"]),
-      count: z.number().int().min(0),
-      isShared: z.boolean(),
-    })
-    .optional(),
-  potableWater: z.boolean().optional(),
-  waterSource: z.enum(["tap", "well", "stream", "none"]).optional(),
-  parkingType: z.enum(["drive_in", "walk_in", "nearby"]).optional(),
-  parkingSpaces: z.number().int().min(0).optional(),
-  commonAreas: z.array(z.string()).optional(),
-  laundry: z.boolean().optional(),
-  wifi: z.boolean().optional(),
-  cellService: z.enum(["excellent", "good", "limited", "none"]).optional(),
-  electricityAvailable: z.boolean().optional(),
-});
-
 // Cancellation policy sub-schema
 const cancellationPolicySchema = z.object({
-  type: z.enum(["flexible", "moderate", "strict", "non-refundable"]),
+  type: z.enum(["flexible", "moderate", "strict"]),
   description: z.string().max(1000).optional(),
   refundRules: z
     .array(
@@ -41,29 +14,15 @@ const cancellationPolicySchema = z.object({
     .optional(),
 });
 
-// Pet policy sub-schema
-const petPolicySchema = z.object({
-  allowed: z.boolean().default(false),
-  maxPets: z.number().int().min(0).optional(),
-  additionalFee: z.number().min(0).optional(),
-  restrictions: z.array(z.string()).optional(),
-});
-
-// Children policy sub-schema
-const childrenPolicySchema = z.object({
-  allowed: z.boolean().default(true),
-  ageRestriction: z.number().int().min(0).optional(),
-  requireSupervision: z.boolean().optional(),
-});
-
+// Validator cho tạo property
 export const createPropertySchema = z.object({
   // Ownership
-  host: z.string().optional(),
+  host: z.string().optional(), // Will be set from auth context
 
   // Basic Info
   name: z.string().min(3).max(200),
   slug: z.string().min(3).max(200).optional(),
-  tagline: z.string().max(150).optional(),
+  tagline: z.string().min(10).max(200).optional(),
   description: z.string().min(0).max(5000),
 
   // Location
@@ -71,96 +30,56 @@ export const createPropertySchema = z.object({
     address: z.string().min(5).max(500),
     city: z.string().min(2).max(100),
     state: z.string().min(2).max(100),
+    zipCode: z.string().max(20).optional(),
     country: z.string().default("Vietnam"),
-    zipCode: z.string().optional(),
-
     coordinates: z.object({
       type: z.literal("Point").default("Point"),
       coordinates: z.tuple([z.number(), z.number()]), // [lng, lat]
     }),
-
-    directions: z.string().max(1000).optional(),
-    parkingInstructions: z.string().max(500).optional(),
+    accessInstructions: z.string().max(2000).optional(),
+    gettingThere: z.string().max(2000).optional(),
+    nearestTown: z.string().max(100).optional(),
+    distanceToTown: z.number().min(0).optional(), // km
   }),
 
-  // Land size
+  // Property Details
   landSize: z
     .object({
       value: z.number().min(0),
       unit: z.enum(["acres", "hectares", "square_meters"]),
     })
     .optional(),
-
-  // Terrain
-  terrain: z.string().max(100).optional(),
-
-  // Property Type
   propertyType: z.enum(["private_land", "farm", "ranch", "campground"]),
 
-  // Photos
+  // Media
   photos: z
     .array(
       z.object({
-        url: z.string(),
+        url: z.string().url(),
         caption: z.string().max(200).optional(),
         isCover: z.boolean().default(false),
-        order: z.number().default(0),
+        order: z.number().int().min(0).default(0),
       })
     )
-    .min(1),
-
-  // Shared Amenities
-  sharedAmenities: z
-    .object({
-      toilets: z
-        .object({
-          type: z.enum(["none", "portable", "flush", "vault", "composting"]),
-          count: z.number().min(0),
-          isShared: z.boolean(),
-        })
-        .optional(),
-
-      showers: z
-        .object({
-          type: z.enum(["none", "outdoor", "indoor", "hot", "cold"]),
-          count: z.number().min(0),
-          isShared: z.boolean(),
-        })
-        .optional(),
-
-      potableWater: z.boolean().optional(),
-      waterSource: z.enum(["tap", "well", "stream", "none"]).optional(),
-      parkingType: z.enum(["drive_in", "walk_in", "nearby"]).optional(),
-      parkingSpaces: z.number().min(0).optional(),
-      commonAreas: z.array(z.string()).optional(),
-      laundry: z.boolean().optional(),
-      wifi: z.boolean().optional(),
-      cellService: z.enum(["excellent", "good", "limited", "none"]).optional(),
-      electricityAvailable: z.boolean().optional(),
-    })
     .optional(),
 
-  // Activities
-  activities: z.array(z.string()).optional(),
-
-  // Nearby attractions
   nearbyAttractions: z
     .array(
       z.object({
-        name: z.string(),
-        distance: z.number().min(0),
+        name: z.string().min(1),
+        distance: z.number().min(0), // km
         type: z.string(),
       })
     )
     .optional(),
 
-  // Rules
+  // Property Rules
   rules: z
     .array(
       z.object({
-        text: z.string().max(500),
+        text: z.string().min(1).max(500),
         category: z.enum(["pets", "noise", "fire", "general"]).default("general"),
-        order: z.number().default(0),
+        order: z.number().int().min(0).default(0),
       })
     )
     .optional(),
@@ -168,72 +87,25 @@ export const createPropertySchema = z.object({
   checkInInstructions: z.string().max(2000).optional(),
   checkOutInstructions: z.string().max(2000).optional(),
 
-  emergencyContact: z
-    .object({
-      name: z.string().optional(),
-      phone: z.string().optional(),
-      instructions: z.string().max(500).optional(),
-    })
-    .optional(),
+  // Policies
+  cancellationPolicy: cancellationPolicySchema.optional(),
 
-  // Cancellation Policy
-  cancellationPolicy: z
-    .object({
-      type: z.enum(["flexible", "moderate", "strict"]),
-      description: z.string().max(1000).optional(),
-      refundRules: z.array(
-        z.object({
-          daysBeforeCheckIn: z.number().min(0),
-          refundPercentage: z.number().min(0).max(100),
-        })
-      ),
-    })
-    .optional(),
-
-  // Pet Policy
-  petPolicy: z
-    .object({
-      allowed: z.boolean(),
-      maxPets: z.number().min(0).optional(),
-      fee: z.number().min(0).optional(),
-      rules: z.string().max(500).optional(),
-    })
-    .optional(),
-
-  // Children Policy
-  childrenPolicy: z
-    .object({
-      allowed: z.boolean(),
-      ageRestrictions: z.string().max(200).optional(),
-    })
-    .optional(),
-
-  // SEO
-  seo: z
-    .object({
-      metaTitle: z.string().max(100).optional(),
-      metaDescription: z.string().max(200).optional(),
-      keywords: z.array(z.string()).optional(),
-    })
-    .optional(),
-
-  // Settings
+  // Property Settings
   settings: z
     .object({
-      instantBookEnabled: z.boolean().optional(),
-      requireApproval: z.boolean().optional(),
-      minimumAdvanceNotice: z.number().min(0).optional(),
-      bookingWindow: z.number().min(1).optional(),
-      allowWholePropertyBooking: z.boolean().optional(),
+      instantBookEnabled: z.boolean().default(false),
+      requireApproval: z.boolean().default(true),
+      minimumAdvanceNotice: z.number().int().min(0).default(24), // hours
+      bookingWindow: z.number().int().min(1).default(365), // days
+      allowWholePropertyBooking: z.boolean().default(false),
     })
     .optional(),
 
-  // Status flags
-  isActive: z.boolean().optional(),
-  isFeatured: z.boolean().optional(),
-  isVerified: z.boolean().optional(),
+  // Status
+  isActive: z.boolean().default(false),
+  isFeatured: z.boolean().default(false),
+  isVerified: z.boolean().default(false),
 });
-
 
 export const updatePropertySchema = createPropertySchema.partial();
 
@@ -263,60 +135,8 @@ export const searchPropertySchema = z.object({
   // Property type filter
   propertyType: z
     .union([
-      z.enum([
-        "private-land",
-        "farm",
-        "ranch",
-        "vineyard",
-        "orchard",
-        "campground",
-        "retreat-center",
-        "other",
-      ]),
-      z.array(
-        z.enum([
-          "private-land",
-          "farm",
-          "ranch",
-          "vineyard",
-          "orchard",
-          "campground",
-          "retreat-center",
-          "other",
-        ])
-      ),
-    ])
-    .optional()
-    .transform((val) => {
-      if (typeof val === "string") return [val];
-      return val;
-    }),
-
-  // Terrain filter
-  terrain: z
-    .union([
-      z.enum([
-        "flat",
-        "hilly",
-        "mountainous",
-        "forest",
-        "desert",
-        "beach",
-        "riverside",
-        "lakeside",
-      ]),
-      z.array(
-        z.enum([
-          "flat",
-          "hilly",
-          "mountainous",
-          "forest",
-          "desert",
-          "beach",
-          "riverside",
-          "lakeside",
-        ])
-      ),
+      z.enum(["private_land", "farm", "ranch", "campground"]),
+      z.array(z.enum(["private_land", "farm", "ranch", "campground"])),
     ])
     .optional()
     .transform((val) => {
@@ -346,15 +166,9 @@ export const searchPropertySchema = z.object({
       { message: "Invalid accommodation filter. Expected 'tent', 'rv', or 'glamping'" }
     ),
 
-  // Amenity filters (shared amenities)
-  hasToilets: z.coerce.boolean().optional(),
-  hasShowers: z.coerce.boolean().optional(),
-  hasParking: z.coerce.boolean().optional(),
-  hasWifi: z.coerce.boolean().optional(),
-  hasElectricity: z.coerce.boolean().optional(),
-  hasWater: z.coerce.boolean().optional(),
-
   // Amenities (comma-separated string or array of amenity IDs)
+  // Note: Property-level amenity filters removed (hasToilets, hasShowers, hasParking, etc.)
+  // Use amenities array to filter by Site amenities
   amenities: z
     .union([z.string(), z.array(z.string())])
     .optional()
@@ -363,16 +177,7 @@ export const searchPropertySchema = z.object({
       return val;
     }),
 
-  // Activities (comma-separated string or array)
-  activities: z
-    .union([z.string(), z.array(z.string())])
-    .optional()
-    .transform((val) => {
-      if (typeof val === "string") return val.split(",").map((v) => v.trim());
-      return val;
-    }),
-
-  // Policy filters
+  // Policy filters - deprecated, kept for backward compatibility but not used
   allowPets: z.coerce.boolean().optional(),
   allowChildren: z.coerce.boolean().optional(),
   instantBooking: z.coerce.boolean().optional(),

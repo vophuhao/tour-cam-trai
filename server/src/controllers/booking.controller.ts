@@ -23,23 +23,7 @@ export default class BookingController {
     const input = createBookingSchema.parse(req.body);
     const guestId = mongoIdSchema.parse(req.userId);
 
-    // Check if this is an undesignated booking (groupId provided)
-    if (input.groupId) {
-      const booking = await this.bookingService.bookUndesignatedSite(guestId, input.groupId, {
-        property: input.property,
-        checkIn: input.checkIn,
-        checkOut: input.checkOut,
-        numberOfGuests: input.numberOfGuests,
-        numberOfPets: input.numberOfPets,
-        numberOfVehicles: input.numberOfVehicles,
-        guestMessage: input.guestMessage,
-        paymentMethod: input.paymentMethod,
-      });
-
-      return ResponseUtil.created(res, booking, "Đặt chỗ thành công (undesignated site)");
-    }
-
-    // Regular designated booking
+    // Create booking - availability check now handles maxConcurrentBookings automatically
     const booking = await this.bookingService.createBooking(guestId, input);
 
     return ResponseUtil.created(res, booking, "Đặt chỗ thành công");

@@ -17,11 +17,8 @@ export function SiteBasicInfo({ data, onChange }: SiteBasicInfoProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <p className="text-3xl font-semibold text-gray-900 mb-4">
           Thông tin cơ bản về Site
-        </h3>
-        <p className="text-sm text-gray-500 mb-6">
-          Đặt tên và mô tả cho vị trí cắm trại cụ thể này
         </p>
       </div>
 

@@ -1,324 +1,226 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { useMemo } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { DollarSign, Calendar, Users, Car } from "lucide-react";
-import { useState } from "react";
+import { DollarSign, Plus, Trash } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+interface Season {
+  name: string;
+  startDate: Date | string;
+  endDate: Date | string;
+  price: number;
+}
+
+interface Pricing {
+  basePrice: number;
+  weekendPrice?: number;
+  currency: string;
+  weeklyDiscount?: number;
+  monthlyDiscount?: number;
+  additionalGuestFee?: number;
+  petFee?: number;
+  cleaningFee?: number;
+  depositAmount?: number;
+  vehicleFee?: number;
+  seasonalPricing?: Season[];
+}
 
 interface SitePricingProps {
-  data: {
-    basePrice: number;
-    weekendPrice?: number;
-    currency: string;
-    minimumStay: number;
-    maximumStay?: number;
-    extraGuestFee?: number;
-    extraVehicleFee?: number;
-    seasonalPricing?: {
-      enabled: boolean;
-      seasons?: Array<{
-        name: string;
-        startDate: string;
-        endDate: string;
-        price: number;
-      }>;
-    };
-    discounts?: {
-      weekly?: number;
-      monthly?: number;
-    };
-  };
-  onChange: (data: any) => void;
+  data: Pricing;
+  onChange: (next: Pricing) => void;
 }
 
 export function SitePricing({ data, onChange }: SitePricingProps) {
-  const [enableWeekendPricing, setEnableWeekendPricing] = useState(!!data.weekendPrice);
-  const [enableSeasonalPricing, setEnableSeasonalPricing] = useState(
-    data.seasonalPricing?.enabled || false
-  );
+  const pricing: Pricing = useMemo(() => ({
+    basePrice: Number(data?.basePrice ?? 0),
+    weekendPrice: data?.weekendPrice === undefined ? undefined : Number(data.weekendPrice),
+    currency: data?.currency ?? "VND",
+    weeklyDiscount: data?.weeklyDiscount === undefined ? undefined : Number(data.weeklyDiscount),
+    monthlyDiscount: data?.monthlyDiscount === undefined ? undefined : Number(data.monthlyDiscount),
+    additionalGuestFee: data?.additionalGuestFee === undefined ? undefined : Number(data.additionalGuestFee),
+    petFee: data?.petFee === undefined ? undefined : Number(data.petFee),
+    cleaningFee: data?.cleaningFee === undefined ? undefined : Number(data.cleaningFee),
+    depositAmount: data?.depositAmount === undefined ? undefined : Number(data.depositAmount),
+    vehicleFee: data?.vehicleFee === undefined ? undefined : Number(data.vehicleFee),
+    seasonalPricing: Array.isArray(data?.seasonalPricing) ? data.seasonalPricing.map(s => ({
+      name: s.name ?? "",
+      startDate: s.startDate ? (s.startDate instanceof Date ? s.startDate : new Date(s.startDate)) : "",
+      endDate: s.endDate ? (s.endDate instanceof Date ? s.endDate : new Date(s.endDate)) : "",
+      price: Number(s.price ?? 0),
+    })) : [],
+  }), [data]);
+
+  const setField = (k: keyof Pricing, v: any) => onChange({ ...pricing, [k]: v });
+
+  const setNumeric = (k: keyof Pricing, raw: string) => {
+    if (raw === "") {
+      setField(k, undefined);
+      return;
+    }
+    const val = Number(raw);
+    setField(k, typeof val === "number" && !Number.isNaN(val) ? val : undefined);
+  };
+
+  const seasons = pricing.seasonalPricing ?? [];
+
+  const setSeason = (idx: number, patch: Partial<Season>) => {
+    const next = seasons.map((s, i) => i === idx ? { ...s, ...patch } : s);
+    setField("seasonalPricing", next);
+  };
+
+  const addSeason = () => {
+    setField("seasonalPricing", [...seasons, { name: "", startDate: new Date(), endDate: new Date(), price: 0 }]);
+  };
+
+  const removeSeason = (idx: number) => {
+    setField("seasonalPricing", seasons.filter((_, i) => i !== idx));
+  };
+
+  const fmtDate = (d: Date | string) => {
+    if (!d) return "";
+    const dt = d instanceof Date ? d : new Date(d);
+    return dt.toISOString().slice(0, 10);
+  };
 
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Thiết lập giá cho Site
-        </h3>
-        <p className="text-sm text-gray-500 mb-6">
-          Cấu hình giá cả và các khoản phí bổ sung
-        </p>
+        <p className="text-3xl font-semibold text-gray-900 mb-4">Giá & Chiết khấu</p>
       </div>
 
       <div className="space-y-6">
-        {/* Base Pricing */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Giá cơ bản
-            </CardTitle>
-            <CardDescription>
-              Giá mỗi đêm cho site này
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2"><DollarSign className="h-5 w-5" />Giá cơ bản</CardTitle>
+            <CardDescription>Thiết lập giá mỗi đêm và tiền tệ</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="basePrice">
-                Giá cơ bản (VNĐ/đêm) <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="basePrice"
-                type="number"
-                value={data.basePrice}
-                onChange={(e) =>
-                  onChange({ basePrice: parseFloat(e.target.value) })
-                }
-                min="0"
-                step="1000"
-                placeholder="300000"
-                className="mt-1"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Giá áp dụng cho các ngày trong tuần
-              </p>
+              <Label htmlFor="basePrice">Giá cơ bản (VNĐ/đêm) <span className="text-red-500">*</span></Label>
+              <Input id="basePrice" type="number" value={pricing.basePrice ?? 0} onChange={(e) => setNumeric("basePrice", e.target.value)} min={0} step={1000} className="mt-1" />
             </div>
 
-            <div className="flex items-center justify-between border-t pt-4">
-              <div>
-                <Label htmlFor="weekendPricing">Giá cuối tuần khác</Label>
-                <p className="text-xs text-gray-500">
-                  Thiết lập giá riêng cho thứ 7 & Chủ nhật
-                </p>
-              </div>
-              <Switch
-                id="weekendPricing"
-                checked={enableWeekendPricing}
-                onCheckedChange={(checked) => {
-                  setEnableWeekendPricing(checked);
-                  if (!checked) {
-                    onChange({ weekendPrice: undefined });
-                  }
-                }}
-              />
+            <div>
+              <Label htmlFor="currency">Tiền tệ</Label>
+              <Input id="currency" value={pricing.currency} onChange={(e) => setField("currency", e.target.value || "VND")} className="mt-1" />
             </div>
 
-            {enableWeekendPricing && (
-              <div>
-                <Label htmlFor="weekendPrice">Giá cuối tuần (VNĐ/đêm)</Label>
-                <Input
-                  id="weekendPrice"
-                  type="number"
-                  value={data.weekendPrice || data.basePrice}
-                  onChange={(e) =>
-                    onChange({ weekendPrice: parseFloat(e.target.value) })
-                  }
-                  min="0"
-                  step="1000"
-                  className="mt-1"
+            <div className="col-span-2">
+              <div className="flex items-center justify-between border-t pt-4">
+                <div>
+                  <Label>Giá cuối tuần (tùy chọn)</Label>
+                  <p className="text-xs text-gray-500">Giá áp dụng cho thứ 7 & Chủ nhật</p>
+                </div>
+                <Switch
+                  checked={typeof pricing.weekendPrice === "number"}
+                  onCheckedChange={(v) => {
+                    if (!v) setField("weekendPrice", undefined);
+                    else setField("weekendPrice", pricing.basePrice ?? 0);
+                  }}
                 />
               </div>
-            )}
+
+              {typeof pricing.weekendPrice === "number" && (
+                <div className="mt-3">
+                  <Input type="number" value={pricing.weekendPrice ?? 0} onChange={(e) => setNumeric("weekendPrice", e.target.value)} min={0} step={1000} />
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Stay Duration */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Thời gian lưu trú
-            </CardTitle>
+            <CardTitle>Chiết khấu theo thời gian lưu trú</CardTitle>
+            <CardDescription>Khuyến khích khách ở lâu hơn</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="minimumStay">
-                  Số đêm tối thiểu <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="minimumStay"
-                  type="number"
-                  value={data.minimumStay}
-                  onChange={(e) =>
-                    onChange({ minimumStay: parseInt(e.target.value) })
-                  }
-                  min="1"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="maximumStay">Số đêm tối đa</Label>
-                <Input
-                  id="maximumStay"
-                  type="number"
-                  value={data.maximumStay || ""}
-                  onChange={(e) =>
-                    onChange({ maximumStay: parseInt(e.target.value) || undefined })
-                  }
-                  min="1"
-                  placeholder="Không giới hạn"
-                  className="mt-1"
-                />
-              </div>
+          <CardContent className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="weeklyDiscount">Giảm giá theo tuần (%)</Label>
+              <Input id="weeklyDiscount" type="number" value={pricing.weeklyDiscount ?? ""} onChange={(e) => setNumeric("weeklyDiscount", e.target.value)} min={0} max={100} placeholder="10" className="mt-1" />
+              <p className="text-xs text-gray-500 mt-1">Cho đặt 7 đêm trở lên</p>
+            </div>
+            <div>
+              <Label htmlFor="monthlyDiscount">Giảm giá theo tháng (%)</Label>
+              <Input id="monthlyDiscount" type="number" value={pricing.monthlyDiscount ?? ""} onChange={(e) => setNumeric("monthlyDiscount", e.target.value)} min={0} max={100} placeholder="20" className="mt-1" />
+              <p className="text-xs text-gray-500 mt-1">Cho đặt 30 đêm trở lên</p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Extra Fees */}
         <Card>
           <CardHeader>
             <CardTitle>Phí bổ sung</CardTitle>
-            <CardDescription>
-              Phí cho khách hoặc xe phụ trội
-            </CardDescription>
+            <CardDescription>Phí khách thêm, xe, dọn dẹp, deposit, thú cưng</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="extraGuestFee" className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Phí khách thêm (VNĐ/người/đêm)
-                </Label>
-                <Input
-                  id="extraGuestFee"
-                  type="number"
-                  value={data.extraGuestFee || ""}
-                  onChange={(e) =>
-                    onChange({ extraGuestFee: parseFloat(e.target.value) || undefined })
-                  }
-                  min="0"
-                  step="1000"
-                  placeholder="0"
-                  className="mt-1"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Áp dụng khi số khách vượt sức chứa cơ bản
-                </p>
-              </div>
-              <div>
-                <Label htmlFor="extraVehicleFee" className="flex items-center gap-2">
-                  <Car className="h-4 w-4" />
-                  Phí xe thêm (VNĐ/xe/đêm)
-                </Label>
-                <Input
-                  id="extraVehicleFee"
-                  type="number"
-                  value={data.extraVehicleFee || ""}
-                  onChange={(e) =>
-                    onChange({ extraVehicleFee: parseFloat(e.target.value) || undefined })
-                  }
-                  min="0"
-                  step="1000"
-                  placeholder="0"
-                  className="mt-1"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Phí cho mỗi xe vượt giới hạn
-                </p>
-              </div>
+          <CardContent className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="additionalGuestFee">Phí khách thêm (VNĐ/người/đêm)</Label>
+              <Input id="additionalGuestFee" type="number" value={pricing.additionalGuestFee ?? ""} onChange={(e) => setNumeric("additionalGuestFee", e.target.value)} min={0} className="mt-1" />
+            </div>
+
+            <div>
+              <Label htmlFor="vehicleFee">Phí xe (VNĐ/xe/đêm)</Label>
+              <Input id="vehicleFee" type="number" value={pricing.vehicleFee ?? ""} onChange={(e) => setNumeric("vehicleFee", e.target.value)} min={0} className="mt-1" />
+            </div>
+
+            <div>
+              <Label htmlFor="cleaningFee">Phí dọn dẹp (VNĐ)</Label>
+              <Input id="cleaningFee" type="number" value={pricing.cleaningFee ?? ""} onChange={(e) => setNumeric("cleaningFee", e.target.value)} min={0} className="mt-1" />
+            </div>
+
+            <div>
+              <Label htmlFor="depositAmount">Số tiền đặt cọc (VNĐ)</Label>
+              <Input id="depositAmount" type="number" value={pricing.depositAmount ?? ""} onChange={(e) => setNumeric("depositAmount", e.target.value)} min={0} className="mt-1" />
+            </div>
+
+            <div>
+              <Label htmlFor="petFee">Phí thú cưng (VNĐ)</Label>
+              <Input id="petFee" type="number" value={pricing.petFee ?? ""} onChange={(e) => setNumeric("petFee", e.target.value)} min={0} className="mt-1" />
             </div>
           </CardContent>
         </Card>
 
-        {/* Discounts */}
         <Card>
           <CardHeader>
-            <CardTitle>Giảm giá theo thời gian lưu trú</CardTitle>
-            <CardDescription>
-              Khuyến khích khách ở lâu hơn
-            </CardDescription>
+            <CardTitle>Giá theo mùa</CardTitle>
+            <CardDescription>Thiết lập giá khác nhau cho từng mùa trong năm</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="weeklyDiscount">Giảm giá theo tuần (%)</Label>
-                <Input
-                  id="weeklyDiscount"
-                  type="number"
-                  value={data.discounts?.weekly || ""}
-                  onChange={(e) =>
-                    onChange({
-                      discounts: {
-                        ...data.discounts,
-                        weekly: parseFloat(e.target.value) || undefined,
-                      },
-                    })
-                  }
-                  min="0"
-                  max="100"
-                  placeholder="10"
-                  className="mt-1"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Cho đặt 7 đêm trở lên
-                </p>
-              </div>
-              <div>
-                <Label htmlFor="monthlyDiscount">Giảm giá theo tháng (%)</Label>
-                <Input
-                  id="monthlyDiscount"
-                  type="number"
-                  value={data.discounts?.monthly || ""}
-                  onChange={(e) =>
-                    onChange({
-                      discounts: {
-                        ...data.discounts,
-                        monthly: parseFloat(e.target.value) || undefined,
-                      },
-                    })
-                  }
-                  min="0"
-                  max="100"
-                  placeholder="20"
-                  className="mt-1"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Cho đặt 30 đêm trở lên
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <div className="space-y-3">
+              {seasons.length === 0 && <p className="text-sm text-gray-500">Chưa có mùa nào.</p>}
+              {seasons.map((s, i) => (
+                <div key={i} className="grid grid-cols-6 gap-2 items-end border p-2 rounded">
+                  <div className="col-span-2">
+                    <Label>Tên mùa</Label>
+                    <Input value={s.name ?? ""} onChange={(e) => setSeason(i, { name: e.target.value })} placeholder="Mùa cao điểm" />
+                  </div>
+                  <div>
+                    <Label>Bắt đầu</Label>
+                    <Input type="date" value={fmtDate(s.startDate)} onChange={(e) => setSeason(i, { startDate: new Date(e.target.value) })} />
+                  </div>
+                  <div>
+                    <Label>Kết thúc</Label>
+                    <Input type="date" value={fmtDate(s.endDate)} onChange={(e) => setSeason(i, { endDate: new Date(e.target.value) })} />
+                  </div>
+                  <div>
+                    <Label>Giá (VNĐ)</Label>
+                    <Input type="number" value={s.price ?? 0} onChange={(e) => setSeason(i, { price: Number(e.target.value || 0) })} min={0} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="destructive" onClick={() => removeSeason(i)}><Trash className="h-4 w-4" /></Button>
+                  </div>
+                </div>
+              ))}
 
-        {/* Price Preview */}
-        <Card className="bg-emerald-50 border-emerald-200">
-          <CardHeader>
-            <CardTitle className="text-emerald-900">Xem trước giá</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-700">1 đêm (thứ 2-6):</span>
-                <span className="font-semibold text-emerald-900">
-                  {data.basePrice.toLocaleString("vi-VN")} VNĐ
-                </span>
+              <div>
+                <Button size="sm" variant="ghost" onClick={addSeason}><Plus className="h-4 w-4 mr-1" /> Thêm mùa</Button>
               </div>
-              {enableWeekendPricing && data.weekendPrice && (
-                <div className="flex justify-between">
-                  <span className="text-gray-700">1 đêm (cuối tuần):</span>
-                  <span className="font-semibold text-emerald-900">
-                    {data.weekendPrice.toLocaleString("vi-VN")} VNĐ
-                  </span>
-                </div>
-              )}
-              {data.discounts?.weekly && (
-                <div className="flex justify-between border-t pt-2">
-                  <span className="text-gray-700">7 đêm (giảm {data.discounts.weekly}%):</span>
-                  <span className="font-semibold text-emerald-900">
-                    {(data.basePrice * 7 * (1 - data.discounts.weekly / 100)).toLocaleString("vi-VN")} VNĐ
-                  </span>
-                </div>
-              )}
-              {data.discounts?.monthly && (
-                <div className="flex justify-between">
-                  <span className="text-gray-700">30 đêm (giảm {data.discounts.monthly}%):</span>
-                  <span className="font-semibold text-emerald-900">
-                    {(data.basePrice * 30 * (1 - data.discounts.monthly / 100)).toLocaleString("vi-VN")} VNĐ
-                  </span>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>

@@ -1,6 +1,5 @@
 import { ErrorFactory } from "@/errors";
 import {
-  AmenityModel,
   BookingModel,
   PropertyModel,
   ReviewModel,
@@ -43,9 +42,10 @@ export class PropertyService {
   async getProperty(idOrSlug: string): Promise<PropertyDocument> {
     const query = isValidObjectId(idOrSlug) ? { _id: idOrSlug } : { slug: idOrSlug };
 
-    const property = await PropertyModel.findOne(query)
-      .populate("host", "name email avatar phoneNumber")
-      .populate("activities");
+    const property = await PropertyModel.findOne(query).populate(
+      "host",
+      "name email avatar phoneNumber"
+    );
 
     appAssert(property, ErrorFactory.resourceNotFound("Property"));
 
@@ -170,17 +170,7 @@ export class PropertyService {
       radius,
       propertyType,
       campingStyle,
-      terrain,
-      hasToilets,
-      hasShowers,
-      hasParking,
-      hasWifi,
-      hasElectricity,
-      hasWater,
       amenities,
-      activities,
-      allowPets,
-      allowChildren,
       instantBooking,
       instantBook, // Alias from frontend
       isActive,
@@ -239,111 +229,47 @@ export class PropertyService {
       query.propertyType = { $in: propertyType };
     }
 
-    // Terrain filter
-    if (terrain && terrain.length > 0) {
-      query.terrain = { $in: terrain };
-    }
-
-    // Shared amenity filters - Property level
-    // Note: toilets/showers have 'type' field, not 'available'
-    if (hasToilets) {
-      query["sharedAmenities.toilets.type"] = { $ne: "none" };
-    }
-    if (hasShowers) {
-      query["sharedAmenities.showers.type"] = { $ne: "none" };
-    }
-    if (hasParking) {
-      // parkingType exists = has parking
-      query["sharedAmenities.parkingType"] = { $exists: true };
-    }
-    if (hasWifi) {
-      query["sharedAmenities.wifi"] = true;
-    }
-    if (hasElectricity) {
-      query["sharedAmenities.electricityAvailable"] = true;
-    }
-    if (hasWater) {
-      // potableWater is boolean
-      query["sharedAmenities.potableWater"] = true;
-    }
+    // Note: Amenity filters like hasToilets, hasShowers, hasParking, hasWifi, hasElectricity, hasWater
+    // are no longer applicable at Property level since sharedAmenities field was removed.
+    // These filters should be handled at Site level instead.
 
     // Amenities filter - CRITICAL ARCHITECTURE NOTE:
-    // - Property model has NO 'amenities' array field
-    // - Only 'activities' (Activity IDs) at property level
-    // - Amenities are embedded in Site model as boolean/object fields
-    // - Strategy: Query Sites with matching amenities, get Property IDs
+    // - Property model has NO 'amenities' field
+    // - Amenities are stored at Site level as ObjectId[] refs to Amenity model
+    // - Strategy: Query Sites with matching amenity IDs, get Property IDs
     let amenityPropertyIds: mongoose.Types.ObjectId[] | undefined;
     if (amenities && amenities.length > 0) {
-      // Fetch amenity details from Amenity collection to get their names
-      const amenityDocs = await AmenityModel.find({
-        _id: { $in: amenities.filter((id) => isValidObjectId(id)) },
+      // Query sites that have any of the requested amenities
+      const sitesWithAmenities = await SiteModel.find({
+        amenities: { $in: amenities.filter((id) => isValidObjectId(id)) },
         isActive: true,
-      }).select("name");
+      })
+        .select("property")
+        .lean();
 
-      const amenityNames = amenityDocs.map((a) => a.name.toLowerCase());
+      amenityPropertyIds = [...new Set(sitesWithAmenities.map((s) => s.property))];
 
-      // Map amenity names to Site amenity fields
-      const siteAmenityQuery: any = { isActive: true };
+      // If no sites match, return empty results
+      if (amenityPropertyIds.length === 0) {
+        return {
+          properties: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            pages: 0,
+          },
+        };
+      }
 
-      // Common amenity name to Site field mappings
-      const amenityFieldMap: Record<string, string> = {
-        wifi: "amenities.wifi",
-        "wi-fi": "amenities.wifi",
-        internet: "amenities.wifi",
-        electricity: "amenities.electrical.available",
-        electric: "amenities.electrical.available",
-        electrical: "amenities.electrical.available",
-        power: "amenities.electrical.available",
-        water: "amenities.water.hookup",
-        "water hookup": "amenities.water.hookup",
-        sewer: "amenities.sewer.hookup",
-        "sewer hookup": "amenities.sewer.hookup",
-        "fire pit": "amenities.firePit",
-        firepit: "amenities.firePit",
-        "fire ring": "amenities.fireRing",
-        firering: "amenities.fireRing",
-        "private bathroom": "amenities.privateBathroom.available",
-        bathroom: "amenities.privateBathroom.available",
-        toilet: "amenities.privateBathroom.toilet",
-        shower: "amenities.privateBathroom.shower",
-        heating: "amenities.climateControl.heating",
-        heat: "amenities.climateControl.heating",
-        "air conditioning": "amenities.climateControl.airConditioning",
-        ac: "amenities.climateControl.airConditioning",
-        "a/c": "amenities.climateControl.airConditioning",
-        tv: "amenities.tv",
-        television: "amenities.tv",
-        kitchen: "amenities.kitchen.available",
-        "picnic table": "amenities.furniture",
-        grill: "amenities.furniture",
-        "wheelchair accessible": "amenities.wheelchairAccessible",
-        accessible: "amenities.accessible",
-      };
+      // Add to query - merge with existing _id filter if present
+      if (query._id) {
+        // Merge with existing filters
+        const existingIds = query._id.$in || [];
+        query._id = { $in: existingIds.filter((id: any) => amenityPropertyIds!.includes(id)) };
 
-      // Build OR condition for any matching amenity
-      const amenityConditions: any[] = [];
-
-      amenityNames.forEach((name) => {
-        const field = amenityFieldMap[name];
-        if (field) {
-          if (field === "amenities.furniture") {
-            // For furniture, check if array includes the item
-            amenityConditions.push({ [field]: { $in: [name] } });
-          } else {
-            amenityConditions.push({ [field]: true });
-          }
-        }
-      });
-
-      if (amenityConditions.length > 0) {
-        siteAmenityQuery.$or = amenityConditions;
-
-        const sitesWithAmenities = await SiteModel.find(siteAmenityQuery).select("property").lean();
-
-        amenityPropertyIds = [...new Set(sitesWithAmenities.map((s) => s.property))];
-
-        // If no sites match, return empty results
-        if (amenityPropertyIds.length === 0) {
+        // If no overlap, return empty
+        if (query._id.$in.length === 0) {
           return {
             properties: [],
             pagination: {
@@ -354,34 +280,9 @@ export class PropertyService {
             },
           };
         }
-
-        // Add to query - merge with existing _id filter if present
-        if (query._id) {
-          // Merge with existing accommodation filter
-          const existingIds = query._id.$in || [];
-          query._id = { $in: existingIds.filter((id: any) => amenityPropertyIds!.includes(id)) };
-
-          // If no overlap, return empty
-          if (query._id.$in.length === 0) {
-            return {
-              properties: [],
-              pagination: {
-                page,
-                limit,
-                total: 0,
-                pages: 0,
-              },
-            };
-          }
-        } else {
-          query._id = { $in: amenityPropertyIds };
-        }
+      } else {
+        query._id = { $in: amenityPropertyIds };
       }
-    }
-
-    // Activities filter
-    if (activities && activities.length > 0) {
-      query.activities = { $in: activities };
     }
 
     // Date range & capacity availability filter
@@ -612,9 +513,8 @@ export class PropertyService {
       }
     }
 
-    // Policy filters
-    if (allowPets !== undefined) query["petPolicy.allowed"] = allowPets;
-    if (allowChildren !== undefined) query["childrenPolicy.allowed"] = allowChildren;
+    // Note: Pet and children policies removed from Property model
+    // These filters are no longer applicable at property level
 
     // InstantBooking filter - check if property has instant booking enabled
     // OR if it has at least one site with instant booking
@@ -723,14 +623,6 @@ export class PropertyService {
         },
         { $unwind: { path: "$host", preserveNullAndEmptyArrays: true } },
         {
-          $lookup: {
-            from: "activities",
-            localField: "activities",
-            foreignField: "_id",
-            as: "activities",
-          },
-        },
-        {
           $project: {
             sites: 0, // Remove sites array to avoid bloat
             "host.password": 0,
@@ -762,7 +654,6 @@ export class PropertyService {
         .skip(skip)
         .limit(limit)
         .populate("host", "name avatar")
-        .populate("activities", "name icon")
         .lean(),
       PropertyModel.countDocuments(query),
     ]);
@@ -937,7 +828,6 @@ export class PropertyService {
       .sort({ "rating.average": -1 })
       .limit(limit)
       .populate("host", "name avatar")
-      .populate("activities", "name icon")
       .lean();
   }
 

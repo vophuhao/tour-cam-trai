@@ -47,4 +47,5 @@ propertyRoutes.delete("/:id", authenticate, propertyController.deleteProperty);
 propertyRoutes.post("/:id/activate", authenticate, propertyController.activateProperty);
 propertyRoutes.post("/:id/deactivate", authenticate, propertyController.deactivateProperty);
 
+
 export default propertyRoutes;
