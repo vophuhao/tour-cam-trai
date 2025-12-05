@@ -23,7 +23,7 @@ export const createPropertySchema = z.object({
   name: z.string().min(3).max(200),
   slug: z.string().min(3).max(200).optional(),
   tagline: z.string().min(10).max(200).optional(),
-  description: z.string().min(50).max(5000),
+  description: z.string().min(0).max(5000),
 
   // Location
   location: z.object({

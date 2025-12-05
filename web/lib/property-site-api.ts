@@ -254,7 +254,8 @@ export async function getMyProperties(
   page = 1,
   limit = 10,
 ): Promise<PropertyListResponse> {
-  return apiClient.get(`/properties/my-properties?page=${page}&limit=${limit}`);
+  // return apiClient.get(`/properties/my-properties?page=${page}&limit=${limit}`);
+  return apiClient.get(`/properties/my/list`);
 }
 
 /**
@@ -423,7 +424,7 @@ export async function calculateSitePricing(
 /**
  * Create a new site (host only)
  */
-export async function createSite(data: Partial<Site>): Promise<Site> {
+export async function createSite( data: Partial<Site>): Promise<Site> {
   return apiClient.post('/sites', data);
 }
 
@@ -440,7 +441,7 @@ export async function updateSite(
 /**
  * Delete site (host only)
  */
-export async function deleteSite(id: string): Promise<{ message: string }> {
+export async function deleteSite(id: string, siteToDelete?: string): Promise<{ message: string }> {
   return apiClient.delete(`/sites/${id}`);
 }
 

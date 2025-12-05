@@ -51,8 +51,8 @@ const pricingSchema = z.object({
 
 // Booking settings sub-schema
 const bookingSettingsSchema = z.object({
-  minNights: z.number().int().min(1).default(1),
-  maxNights: z.number().int().min(1).optional(),
+  minimumNights: z.number().int().min(1).default(1),
+  maximumNights: z.number().int().min(1).optional(),
   checkInTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/), // HH:MM format
   checkOutTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
   allowInstantBook: z.boolean().default(false),
@@ -67,7 +67,7 @@ export const createSiteSchema = z.object({
   // Basic Info
   name: z.string().min(2).max(200),
   slug: z.string().min(2).max(200).optional(),
-  description: z.string().min(20).max(3000).optional(),
+  description: z.string().max(2000).optional(),
 
   // Accommodation Type
   accommodationType: z.enum([
@@ -105,13 +105,54 @@ export const createSiteSchema = z.object({
   terrain: z.enum(["forest", "beach", "mountain", "desert", "farm"]).optional(),
 
   // Capacity
-  capacity: capacitySchema,
+  capacity: z.object({
+    maxGuests: z.number().int().min(1),
+    maxAdults: z.number().int().min(0).optional(),
+    maxChildren: z.number().int().min(0).optional(),
+    maxInfants: z.number().int().min(0).optional(),
+    maxPets: z.number().int().min(0).optional(),
+    maxVehicles: z.number().int().min(0).optional(),
+    maxTents: z.number().int().min(0).optional(),
+    maxRVs: z.number().int().min(0).optional(),
+    rvMaxLength: z.number().min(0).optional(),
+    maxConcurrentBookings: z.number().int().min(1).max(100).default(1),
+  }),
 
   // Pricing
-  pricing: pricingSchema,
+  pricing: z.object({
+    basePrice: z.number().min(0),
+    weekendPrice: z.number().min(0).optional(),
+    weeklyDiscount: z.number().min(0).max(100).optional(),
+    monthlyDiscount: z.number().min(0).max(100).optional(),
+    additionalGuestFee: z.number().min(0).optional(),
+    petFee: z.number().min(0).optional(),
+    vehicleFee: z.number().min(0).optional(),
+    cleaningFee: z.number().min(0).optional(),
+    depositAmount: z.number().min(0).optional(),
+    currency: z.string().default("VND"),
+    seasonalPricing: z
+      .array(
+        z.object({
+          name: z.string(),
+          startDate: z.coerce.date(),
+          endDate: z.coerce.date(),
+          price: z.number().min(0),
+        })
+      )
+      .optional(),
+  }),
 
   // Booking Settings
-  bookingSettings: bookingSettingsSchema,
+  bookingSettings: z.object({
+    minimumNights: z.number().int().min(1).default(1),
+    maximumNights: z.number().int().min(1).optional(),
+    checkInTime: z.string().default("14:00"),
+    checkOutTime: z.string().default("11:00"),
+    instantBook: z.boolean().default(false),
+    advanceNotice: z.number().min(0).default(24),
+    preparationTime: z.number().min(0).optional(),
+    allowSameDayBooking: z.boolean().default(false),
+  }),
 
   // Photos
   photos: z
@@ -135,9 +176,12 @@ export const createSiteSchema = z.object({
   siteSpecificRules: z.array(z.string().max(500)).optional(),
 
   // Status
+  status: z.enum(["active", "inactive", "maintenance", "suspended"]).default("active"),
   isActive: z.boolean().default(true),
   isAvailableForBooking: z.boolean().default(true),
+  unavailableReason: z.string().max(500).optional(),
 });
+
 
 export const updateSiteSchema = createSiteSchema.partial();
 

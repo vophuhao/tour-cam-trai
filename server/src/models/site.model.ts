@@ -190,7 +190,7 @@ const siteSchema = new mongoose.Schema<SiteDocument>(
     lodgingProvided: {
       type: String,
       enum: ["bring_your_own", "structure_provided", "vehicle_provided"],
-      required: true,
+      required: false,
     },
 
     // Site Location
@@ -202,6 +202,7 @@ const siteSchema = new mongoose.Schema<SiteDocument>(
       mapPinLabel: { type: String, maxlength: 50 },
       relativeDescription: { type: String, maxlength: 200 },
     },
+    
     terrain: { type: String, enum: ["forest", "beach", "mountain", "desert", "farm"] },
 
     // Capacity

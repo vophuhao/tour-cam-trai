@@ -60,6 +60,8 @@ interface Amenity {
 }
 
 export interface Property {
+  [x: string]: boolean;
+  [x: string]: any;
   _id: string;
   host: string | User;
   name: string;
@@ -179,6 +181,8 @@ export interface SiteRating {
 }
 
 export interface Site {
+  [x: string]: any;
+  [x: string]: string;
   _id: string;
   property: string | Property;
   name: string;
@@ -383,6 +387,7 @@ export interface SiteSearchFilters {
  */
 
 export interface PropertyListResponse {
+  data: any;
   properties: Property[];
   pagination: {
     page: number;
@@ -395,6 +400,8 @@ export interface PropertyListResponse {
 }
 
 export interface SiteListResponse {
+  [x: string]: any;
+  [x: string]: any;
   sites: Site[];
   pagination: {
     page: number;

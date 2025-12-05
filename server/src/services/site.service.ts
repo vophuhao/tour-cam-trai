@@ -115,7 +115,6 @@ export class SiteService {
     if (input.name && input.name !== site.name) {
       input.slug = this.generateSlug(input.name);
     }
-
     Object.assign(site, input);
     await site.save();
 
