@@ -36,10 +36,8 @@ export const createPropertySchema = z.object({
       type: z.literal("Point").default("Point"),
       coordinates: z.tuple([z.number(), z.number()]), // [lng, lat]
     }),
-    accessInstructions: z.string().max(2000).optional(),
-    gettingThere: z.string().max(2000).optional(),
-    nearestTown: z.string().max(100).optional(),
-    distanceToTown: z.number().min(0).optional(), // km
+    directions: z.string().max(1000).optional(),
+    parkingInstructions: z.string().max(500).optional(),
   }),
 
   // Property Details
@@ -100,9 +98,10 @@ export const createPropertySchema = z.object({
       allowWholePropertyBooking: z.boolean().default(false),
     })
     .optional(),
+  status: z.enum(["active", "inactive", "pending_approval", "suspended"]).default("active"),
 
   // Status
-  isActive: z.boolean().default(false),
+  isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   isVerified: z.boolean().default(false),
 });

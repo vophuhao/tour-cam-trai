@@ -85,7 +85,7 @@ export class PropertyService {
   ): Promise<PropertyDocument> {
     const property = await PropertyModel.findById(propertyId);
     appAssert(property, ErrorFactory.resourceNotFound("Property"));
-
+    console.log( input);
     // Check ownership unless admin
     if (!isAdmin) {
       appAssert(

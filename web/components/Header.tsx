@@ -61,9 +61,8 @@ export default function Header() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`hover:text-primary text-sm font-medium transition-colors ${
-                    isActive ? 'text-primary' : 'text-foreground/60'
-                  }`}
+                  className={`hover:text-primary text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-foreground/60'
+                    }`}
                 >
                   {item.name}
                 </Link>
@@ -73,7 +72,7 @@ export default function Header() {
 
           {/* Desktop Actions */}
           <div className="hidden items-center gap-3 md:flex">
-            {/* Shopping Cart */}
+            {/* Shopping Cart
             <Button
               onClick={() => router.push('/cart')}
               variant="ghost"
@@ -86,27 +85,49 @@ export default function Header() {
                   {cartCount > 99 ? '99+' : cartCount}
                 </span>
               )}
-            </Button>
+            </Button> */}
 
             {/* User Menu */}
             {isAuthenticated && user ? (
               <div className="flex items-center gap-2">
                 {user.role === 'admin' && (
                   <Link href="/admin">
-                    <Button variant="outline" size="sm">
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                    <Button variant="outline" className='cursor-pointer' size="sm">
+                      {/* <LayoutDashboard className="mr-2 h-4 w-4" /> */}
                       Admin
                     </Button>
                   </Link>
                 )}
                 {user.role === 'host' && (
                   <Link href="/host">
-                    <Button variant="outline" size="sm">
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                    <Button variant="outline" className='cursor-pointer' size="sm">
+                      {/* <LayoutDashboard className="mr-2 h-4 w-4" /> */}
                       Host
                     </Button>
                   </Link>
                 )}
+                { user.role === 'user' && (
+                   <Link href="/become-host">
+                    <Button variant="outline" className='cursor-pointer' size="sm">
+                      {/* <LayoutDashboard className="mr-2 h-4 w-4" /> */}
+                      Become Host
+                    </Button>
+                  </Link>
+                  )}
+                <Button
+                  onClick={() => router.push('/cart')}
+                  variant="ghost"
+                  size="icon"
+                  className="relative cursor-pointer"
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  {cartCount > 0 && (
+                    <span className="bg-primary flex-center absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs text-white">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
+                </Button>
+
                 <div onClick={() => router.push(`/u/${user.username}`)} className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer">
                   <User className="h-4 w-4" />
                   {/* <span className="text-sm font-medium">{user.username}</span> */}
@@ -162,11 +183,10 @@ export default function Header() {
                   key={item.name}
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`block rounded-md px-3 py-2 text-base font-medium transition-colors ${
-                    isActive
+                  className={`block rounded-md px-3 py-2 text-base font-medium transition-colors ${isActive
                       ? 'bg-primary/10 text-primary'
                       : 'text-foreground/60 hover:text-primary hover:bg-gray-100'
-                  }`}
+                    }`}
                 >
                   {item.name}
                 </Link>

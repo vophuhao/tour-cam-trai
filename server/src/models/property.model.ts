@@ -48,7 +48,7 @@ export interface PropertyDocument extends mongoose.Document {
     type: string; // "national_park", "lake", "town", "restaurant"
   }>;
 
-  // Property Rules & Policies
+ 
   rules?: Array<{
     text: string;
     category: "pets" | "noise" | "fire" | "general";

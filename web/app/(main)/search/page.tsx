@@ -1,75 +1,99 @@
-import { CampsiteList } from '@/components/search/campsite-list';
-import { SearchHeader } from '@/components/search/search-header';
+import { PropertyGrid } from '@/components/search/property-grid';
+import { PropertySearchHeader } from '@/components/search/property-search-header';
 import { Loader2 } from 'lucide-react';
 import { Suspense } from 'react';
 
-interface Amenity {
-  _id: string;
-  name: string;
-  icon?: string;
-  category?: string;
-  isActive?: boolean;
+interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  data: T;
 }
 
 interface SearchPageProps {
-  searchParams: Promise<SearchCampsiteParams>;
+  searchParams: Promise<{
+    city?: string;
+    checkIn?: string;
+    checkOut?: string;
+    guests?: string;
+    pets?: string;
+    minPrice?: string;
+    maxPrice?: string;
+    campingStyle?: string | string[]; // Can be string or array from URL
+    amenities?: string | string[]; // Amenity IDs
+    instantBook?: string;
+    sort?: string;
+    lat?: string;
+    lng?: string;
+    radius?: string;
+    page?: string;
+    limit?: string;
+  }>;
 }
 
-// Fetch amenities for filters
-async function fetchAmenities(): Promise<Amenity[]> {
+// Server Component - fetches data with automatic caching
+async function fetchProperties(
+  params: Record<string, string | number | string[] | boolean | undefined>,
+) {
   try {
+    // Build query string from params
+    const queryParams = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (Array.isArray(value)) {
+          queryParams.append(key, value.join(','));
+        } else if (typeof value === 'boolean') {
+          // Convert boolean to string for URL params
+          queryParams.append(key, value.toString());
+        } else {
+          queryParams.append(key, String(value));
+        }
+      }
+    });
+
+    // Use native fetch for Server Components (not axios)
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/amenities`,
+      `${process.env.NEXT_PUBLIC_API_URL}/properties/search?${queryParams.toString()}`,
       {
-        cache: 'force-cache', // Cache amenities as they don't change often
-        next: { revalidate: 3600 }, // Revalidate every hour
+        cache: 'no-store', // Don't cache search results
+        headers: {
+          'Content-Type': 'application/json',
+        },
       },
     );
 
     if (!response.ok) {
-      return [];
+      console.error('API Error:', response.status, response.statusText);
+      return {
+        properties: [],
+        pagination: {
+          page: 1,
+          limit: 20,
+          total: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false,
+        },
+      };
     }
 
-    const result: ApiResponse<Amenity[]> = await response.json();
-    return result.data || [];
-  } catch (error) {
-    console.error('Failed to fetch amenities:', error);
-    return [];
-  }
-}
+    const result = await response.json();
 
-// Server Component - fetches data with automatic caching
-async function fetchCampsites(
-  params: SearchCampsiteParams,
-): Promise<PaginatedResponse<Campsite>> {
-  const queryString = new URLSearchParams(
-    Object.entries(params || {}).reduce(
-      (acc, [key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          if (Array.isArray(value)) {
-            acc[key] = value.join(',');
-          } else {
-            acc[key] = String(value);
-          }
-        }
-        return acc;
-      },
-      {} as Record<string, string>,
-    ),
-  ).toString();
-
-  const url = `${process.env.NEXT_PUBLIC_API_URL}/campsites${queryString ? `?${queryString}` : ''}`;
-
-  const response = await fetch(url, {
-    cache: 'no-store', // Use 'force-cache' for static, 'no-store' for dynamic
-  });
-
-  if (!response.ok) {
     return {
-      success: false,
-      message: 'Failed to fetch campsites',
-      timestamp: new Date().toISOString(),
-      data: [],
+      properties: result.data || [],
+      pagination: result.pagination || {
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false,
+      },
+    };
+  } catch (error) {
+    console.error('Failed to fetch properties:', error);
+    return {
+      properties: [],
       pagination: {
         page: 1,
         limit: 20,
@@ -80,8 +104,6 @@ async function fetchCampsites(
       },
     };
   }
-
-  return response.json();
 }
 
 // Loading component
@@ -94,49 +116,60 @@ function SearchLoading() {
 }
 
 // Main Server Component
-export default async function SearchPage({ searchParams }: SearchPageProps) {
+export default async function PropertySearchPage({
+  searchParams,
+}: SearchPageProps) {
+  return (
+    <div className="flex flex-col">
+      <Suspense fallback={null}>
+        <PropertySearchHeader />
+      </Suspense>
+
+      <Suspense fallback={<SearchLoading />}>
+        <PropertySearchContent searchParams={searchParams} />
+      </Suspense>
+    </div>
+  );
+}
+
+// Separate async component for content
+async function PropertySearchContent({ searchParams }: SearchPageProps) {
   const params = await searchParams;
 
   // Parse and normalize search params
-  const normalizedParams: SearchCampsiteParams = {
-    search: params.search,
+  const normalizedParams = {
     city: params.city,
-    state: params.state,
-    lat: params.lat ? Number(params.lat) : undefined,
-    lng: params.lng ? Number(params.lng) : undefined,
-    radius: params.radius ? Number(params.radius) : undefined,
-    propertyType: params.propertyType,
-    minGuests: params.minGuests ? Number(params.minGuests) : undefined,
-    minPrice: params.minPrice ? Number(params.minPrice) : undefined,
-    maxPrice: params.maxPrice ? Number(params.maxPrice) : undefined,
+    checkIn: params.checkIn,
+    checkOut: params.checkOut,
+    guests: params.guests ? parseInt(params.guests) : undefined,
+    pets: params.pets ? parseInt(params.pets) : undefined,
+    minPrice: params.minPrice ? parseFloat(params.minPrice) : undefined,
+    maxPrice: params.maxPrice ? parseFloat(params.maxPrice) : undefined,
+    // Handle campingStyle - can be string or string[] from URL
+    campingStyle: params.campingStyle
+      ? Array.isArray(params.campingStyle)
+        ? params.campingStyle
+        : params.campingStyle.split(',').filter(Boolean)
+      : undefined,
+    // Handle amenities - can be string or string[] from URL
     amenities: params.amenities
       ? Array.isArray(params.amenities)
         ? params.amenities
-        : params.amenities.split(',')
+        : params.amenities.split(',').filter(Boolean)
       : undefined,
-    activities: params.activities
-      ? Array.isArray(params.activities)
-        ? params.activities
-        : params.activities.split(',')
-      : undefined,
-    allowPets: params.allowPets ? params.allowPets === 'true' : undefined,
-    isInstantBook: params.isInstantBook
-      ? params.isInstantBook === 'true'
-      : undefined,
-    checkIn: params.checkIn,
-    checkOut: params.checkOut,
-    sort: params.sort,
-    page: params.page ? Number(params.page) : 1,
-    limit: params.limit ? Number(params.limit) : 20,
+    instantBook: params.instantBook === 'true' ? true : undefined,
+    sortBy: params.sort || 'reviewCount', // Backend expects 'sortBy' param
+    lat: params.lat ? parseFloat(params.lat) : undefined,
+    lng: params.lng ? parseFloat(params.lng) : undefined,
+    radius: params.radius ? parseFloat(params.radius) : undefined,
+    page: params.page ? parseInt(params.page) : 1,
+    limit: params.limit ? parseInt(params.limit) : 20,
   };
 
-  // Fetch data on server with automatic caching
-  const [response, amenities] = await Promise.all([
-    fetchCampsites(normalizedParams),
-    fetchAmenities(),
-  ]);
-  const campsites = response.data || [];
-  const totalResults = response.pagination?.total || 0;
+  // Fetch data on server
+  const response = await fetchProperties(normalizedParams);
+  const properties = response.properties;
+  const totalResults = response.pagination.total;
 
   // Extract search coordinates if available
   const searchCoordinates =
@@ -145,21 +178,12 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       : null;
 
   return (
-    <div className="flex flex-col">
-      <Suspense fallback={null}>
-        <SearchHeader amenities={amenities} />
-      </Suspense>
-
-      {/* Main Content with Suspense */}
-      <div className="w-full">
-        <Suspense fallback={<SearchLoading />}>
-          <CampsiteList
-            initialCampsites={campsites}
-            totalResults={totalResults}
-            searchCoordinates={searchCoordinates}
-          />
-        </Suspense>
-      </div>
+    <div className="w-full">
+      <PropertyGrid
+        initialProperties={properties}
+        totalResults={totalResults}
+        searchCoordinates={searchCoordinates}
+      />
     </div>
   );
 }
