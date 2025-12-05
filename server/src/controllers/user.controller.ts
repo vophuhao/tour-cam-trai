@@ -62,15 +62,15 @@ export default class UserController {
     appAssert(q, ErrorFactory.badRequest('Thiếu từ khóa tìm kiếm'));
 
     const query = String(q).trim();
-    
+
     // Tìm kiếm theo username, full_name, email
     const users = await UserModel.find({
-      _id: { $ne: userId }, 
-      role : "host",
+      _id: { $ne: userId },
+      role: "host",
       $or: [
         { username: { $regex: query, $options: 'i' } },
         { email: { $regex: query, $options: 'i' } },
-        { role : "host" },
+        { role: "host" },
       ],
     })
       .select('username  avatar email')
@@ -86,7 +86,7 @@ export default class UserController {
 
   becomeHostHandler = catchErrors(async (req, res) => {
     const userId = req.userId;
-   
+
     const data = req.body;
     data.user = userId;
     await HostModel.create(data);
@@ -98,20 +98,22 @@ export default class UserController {
     return ResponseUtil.success(res, hosts, 'Lấy danh sách đăng ký host thành công');
   });
 
-    updateStatusHostHandler = catchErrors(async (req, res) => {
+  updateStatusHostHandler = catchErrors(async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
+
     
     const host = await HostModel.findById(id);
+    const user = await UserModel.findById(host?.user);
     appAssert(host, ErrorFactory.resourceNotFound("Host request"));
-    
+
     const previousStatus = host.status;
     host.status = status;
     await host.save();
 
     // Gửi email thông báo
     if (status === 'approved' && previousStatus !== 'approved') {
-      // Email cho approved
+      await user?.updateOne({ role: 'host' });
       await sendMail({
         to: host.gmail,
         subject: '🎉 Chúc mừng! Yêu cầu trở thành Host đã được chấp nhận',
