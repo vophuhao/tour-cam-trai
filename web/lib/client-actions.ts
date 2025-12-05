@@ -647,3 +647,5 @@ export async function getAllApprovedHosts(): Promise<ApiResponse> {
 export const getDashboardStats = async (type: string) => {
   return apiClient.get(`/dashboard/${type}`);
 };
+
+

@@ -2,6 +2,8 @@ import { catchErrors } from "@/errors";
 import { BookingModel } from "@/models/booking.model";
 import HostModel from "@/models/host.modal";
 import { OrderModel } from "@/models/order.model";
+import { PropertyModel } from "@/models/property.model";
+import ProductModel from "@/models/product.model";
 import { ReviewModel } from "@/models/review.model";
 import UserModel from "@/models/user.model";
 import { ResponseUtil } from "@/utils";
@@ -12,20 +14,31 @@ export default class DashboardController {
     const [
       totalUsers,
       totalHosts,
-      totalLocations,
+      totalProperties,
+      totalProducts,
       totalBookings,
-      totalRevenue,
+      totalOrders,
+      bookingRevenue,
+      orderRevenue,
       pendingHostRequests,
       activeBookings,
       totalReviews,
     ] = await Promise.all([
       UserModel.countDocuments(),
       UserModel.countDocuments({ role: "host" }),
-      LocationModel.countDocuments({ status: "approved" }),
+      PropertyModel.countDocuments({ status: "active" }),
+      ProductModel.countDocuments({ isActive: true }),
       BookingModel.countDocuments(),
+      OrderModel.countDocuments(),
+      // Booking revenue from pricing.total
+      BookingModel.aggregate([
+        { $match: { status: { $in: ["confirmed", "completed"] } } },
+        { $group: { _id: null, total: { $sum: "$pricing.total" } } },
+      ]),
+      // Order revenue from grandTotal
       OrderModel.aggregate([
-        { $match: { status: "completed" } },
-        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+        { $match: { orderStatus: "completed" } },
+        { $group: { _id: null, total: { $sum: "$grandTotal" } } },
       ]),
       HostModel.countDocuments({ status: "pending" }),
       BookingModel.countDocuments({ status: "confirmed" }),
@@ -38,15 +51,23 @@ export default class DashboardController {
         hosts: totalHosts,
         guests: totalUsers - totalHosts,
       },
-      locations: {
-        total: totalLocations,
+      properties: {
+        total: totalProperties,
+      },
+      products: {
+        total: totalProducts,
       },
       bookings: {
         total: totalBookings,
         active: activeBookings,
       },
+      orders: {
+        total: totalOrders,
+      },
       revenue: {
-        total: totalRevenue[0]?.total || 0,
+        booking: bookingRevenue[0]?.total || 0,
+        order: orderRevenue[0]?.total || 0,
+        total: (bookingRevenue[0]?.total || 0) + (orderRevenue[0]?.total || 0),
       },
       pendingRequests: {
         hosts: pendingHostRequests,
@@ -59,39 +80,66 @@ export default class DashboardController {
     return ResponseUtil.success(res, stats, "Lấy thống kê tổng quan thành công");
   });
 
-  // Thống kê doanh thu theo tháng
+  // Thống kê doanh thu theo tháng (Booking + Order)
   getRevenueStats = catchErrors(async (req, res) => {
     const { year = new Date().getFullYear() } = req.query;
 
-    const revenueByMonth = await OrderModel.aggregate([
-      {
-        $match: {
-          status: "completed",
-          createdAt: {
-            $gte: new Date(`${year}-01-01`),
-            $lte: new Date(`${year}-12-31`),
+    const [bookingRevenueByMonth, orderRevenueByMonth] = await Promise.all([
+      // Booking revenue
+      BookingModel.aggregate([
+        {
+          $match: {
+            status: { $in: ["confirmed", "completed"] },
+            createdAt: {
+              $gte: new Date(`${year}-01-01`),
+              $lte: new Date(`${year}-12-31`),
+            },
           },
         },
-      },
-      {
-        $group: {
-          _id: { $month: "$createdAt" },
-          revenue: { $sum: "$totalAmount" },
-          count: { $sum: 1 },
+        {
+          $group: {
+            _id: { $month: "$createdAt" },
+            revenue: { $sum: "$pricing.total" },
+            count: { $sum: 1 },
+          },
         },
-      },
-      {
-        $sort: { _id: 1 },
-      },
+        { $sort: { _id: 1 } },
+      ]),
+      // Order revenue
+      OrderModel.aggregate([
+        {
+          $match: {
+            orderStatus: "completed",
+            createdAt: {
+              $gte: new Date(`${year}-01-01`),
+              $lte: new Date(`${year}-12-31`),
+            },
+          },
+        },
+        {
+          $group: {
+            _id: { $month: "$createdAt" },
+            revenue: { $sum: "$grandTotal" },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
     ]);
 
-    // Fill missing months with 0
+    // Merge and fill missing months
     const monthlyData = Array.from({ length: 12 }, (_, i) => {
-      const monthData = revenueByMonth.find((r: { _id: number }) => r._id === i + 1);
+      const bookingData = bookingRevenueByMonth.find((r: any) => r._id === i + 1);
+      const orderData = orderRevenueByMonth.find((r: any) => r._id === i + 1);
+      
       return {
         month: i + 1,
-        revenue: monthData?.revenue || 0,
-        count: monthData?.count || 0,
+        bookingRevenue: bookingData?.revenue || 0,
+        bookingCount: bookingData?.count || 0,
+        orderRevenue: orderData?.revenue || 0,
+        orderCount: orderData?.count || 0,
+        totalRevenue: (bookingData?.revenue || 0) + (orderData?.revenue || 0),
+        totalCount: (bookingData?.count || 0) + (orderData?.count || 0),
       };
     });
 
@@ -105,101 +153,158 @@ export default class DashboardController {
         $group: {
           _id: "$status",
           count: { $sum: 1 },
-          totalRevenue: { $sum: "$totalPrice" },
+          totalRevenue: { $sum: "$pricing.total" },
         },
       },
     ]);
 
     const stats = {
       byStatus: bookingsByStatus,
-      total: bookingsByStatus.reduce((sum: any, item: { count: any }) => sum + item.count, 0),
+      total: bookingsByStatus.reduce((sum: number, item: any) => sum + item.count, 0),
+      totalRevenue: bookingsByStatus.reduce((sum: number, item: any) => sum + item.totalRevenue, 0),
     };
 
     return ResponseUtil.success(res, stats, "Lấy thống kê booking thành công");
   });
 
-  // Top locations
-  getTopLocations = catchErrors(async (req, res) => {
-    const { limit = 10 } = req.query;
-
-    const topLocations = await LocationModel.aggregate([
-      { $match: { status: "approved" } },
+  // Thống kê order theo trạng thái
+  getOrderStats = catchErrors(async (req, res) => {
+    const ordersByStatus = await OrderModel.aggregate([
       {
-        $lookup: {
-          from: "bookings",
-          localField: "_id",
-          foreignField: "location",
-          as: "bookings",
-        },
-      },
-      {
-        $addFields: {
-          bookingCount: { $size: "$bookings" },
-          revenue: { $sum: "$bookings.totalPrice" },
-        },
-      },
-      {
-        $sort: { bookingCount: -1 },
-      },
-      {
-        $limit: parseInt(limit as string),
-      },
-      {
-        $project: {
-          name: 1,
-          address: 1,
-          rating: 1,
-          bookingCount: 1,
-          revenue: 1,
-          images: { $arrayElemAt: ["$images", 0] },
+        $group: {
+          _id: "$orderStatus",
+          count: { $sum: 1 },
+          totalRevenue: { $sum: "$grandTotal" },
         },
       },
     ]);
 
-    return ResponseUtil.success(res, topLocations, "Lấy top địa điểm thành công");
+    const stats = {
+      byStatus: ordersByStatus,
+      total: ordersByStatus.reduce((sum: number, item: any) => sum + item.count, 0),
+      totalRevenue: ordersByStatus.reduce((sum: number, item: any) => sum + item.totalRevenue, 0),
+    };
+
+    return ResponseUtil.success(res, stats, "Lấy thống kê đơn hàng thành công");
   });
 
-  // Top hosts
+  // Top properties (theo booking count & revenue)
+  getTopProperties = catchErrors(async (req, res) => {
+    const { limit = 10 } = req.query;
+
+    const topProperties = await BookingModel.aggregate([
+      { $match: { status: { $in: ["confirmed", "completed"] } } },
+      {
+        $group: {
+          _id: "$property",
+          bookingCount: { $sum: 1 },
+          revenue: { $sum: "$pricing.total" },
+        },
+      },
+      { $sort: { revenue: -1 } },
+      { $limit: parseInt(limit as string) },
+      {
+        $lookup: {
+          from: "properties",
+          localField: "_id",
+          foreignField: "_id",
+          as: "property",
+        },
+      },
+      { $unwind: "$property" },
+      {
+        $project: {
+          name: "$property.name",
+          location: "$property.location",
+          photos: { $arrayElemAt: ["$property.photos", 0] },
+          bookingCount: 1,
+          revenue: 1,
+        },
+      },
+    ]);
+
+    return ResponseUtil.success(res, topProperties, "Lấy top properties thành công");
+  });
+
+  // Top products (theo order count & revenue)
+  getTopProducts = catchErrors(async (req, res) => {
+    const { limit = 10 } = req.query;
+
+    const topProducts = await OrderModel.aggregate([
+      { $match: { orderStatus: "completed" } },
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: "$items.product",
+          orderCount: { $sum: 1 },
+          quantitySold: { $sum: "$items.quantity" },
+          revenue: { $sum: "$items.totalPrice" },
+        },
+      },
+      { $sort: { revenue: -1 } },
+      { $limit: parseInt(limit as string) },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      { $unwind: "$product" },
+      {
+        $project: {
+          name: "$product.name",
+          price: "$product.price",
+          image: { $arrayElemAt: ["$product.images", 0] },
+          orderCount: 1,
+          quantitySold: 1,
+          revenue: 1,
+        },
+      },
+    ]);
+
+    return ResponseUtil.success(res, topProducts, "Lấy top sản phẩm thành công");
+  });
+
+  // Top hosts (theo booking & revenue)
   getTopHosts = catchErrors(async (req, res) => {
     const { limit = 10 } = req.query;
 
-    const topHosts = await UserModel.aggregate([
-      { $match: { role: "host" } },
+    const topHosts = await BookingModel.aggregate([
+      { $match: { status: { $in: ["confirmed", "completed"] } } },
+      {
+        $group: {
+          _id: "$host",
+          bookingCount: { $sum: 1 },
+          revenue: { $sum: "$pricing.total" },
+        },
+      },
+      { $sort: { revenue: -1 } },
+      { $limit: parseInt(limit as string) },
       {
         $lookup: {
-          from: "locations",
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "host",
+        },
+      },
+      { $unwind: "$host" },
+      {
+        $lookup: {
+          from: "properties",
           localField: "_id",
           foreignField: "host",
-          as: "locations",
+          as: "properties",
         },
-      },
-      {
-        $lookup: {
-          from: "bookings",
-          localField: "locations._id",
-          foreignField: "location",
-          as: "bookings",
-        },
-      },
-      {
-        $addFields: {
-          locationCount: { $size: "$locations" },
-          bookingCount: { $size: "$bookings" },
-          revenue: { $sum: "$bookings.totalPrice" },
-        },
-      },
-      {
-        $sort: { revenue: -1 },
-      },
-      {
-        $limit: parseInt(limit as string),
       },
       {
         $project: {
-          username: 1,
-          email: 1,
-          avatarUrl: 1,
-          locationCount: 1,
+          username: "$host.username",
+          email: "$host.email",
+          avatarUrl: "$host.avatarUrl",
+          propertyCount: { $size: "$properties" },
           bookingCount: 1,
           revenue: 1,
         },
@@ -212,40 +317,52 @@ export default class DashboardController {
   // Recent activities
   getRecentActivities = catchErrors(async (req, res) => {
     const { limit = 20 } = req.query;
+    const limitPerType = Math.ceil(parseInt(limit as string) / 4);
 
-    const [recentBookings, recentReviews, recentUsers] = await Promise.all([
+    const [recentBookings, recentOrders, recentReviews, recentUsers] = await Promise.all([
       BookingModel.find()
         .sort({ createdAt: -1 })
-        .limit(parseInt(limit as string) / 3)
+        .limit(limitPerType)
+        .populate("guest", "username avatarUrl")
+        .populate("property", "name")
+        .select("status pricing.total createdAt"),
+
+      OrderModel.find()
+        .sort({ createdAt: -1 })
+        .limit(limitPerType)
         .populate("user", "username avatarUrl")
-        .populate("location", "name")
-        .select("status totalPrice createdAt"),
+        .select("orderStatus grandTotal createdAt code"),
 
       ReviewModel.find()
         .sort({ createdAt: -1 })
-        .limit(parseInt(limit as string) / 3)
+        .limit(limitPerType)
         .populate("user", "username avatarUrl")
-        .populate("location", "name")
+        .populate("property", "name")
         .select("rating comment createdAt"),
 
       UserModel.find()
         .sort({ createdAt: -1 })
-        .limit(parseInt(limit as string) / 3)
+        .limit(limitPerType)
         .select("username email role createdAt"),
     ]);
 
     const activities = [
-      ...recentBookings.map((b: { createdAt: any }) => ({
+      ...recentBookings.map((b: any) => ({
         type: "booking",
         data: b,
         createdAt: b.createdAt,
       })),
-      ...recentReviews.map((r: { createdAt: any }) => ({
+      ...recentOrders.map((o: any) => ({
+        type: "order",
+        data: o,
+        createdAt: o.createdAt,
+      })),
+      ...recentReviews.map((r: any) => ({
         type: "review",
         data: r,
         createdAt: r.createdAt,
       })),
-      ...recentUsers.map((u: { createdAt: any }) => ({
+      ...recentUsers.map((u: any) => ({
         type: "user",
         data: u,
         createdAt: u.createdAt,
@@ -270,20 +387,38 @@ export default class DashboardController {
       usersLastMonth,
       bookingsThisMonth,
       bookingsLastMonth,
-      revenueThisMonth,
-      revenueLastMonth,
+      ordersThisMonth,
+      ordersLastMonth,
+      bookingRevenueThisMonth,
+      bookingRevenueLastMonth,
+      orderRevenueThisMonth,
+      orderRevenueLastMonth,
     ] = await Promise.all([
       UserModel.countDocuments({ createdAt: { $gte: thisMonth } }),
       UserModel.countDocuments({ createdAt: { $gte: lastMonth, $lt: thisMonth } }),
+      
       BookingModel.countDocuments({ createdAt: { $gte: thisMonth } }),
       BookingModel.countDocuments({ createdAt: { $gte: lastMonth, $lt: thisMonth } }),
+      
+      OrderModel.countDocuments({ createdAt: { $gte: thisMonth } }),
+      OrderModel.countDocuments({ createdAt: { $gte: lastMonth, $lt: thisMonth } }),
+      
+      BookingModel.aggregate([
+        { $match: { status: { $in: ["confirmed", "completed"] }, createdAt: { $gte: thisMonth } } },
+        { $group: { _id: null, total: { $sum: "$pricing.total" } } },
+      ]),
+      BookingModel.aggregate([
+        { $match: { status: { $in: ["confirmed", "completed"] }, createdAt: { $gte: lastMonth, $lt: thisMonth } } },
+        { $group: { _id: null, total: { $sum: "$pricing.total" } } },
+      ]),
+      
       OrderModel.aggregate([
-        { $match: { status: "completed", createdAt: { $gte: thisMonth } } },
-        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+        { $match: { orderStatus: "completed", createdAt: { $gte: thisMonth } } },
+        { $group: { _id: null, total: { $sum: "$grandTotal" } } },
       ]),
       OrderModel.aggregate([
-        { $match: { status: "completed", createdAt: { $gte: lastMonth, $lt: thisMonth } } },
-        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+        { $match: { orderStatus: "completed", createdAt: { $gte: lastMonth, $lt: thisMonth } } },
+        { $group: { _id: null, total: { $sum: "$grandTotal" } } },
       ]),
     ]);
 
@@ -291,6 +426,13 @@ export default class DashboardController {
       if (previous === 0) return current > 0 ? 100 : 0;
       return ((current - previous) / previous) * 100;
     };
+
+    const bookingRevCurrent = bookingRevenueThisMonth[0]?.total || 0;
+    const bookingRevPrevious = bookingRevenueLastMonth[0]?.total || 0;
+    const orderRevCurrent = orderRevenueThisMonth[0]?.total || 0;
+    const orderRevPrevious = orderRevenueLastMonth[0]?.total || 0;
+    const totalRevCurrent = bookingRevCurrent + orderRevCurrent;
+    const totalRevPrevious = bookingRevPrevious + orderRevPrevious;
 
     const stats = {
       users: {
@@ -303,13 +445,69 @@ export default class DashboardController {
         previous: bookingsLastMonth,
         growth: calculateGrowth(bookingsThisMonth, bookingsLastMonth),
       },
+      orders: {
+        current: ordersThisMonth,
+        previous: ordersLastMonth,
+        growth: calculateGrowth(ordersThisMonth, ordersLastMonth),
+      },
       revenue: {
-        current: revenueThisMonth[0]?.total || 0,
-        previous: revenueLastMonth[0]?.total || 0,
-        growth: calculateGrowth(revenueThisMonth[0]?.total || 0, revenueLastMonth[0]?.total || 0),
+        booking: {
+          current: bookingRevCurrent,
+          previous: bookingRevPrevious,
+          growth: calculateGrowth(bookingRevCurrent, bookingRevPrevious),
+        },
+        order: {
+          current: orderRevCurrent,
+          previous: orderRevPrevious,
+          growth: calculateGrowth(orderRevCurrent, orderRevPrevious),
+        },
+        total: {
+          current: totalRevCurrent,
+          previous: totalRevPrevious,
+          growth: calculateGrowth(totalRevCurrent, totalRevPrevious),
+        },
       },
     };
 
     return ResponseUtil.success(res, stats, "Lấy thống kê tăng trưởng thành công");
+  });
+
+  // Thống kê sản phẩm
+  getProductStats = catchErrors(async (req, res) => {
+    const [totalProducts, activeProducts, outOfStock, lowStock] = await Promise.all([
+      ProductModel.countDocuments(),
+      ProductModel.countDocuments({ isActive: true }),
+      ProductModel.countDocuments({ stock: 0 }),
+      ProductModel.countDocuments({ stock: { $gt: 0, $lte: 10 } }),
+    ]);
+
+    const stats = {
+      total: totalProducts,
+      active: activeProducts,
+      inactive: totalProducts - activeProducts,
+      outOfStock,
+      lowStock,
+    };
+
+    return ResponseUtil.success(res, stats, "Lấy thống kê sản phẩm thành công");
+  });
+
+  // Thống kê properties
+  getPropertyStats = catchErrors(async (req, res) => {
+    const propertiesByStatus = await PropertyModel.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const stats = {
+      byStatus: propertiesByStatus,
+      total: propertiesByStatus.reduce((sum: number, item: any) => sum + item.count, 0),
+    };
+
+    return ResponseUtil.success(res, stats, "Lấy thống kê properties thành công");
   });
 }
