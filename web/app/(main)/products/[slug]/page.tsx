@@ -25,6 +25,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProductBySlug } from '@/hooks/useProduct';
 import { addToCart, getProductsByCategoryName } from '@/lib/api';
+import { useAuthStore } from '@/store/auth.store';
 import {
   AlertCircle,
   ChevronLeft,
@@ -51,7 +52,7 @@ export default function ProductDetailPage() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState<number>(0);
   const [ListProduct, setListProduct] = useState<Product[]>([]);
-
+  const { user } = useAuthStore();
   useEffect(() => {
     const fetchProducts = async () => {
       const categoryName = data?.data.category?.name || '';
@@ -160,6 +161,11 @@ export default function ProductDetailPage() {
   }
   // In ProductDetailPage component
   const handleAddToCart = async () => {
+
+  
+    // if( 
+    //   !user
+    // ) return router.push('/sign-in');
     if (!product?._id) return;
 
     try {
