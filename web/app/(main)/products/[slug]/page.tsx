@@ -158,14 +158,24 @@ export default function ProductDetailPage() {
       </div>
     );
   }
-  const handleAddToCart = () => {
+  // In ProductDetailPage component
+  const handleAddToCart = async () => {
     if (!product?._id) return;
-    addToCart({
-      productId: product._id,
-      quantity,
-    });
-    toast.success('Đã thêm vào giỏ hàng');
 
+    try {
+      await addToCart({
+        productId: product._id,
+        quantity,
+      });
+
+      toast.success('Đã thêm vào giỏ hàng');
+
+      // Emit event AFTER successful API call
+      window.dispatchEvent(new CustomEvent('cart:added'));
+    } catch (error) {
+      console.error('Add to cart error:', error);
+      toast.error('Có lỗi khi thêm vào giỏ hàng');
+    }
   };
 
   const images = product.images || [];
