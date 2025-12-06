@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import Image from "next/image";
@@ -18,6 +19,7 @@ import {
   Package
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuthStore } from "@/store/auth.store";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
@@ -29,7 +31,7 @@ export default function PaymentPage() {
   const removeItem = useCartStore((s) => s.removeItem);
   const clearSelected = useCartStore((s) => s.clearSelected);
   const createOrderMutation = useCreateOrder();
-
+  const { user } = useAuthStore();
   const { data: addressesRes } = useAddresses();
   const { addAddress, removeAddress } = useAddressActions();
   const addresses: Address[] = addressesRes?.data || [];
@@ -129,7 +131,7 @@ export default function PaymentPage() {
         selectedItems.forEach((it) => removeItem(it.product._id));
         clearSelected();
         setSuccess("Đặt hàng thành công!");
-        setTimeout(() => router.push("/order"), 1000);
+        setTimeout(() => router.push(`/u/${user?.username}/orders`), 1000);
         return;
       } else {
         if (!order.payOSCheckoutUrl) {

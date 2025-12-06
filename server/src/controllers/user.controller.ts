@@ -102,7 +102,7 @@ export default class UserController {
     const { id } = req.params;
     const { status } = req.body;
 
-    
+
     const host = await HostModel.findById(id);
     const user = await UserModel.findById(host?.user);
     appAssert(host, ErrorFactory.resourceNotFound("Host request"));
@@ -113,7 +113,7 @@ export default class UserController {
 
     // Gửi email thông báo
     if (status === 'approved' && previousStatus !== 'approved') {
-      await user?.updateOne({ role: 'host' });
+
       await sendMail({
         to: host.gmail,
         subject: '🎉 Chúc mừng! Yêu cầu trở thành Host đã được chấp nhận',
@@ -184,6 +184,7 @@ export default class UserController {
           </html>
         `,
       });
+      await user?.updateOne({ role: 'host' });
     } else if (status === 'rejected' && previousStatus !== 'rejected') {
       // Email cho rejected
       await sendMail({
