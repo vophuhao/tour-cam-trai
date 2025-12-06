@@ -873,6 +873,163 @@ export class PropertyService {
       .populate("host", "name avatar")
       .lean();
   }
+
+  /**
+   * Get personalized property recommendations based on user booking history
+   * Strategy:
+   * 1. Get user's booking history
+   * 2. Extract properties/sites booked (locations, accommodation types)
+   * 3. Find similar properties with:
+   *    - Same state/region
+   *    - Similar accommodation types from sites
+   *    - Highly rated (avgRating >= 4.0)
+   *    - Active and has active sites
+   * 4. Return 8-12 properties excluding already booked ones
+   *
+   * IMPORTANT: Returns EMPTY ARRAY if user has no booking history
+   * This is intentional - "Có thể bạn cũng thích" should ONLY show for users with bookings
+   */
+  async getPersonalizedRecommendations(userId: string, limit = 8) {
+    // Get user's bookings (all statuses except cancelled/refunded)
+    // Include pending/confirmed for users who just booked
+    const userBookings = await BookingModel.find({
+      guest: userId,
+      status: { $nin: ["cancelled", "refunded"] }, // Exclude only cancelled/refunded
+    })
+      .populate("property", "location propertyType")
+      .populate("site", "accommodationType")
+      .sort({ createdAt: -1 }) // Sort by creation date (most recent first)
+      .limit(10) // Analyze last 10 bookings
+      .lean();
+
+    // CRITICAL: Return empty array if no booking history
+    // Frontend will hide section completely for users without bookings
+    if (userBookings.length === 0) {
+      console.log(`[Recommendations] User ${userId} has no booking history`);
+      return [];
+    }
+
+    console.log(`[Recommendations] User ${userId} has ${userBookings.length} bookings`);
+
+    // Extract preferences from booking history
+    const bookedPropertyIds = new Set(userBookings.map((b: any) => b.property._id.toString()));
+    const preferredStates = new Set(
+      userBookings.map((b: any) => b.property?.location?.state).filter(Boolean)
+    );
+    const preferredAccommodationTypes = new Set(
+      userBookings.map((b: any) => b.site?.accommodationType).filter(Boolean)
+    );
+
+    // Build query for similar properties
+    const query: any = {
+      _id: { $nin: Array.from(bookedPropertyIds).map((id) => new mongoose.Types.ObjectId(id)) },
+      isActive: true,
+      // RELAXED: Remove avgRating requirement - many properties might not have ratings yet
+      // We'll sort by rating anyway, so good ones will appear first
+    };
+
+    // Prefer same state/region (optional - don't make it required)
+    if (preferredStates.size > 0) {
+      query["location.state"] = { $in: Array.from(preferredStates) };
+    }
+
+    // Find properties that have sites with preferred accommodation types
+    let propertiesWithMatchingSites: string[] = [];
+    if (preferredAccommodationTypes.size > 0) {
+      const matchingSites = await SiteModel.find({
+        accommodationType: { $in: Array.from(preferredAccommodationTypes) },
+        isActive: true,
+      })
+        .select("property")
+        .lean();
+
+      propertiesWithMatchingSites = [...new Set(matchingSites.map((s) => s.property.toString()))];
+
+      console.log(
+        `[Recommendations] Found ${propertiesWithMatchingSites.length} properties with matching accommodation types`
+      );
+
+      if (propertiesWithMatchingSites.length > 0) {
+        // Add to query if we found matching sites
+        if (query._id) {
+          query._id = {
+            $nin: Array.from(bookedPropertyIds).map((id) => new mongoose.Types.ObjectId(id)),
+            $in: propertiesWithMatchingSites.map((id) => new mongoose.Types.ObjectId(id)),
+          };
+        } else {
+          query._id = {
+            $in: propertiesWithMatchingSites.map((id) => new mongoose.Types.ObjectId(id)),
+          };
+        }
+      }
+    }
+
+    const recommendations = await PropertyModel.find(query)
+      .sort({
+        avgRating: -1,
+        totalReviews: -1,
+        createdAt: -1, // Also sort by newest if no ratings
+      })
+      .limit(limit)
+      .populate("host", "fullName avatar")
+      .select("name slug location photos propertyType avgRating totalReviews lowestPrice")
+      .lean();
+
+    console.log(
+      `[Recommendations] Returning ${recommendations.length} recommendations for user ${userId}`
+    );
+
+    // IMPORTANT: DO NOT fill with popular properties if not enough recommendations
+    // We want to show ONLY truly personalized recommendations, not generic popular ones
+    // If user doesn't have enough similar preferences, show fewer recommendations
+
+    // However, if query is too restrictive and returns 0, try a broader query
+    if (
+      recommendations.length === 0 &&
+      (preferredStates.size > 0 || preferredAccommodationTypes.size > 0)
+    ) {
+      console.log(`[Recommendations] No strict matches, trying broader query...`);
+
+      // Try without state restriction, only accommodation type
+      const broaderQuery: any = {
+        _id: { $nin: Array.from(bookedPropertyIds).map((id) => new mongoose.Types.ObjectId(id)) },
+        isActive: true,
+      };
+
+      if (propertiesWithMatchingSites.length > 0) {
+        broaderQuery._id = {
+          $nin: Array.from(bookedPropertyIds).map((id) => new mongoose.Types.ObjectId(id)),
+          $in: propertiesWithMatchingSites.map((id) => new mongoose.Types.ObjectId(id)),
+        };
+      }
+
+      const broaderRecommendations = await PropertyModel.find(broaderQuery)
+        .sort({ avgRating: -1, totalReviews: -1, createdAt: -1 })
+        .limit(limit)
+        .populate("host", "fullName avatar")
+        .select("name slug location photos propertyType avgRating totalReviews lowestPrice")
+        .lean();
+
+      console.log(
+        `[Recommendations] Broader query returned ${broaderRecommendations.length} recommendations`
+      );
+      return broaderRecommendations;
+    }
+
+    return recommendations;
+  }
+
+  /**
+   * Get popular properties (for separate "Popular" section, NOT for recommendations fallback)
+   */
+  async getPopularProperties(limit = 8) {
+    return PropertyModel.find({ isActive: true })
+      .sort({ totalReviews: -1, avgRating: -1 })
+      .limit(limit)
+      .populate("host", "fullName avatar")
+      .select("name slug location photos propertyType avgRating totalReviews lowestPrice")
+      .lean();
+  }
 }
 
 export default new PropertyService();

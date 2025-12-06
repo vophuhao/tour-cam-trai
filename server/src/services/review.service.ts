@@ -191,6 +191,21 @@ export class ReviewService {
   }
 
   /**
+   * Get recent reviews for homepage
+   * Returns latest published reviews across all properties
+   */
+  async getRecentReviews(limit: number = 6) {
+    const reviews = await ReviewModel.find({ isPublished: true })
+      .populate("property", "name slug images location")
+      .populate("site", "name accommodationType")
+      .populate("guest", "fullName avatarUrl")
+      .sort({ createdAt: -1 })
+      .limit(limit);
+
+    return reviews;
+  }
+
+  /**
    * Vote review as helpful/not-helpful
    */
   async voteReview(reviewId: string, voteType: "helpful" | "not-helpful"): Promise<ReviewDocument> {

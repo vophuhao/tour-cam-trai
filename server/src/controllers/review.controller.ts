@@ -51,6 +51,18 @@ export default class ReviewController {
   });
 
   /**
+   * Get recent reviews for homepage
+   * @route GET /api/reviews/recent
+   */
+  getRecentReviews = catchErrors(async (req, res) => {
+    const { limit = 6 } = req.query as { limit?: string };
+
+    const reviews = await this.reviewService.getRecentReviews(Number(limit));
+
+    return ResponseUtil.success(res, reviews, "Lấy review mới nhất thành công");
+  });
+
+  /**
    * Get property reviews
    * @route GET /api/properties/:propertyId/reviews
    */

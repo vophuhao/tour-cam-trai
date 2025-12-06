@@ -424,7 +424,7 @@ export async function calculateSitePricing(
 /**
  * Create a new site (host only)
  */
-export async function createSite( data: Partial<Site>): Promise<Site> {
+export async function createSite(data: Partial<Site>): Promise<Site> {
   return apiClient.post('/sites', data);
 }
 
@@ -441,7 +441,10 @@ export async function updateSite(
 /**
  * Delete site (host only)
  */
-export async function deleteSite(id: string, siteToDelete?: string): Promise<{ message: string }> {
+export async function deleteSite(
+  id: string,
+  siteToDelete?: string,
+): Promise<{ message: string }> {
   return apiClient.delete(`/sites/${id}`);
 }
 
@@ -522,4 +525,22 @@ export function formatAccommodationType(type: string): string {
     vehicle: 'Vehicle Camping',
   };
   return typeMap[type] || type;
+}
+
+// ==================== PERSONALIZED RECOMMENDATIONS ====================
+
+/**
+ * Get personalized property recommendations based on user's booking history
+ * Requires authentication
+ *
+ * @param limit - Number of recommendations to return (default: 8)
+ * @returns Array of recommended properties
+ */
+export async function getPersonalizedRecommendations(
+  limit = 8,
+): Promise<Property[]> {
+  const response = await apiClient.get(
+    `/properties/recommendations/list?limit=${limit}`,
+  );
+  return response.data || [];
 }

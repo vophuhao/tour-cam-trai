@@ -331,11 +331,21 @@ export interface Review {
   booking: string | Booking;
   property: string | Property;
   site: string | Site;
-  user: {
+  guest?: {
     _id: string;
     fullName: string;
+    username?: string;
     email: string;
     avatar?: string;
+    avatarUrl?: string;
+  };
+  user?: {
+    _id: string;
+    fullName: string;
+    username?: string;
+    email: string;
+    avatar?: string;
+    avatarUrl?: string;
   };
 
   propertyRatings: PropertyRatings;
@@ -343,7 +353,9 @@ export interface Review {
   ratings: {
     overall: number; // Calculated average of all 5 ratings
   };
+  overallRating?: number; // Backend uses this field
 
+  title?: string;
   comment: string;
 
   images?: string[];

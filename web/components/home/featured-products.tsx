@@ -25,12 +25,9 @@ export default function FeaturedProducts() {
             <span className="bg-primary/10 text-primary mb-3 inline-block rounded-full px-4 py-1 text-sm font-semibold">
               Sản phẩm
             </span>
-            <h2 className="mb-3 text-4xl font-bold md:text-5xl">
+            <h2 className="mb-3 text-2xl font-bold md:text-3xl">
               Thiết Bị Cắm Trại Chất Lượng
             </h2>
-            <p className="text-muted-foreground max-w-2xl text-lg">
-              Trang bị đầy đủ cho chuyến đi của bạn
-            </p>
           </div>
           <Link href="/products">
             <Button variant="outline" size="lg" className="mt-4 md:mt-0">
@@ -57,7 +54,11 @@ export default function FeaturedProducts() {
                     <div className="absolute top-4 right-4">
                       <span className="flex items-center gap-1 rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white shadow-lg">
                         <TrendingUp className="h-3 w-3" />
-                        {((product.price - product.deal) / product.price * 100).toFixed(0)}%
+                        {(
+                          ((product.price - product.deal) / product.price) *
+                          100
+                        ).toFixed(0)}
+                        %
                       </span>
                     </div>
                   )}
@@ -70,13 +71,13 @@ export default function FeaturedProducts() {
                     </div>
                   )}
                 </div>
-                
+
                 <CardContent className="flex flex-1 flex-col p-4">
                   {/* Title - Fixed height */}
-                  <h3 className="mb-3 line-clamp-2 text-base font-semibold h-12">
+                  <h3 className="mb-3 line-clamp-2 h-12 text-base font-semibold">
                     {product.name}
                   </h3>
-                  
+
                   {/* Price & Button - Push to bottom */}
                   <div className="mt-auto flex items-end justify-between">
                     <div className="flex flex-col">
