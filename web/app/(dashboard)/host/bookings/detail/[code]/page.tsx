@@ -29,9 +29,11 @@ import {
   Clock,
   CreditCard,
   FileText,
+  Home,
   Loader2,
   MapPin,
   PawPrint,
+  Tent,
   Users,
   XCircle,
 } from 'lucide-react';
@@ -41,10 +43,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-// Backend Booking type for host detail view
+// Backend Booking type
 interface BookingData {
   _id: string;
-  code: string;
+  code?: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded';
   checkIn: string;
   checkOut: string;
@@ -52,12 +54,12 @@ interface BookingData {
   numberOfPets?: number;
   numberOfVehicles?: number;
   nights: number;
-  paymentStatus: 'pending' | 'paid' | 'refunded' | 'failed';
+  paymentStatus?: 'pending' | 'paid' | 'refunded' | 'failed';
   paymentMethod?: string;
   guestMessage?: string;
   hostMessage?: string;
 
-  // Property-Site architecture (populated)
+  // Property-Site architecture
   property: Partial<Property>;
   site: Partial<Site>;
 
@@ -67,6 +69,7 @@ interface BookingData {
     email: string;
     avatarUrl?: string;
     fullName?: string;
+    phone?: string;
   };
 
   host: {
@@ -80,13 +83,29 @@ interface BookingData {
     basePrice: number;
     totalNights: number;
     subtotal: number;
-    cleaningFee?: number;
-    petFee?: number;
-    extraGuestFee?: number;
+    cleaningFee: number;
+    petFee: number;
+    extraGuestFee: number;
     serviceFee: number;
     tax: number;
     total: number;
   };
+
+  // Cancellation
+  cancelledBy?: string;
+  cancelledAt?: string;
+  cancellationReason?: string;
+  refundAmount?: number;
+
+  // Review
+  reviewed: boolean;
+  review?: string;
+
+  // Payment
+  payOSOrderCode?: number;
+  payOSCheckoutUrl?: string;
+  transactionId?: string;
+  paidAt?: string;
 
   createdAt: string;
   updatedAt: string;
@@ -112,7 +131,7 @@ export default function BookingDetailPage() {
     try {
       setLoading(true);
       const res = await getBookingByCode(code);
-      setBooking(res.data);
+      setBooking(res.data ?? null);
     } catch (error) {
       console.error('Error fetching booking:', error);
       toast.error('Không thể tải thông tin booking');
@@ -130,7 +149,7 @@ export default function BookingDetailPage() {
     try {
       setCancelling(true);
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/bookings/${booking._id}/cancel`,
+        `${process.env.NEXT_PUBLIC_API_URL}/bookings/${booking?._id}/cancel`,
         {
           method: 'POST',
           headers: {
@@ -154,6 +173,8 @@ export default function BookingDetailPage() {
   };
 
   const handleExportPDF = async () => {
+    if (!booking) return;
+
     try {
       setExporting(true);
       const doc = new jsPDF();
@@ -172,7 +193,6 @@ export default function BookingDetailPage() {
 
               doc.addFileToVFS('DejaVu.ttf', base64Data);
               doc.addFont('DejaVu.ttf', 'DejaVu', 'normal');
-              doc.addFont('DejaVu.ttf', 'DejaVu', 'bold'); // Thêm bold style
               doc.setFont('DejaVu', 'normal');
               resolve(true);
             } catch (err) {
@@ -188,7 +208,6 @@ export default function BookingDetailPage() {
 
       // Header
       doc.setFontSize(20);
-      doc.setFont('DejaVu', 'normal'); // Dùng normal thay vì bold
       doc.text('HÓA ĐƠN ĐẶT CHỖ', 105, 20, { align: 'center' });
 
       doc.setFontSize(10);
@@ -197,9 +216,7 @@ export default function BookingDetailPage() {
         'Website: tour-cam-trai.vn | Email: support@tour-cam-trai.vn',
         105,
         34,
-        {
-          align: 'center',
-        },
+        { align: 'center' },
       );
 
       // Line
@@ -226,14 +243,16 @@ export default function BookingDetailPage() {
         y += 6;
       });
 
-      // Campsite Info
+      // Property & Site Info
       y += 6;
       doc.text('ĐỊA ĐIỂM', 20, y);
       y += 8;
-      doc.text(`Tên: ${booking.property.name}`, 20, y);
+      doc.text(`Property: ${booking.property.name}`, 20, y);
+      y += 6;
+      doc.text(`Site: ${booking.site.name}`, 20, y);
       y += 6;
 
-      const address = `Địa chỉ: ${booking.property.location.address}, ${booking.property.location.district}, ${booking.property.location.province}`;
+      const address = `Địa chỉ: ${booking.property.location?.address}, ${booking.property.location?.city}, ${booking.property.location?.state}`;
       const splitAddress = doc.splitTextToSize(address, 170);
       doc.text(splitAddress, 20, y);
       y += splitAddress.length * 6;
@@ -250,10 +269,10 @@ export default function BookingDetailPage() {
         `Số khách: ${booking.numberOfGuests} người`,
       ];
 
-      if (booking.numberOfPets > 0) {
+      if (booking.numberOfPets && booking.numberOfPets > 0) {
         bookingDetails.push(`Thú cưng: ${booking.numberOfPets} con`);
       }
-      if (booking.numberOfVehicles > 0) {
+      if (booking.numberOfVehicles && booking.numberOfVehicles > 0) {
         bookingDetails.push(`Phương tiện: ${booking.numberOfVehicles} xe`);
       }
 
@@ -303,7 +322,7 @@ export default function BookingDetailPage() {
       y += 8;
 
       const guestInfo = [
-        `Họ tên: ${booking.guest.name || 'N/A'}`,
+        `Tên: ${booking.guest.fullName || booking.guest.username}`,
         `Email: ${booking.guest.email}`,
       ];
 
@@ -317,7 +336,7 @@ export default function BookingDetailPage() {
       });
 
       // Footer
-      y += 9;
+      y += 10;
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
       doc.text('Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi!', 105, y, {
@@ -372,7 +391,19 @@ export default function BookingDetailPage() {
   }
 
   if (!booking) {
-    return null;
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <XCircle className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-lg font-medium text-gray-900">
+            Không tìm thấy booking
+          </h3>
+          <Button className="mt-4" asChild>
+            <Link href="/host/bookings">Quay lại danh sách</Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const statusConfig = {
@@ -434,11 +465,8 @@ export default function BookingDetailPage() {
     },
   };
 
-  const status = statusConfig[booking.status as keyof typeof statusConfig];
-  const paymentStatus =
-    paymentStatusConfig[
-      booking.paymentStatus as keyof typeof paymentStatusConfig
-    ];
+  const status = statusConfig[booking.status];
+  const paymentStatus = paymentStatusConfig[booking.paymentStatus];
   const StatusIcon = status.icon;
   const PaymentIcon = paymentStatus.icon;
 
@@ -466,13 +494,12 @@ export default function BookingDetailPage() {
 
             <div className="flex flex-wrap items-center gap-3">
               <div
-                className={`${status.color} flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold`}
+                className={`${status.color} flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold`}
               >
-                <StatusIcon className="mr-1.5 h-4 w-4" />
+                <StatusIcon className="h-4 w-4" />
                 {status.label}
               </div>
 
-              {/* ✨ Payment Status - Nổi bật hơn */}
               <div
                 className={`${paymentStatus.color} ${paymentStatus.textColor} ${paymentStatus.glow} flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold`}
               >
@@ -486,103 +513,138 @@ export default function BookingDetailPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Content */}
           <div className="space-y-6 lg:col-span-2">
-            {/* Payment Status Card - Nổi bật */}
-            {booking.paymentStatus === 'pending' &&
-              booking.payOSCheckoutUrl && (
-                <Card className="border-2 border-yellow-300 bg-gradient-to-r from-yellow-50 to-orange-50">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-500">
-                        <CircleDollarSign className="h-6 w-6 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">
-                          Booking chưa thanh toán
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          Vui lòng thanh toán để xác nhận booking
-                        </p>
-                      </div>
-                      <Button
-                        size="lg"
-                        asChild
-                        className="bg-yellow-600 hover:bg-yellow-700"
-                      >
-                        <a
-                          href={booking.payOSCheckoutUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          Thanh toán ngay
-                        </a>
-                      </Button>
+            {/* Payment Status Alert */}
+            {booking.paymentStatus === 'pending' && booking.payOSCheckoutUrl && (
+              <Card className="border-2 border-yellow-300 bg-gradient-to-r from-yellow-50 to-orange-50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-yellow-500">
+                      <CircleDollarSign className="h-6 w-6 text-white" />
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">
+                        Booking chưa thanh toán
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Vui lòng thanh toán để xác nhận booking
+                      </p>
+                    </div>
+                    <Button
+                      size="lg"
+                      asChild
+                      className="bg-yellow-600 hover:bg-yellow-700"
+                    >
+                      <a
+                        href={booking.payOSCheckoutUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        Thanh toán ngay
+                      </a>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {booking.paymentStatus === 'paid' && (
               <Card className="border-2 border-emerald-300 bg-gradient-to-r from-emerald-50 to-green-50">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500">
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500">
                       <CheckCircle2 className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900">
                         Thanh toán thành công
                       </h3>
-                      <p className="text-sm text-gray-600">
-                        {booking.paidAt &&
-                          `Thanh toán lúc ${format(new Date(booking.paidAt), 'dd/MM/yyyy HH:mm', { locale: vi })}`}
-                      </p>
+                      {booking.paidAt && (
+                        <p className="text-sm text-gray-600">
+                          Thanh toán lúc{' '}
+                          {format(new Date(booking.paidAt), 'dd/MM/yyyy HH:mm', {
+                            locale: vi,
+                          })}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </CardContent>
               </Card>
             )}
 
-            {/* Campsite Info */}
+            {/* Property & Site Info */}
             <Card>
               <CardHeader>
                 <CardTitle>Thông tin địa điểm</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {/* Property */}
                 <div className="flex gap-4">
-                  <div className="relative h-32 w-32 flex-shrink-0 overflow-hidden rounded-lg">
+                  <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg">
                     <Image
-                      src={booking.site.photos?.[0].url || '/placeholder.jpg'}
-                      alt={booking.site.name}
+                      src={booking.property.photos?.[0]?.url || '/placeholder.jpg'}
+                      alt={booking.property.name || 'Property'}
                       fill
                       className="object-cover"
                     />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold">
-                      {booking.site.name}
+                    <div className="flex items-center gap-2">
+                      <Home className="h-4 w-4 text-blue-600" />
+                      <span className="text-xs font-medium text-blue-700">
+                        PROPERTY
+                      </span>
+                    </div>
+                    <h3 className="mt-1 text-lg font-semibold">
+                      {booking.property.name}
                     </h3>
                     <div className="mt-2 flex items-start gap-2 text-sm text-gray-600">
                       <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
                       <span>
-                        {booking.property.location.address},{' '}
-                        {booking.property.location.commune},{' '}
-                        {booking.property.location.district},{' '}
-                        {booking.property.location.province}
+                        {booking.property.location?.address},{' '}
+                        {booking.property.location?.city},{' '}
+                        {booking.property.location?.state}
                       </span>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-3"
-                      asChild
-                    >
-                      <Link href={`/land/${booking.property.slug}`}>
-                        Xem chi tiết
-                      </Link>
-                    </Button>
                   </div>
                 </div>
+
+                <Separator />
+
+                {/* Site */}
+                <div className="flex gap-4">
+                  <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg">
+                    <Image
+                      src={booking.site.photos?.[0]?.url || '/placeholder.jpg'}
+                      alt={booking.site.name || 'Site'}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Tent className="h-4 w-4 text-emerald-600" />
+                      <span className="text-xs font-medium text-emerald-700">
+                        SITE
+                      </span>
+                    </div>
+                    <h3 className="mt-1 text-lg font-semibold">
+                      {booking.site.name}
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {booking.site.description}
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <Button variant="outline" size="sm" className="w-full" asChild>
+                  <Link href={`/properties/${booking.property.slug}`}>
+                    Xem chi tiết property
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
 
@@ -597,14 +659,12 @@ export default function BookingDetailPage() {
                     <Calendar className="mt-0.5 h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm font-medium text-gray-900">
-                        Nhận phòng
+                        Nhận chỗ
                       </p>
                       <p className="text-sm text-gray-600">
-                        {format(
-                          new Date(booking.checkIn),
-                          'dd/MM/yyyy - HH:mm',
-                          { locale: vi },
-                        )}
+                        {format(new Date(booking.checkIn), 'dd/MM/yyyy - HH:mm', {
+                          locale: vi,
+                        })}
                       </p>
                     </div>
                   </div>
@@ -612,15 +672,11 @@ export default function BookingDetailPage() {
                   <div className="flex items-start gap-3">
                     <Calendar className="mt-0.5 h-5 w-5 text-gray-400" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        Trả phòng
-                      </p>
+                      <p className="text-sm font-medium text-gray-900">Trả chỗ</p>
                       <p className="text-sm text-gray-600">
-                        {format(
-                          new Date(booking.checkOut),
-                          'dd/MM/yyyy - HH:mm',
-                          { locale: vi },
-                        )}
+                        {format(new Date(booking.checkOut), 'dd/MM/yyyy - HH:mm', {
+                          locale: vi,
+                        })}
                       </p>
                     </div>
                   </div>
@@ -628,9 +684,7 @@ export default function BookingDetailPage() {
                   <div className="flex items-start gap-3">
                     <Users className="mt-0.5 h-5 w-5 text-gray-400" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        Số khách
-                      </p>
+                      <p className="text-sm font-medium text-gray-900">Số khách</p>
                       <p className="text-sm text-gray-600">
                         {booking.numberOfGuests} người
                       </p>
@@ -640,16 +694,12 @@ export default function BookingDetailPage() {
                   <div className="flex items-start gap-3">
                     <Clock className="mt-0.5 h-5 w-5 text-gray-400" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        Số đêm
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {booking.nights} đêm
-                      </p>
+                      <p className="text-sm font-medium text-gray-900">Số đêm</p>
+                      <p className="text-sm text-gray-600">{booking.nights} đêm</p>
                     </div>
                   </div>
 
-                  {booking.numberOfPets > 0 && (
+                  {/* {booking.numberOfPets && booking.numberOfPets > 0 && (
                     <div className="flex items-start gap-3">
                       <PawPrint className="mt-0.5 h-5 w-5 text-gray-400" />
                       <div>
@@ -661,9 +711,9 @@ export default function BookingDetailPage() {
                         </p>
                       </div>
                     </div>
-                  )}
+                  )} */}
 
-                  {booking.numberOfVehicles > 0 && (
+                  {booking.numberOfVehicles && booking.numberOfVehicles > 0 && (
                     <div className="flex items-start gap-3">
                       <Car className="mt-0.5 h-5 w-5 text-gray-400" />
                       <div>
@@ -708,8 +758,42 @@ export default function BookingDetailPage() {
               </CardContent>
             </Card>
 
+            {/* Guest Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Thông tin khách</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4">
+                  <div className="relative h-16 w-16 overflow-hidden rounded-full">
+                    {booking.guest.avatarUrl ? (
+                      <Image
+                        src={booking.guest.avatarUrl}
+                        alt={booking.guest.username}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gray-200 text-2xl font-semibold text-gray-600">
+                        {booking.guest.username.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">
+                      {booking.guest.fullName || booking.guest.username}
+                    </h4>
+                    <p className="text-sm text-gray-600">{booking.guest.email}</p>
+                    {booking.guest.phone && (
+                      <p className="text-sm text-gray-600">{booking.guest.phone}</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Cancellation Info */}
-            {booking.status === 'cancelled' && (
+            {booking.status === 'cancelled' && booking.cancelledAt && (
               <Card className="border-red-200 bg-red-50">
                 <CardHeader>
                   <CardTitle className="text-red-900">
@@ -720,11 +804,9 @@ export default function BookingDetailPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-red-700">Thời gian hủy:</span>
                     <span className="font-medium text-red-900">
-                      {format(
-                        new Date(booking.cancelledAt),
-                        'dd/MM/yyyy HH:mm',
-                        { locale: vi },
-                      )}
+                      {format(new Date(booking.cancelledAt), 'dd/MM/yyyy HH:mm', {
+                        locale: vi,
+                      })}
                     </span>
                   </div>
                   {booking.cancellationReason && (
@@ -733,6 +815,14 @@ export default function BookingDetailPage() {
                       <p className="rounded-lg bg-white p-3 text-sm text-red-900">
                         {booking.cancellationReason}
                       </p>
+                    </div>
+                  )}
+                  {booking.refundAmount && booking.refundAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-red-700">Số tiền hoàn:</span>
+                      <span className="font-medium text-red-900">
+                        {formatPrice(booking.refundAmount)}
+                      </span>
                     </div>
                   )}
                 </CardContent>
@@ -847,8 +937,13 @@ export default function BookingDetailPage() {
                 )}
 
                 {booking.status === 'completed' && !booking.reviewed && (
-                  <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
-                    Viết đánh giá
+                  <Button
+                    className="w-full bg-emerald-600 hover:bg-emerald-700"
+                    asChild
+                  >
+                    <Link href={`/bookings/${booking.code}/review`}>
+                      Viết đánh giá
+                    </Link>
                   </Button>
                 )}
               </CardContent>
@@ -862,34 +957,30 @@ export default function BookingDetailPage() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100">
                       <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium">Đã tạo booking</p>
                       <p className="text-xs text-gray-500">
-                        {format(
-                          new Date(booking.createdAt),
-                          'dd/MM/yyyy HH:mm',
-                          { locale: vi },
-                        )}
+                        {format(new Date(booking.createdAt), 'dd/MM/yyyy HH:mm', {
+                          locale: vi,
+                        })}
                       </p>
                     </div>
                   </div>
 
                   {booking.paidAt && (
                     <div className="flex gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-100">
                         <CreditCard className="h-4 w-4 text-green-600" />
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium">Đã thanh toán</p>
                         <p className="text-xs text-gray-500">
-                          {format(
-                            new Date(booking.paidAt),
-                            'dd/MM/yyyy HH:mm',
-                            { locale: vi },
-                          )}
+                          {format(new Date(booking.paidAt), 'dd/MM/yyyy HH:mm', {
+                            locale: vi,
+                          })}
                         </p>
                       </div>
                     </div>
@@ -897,17 +988,15 @@ export default function BookingDetailPage() {
 
                   {booking.cancelledAt && (
                     <div className="flex gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-100">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
                         <XCircle className="h-4 w-4 text-red-600" />
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium">Đã hủy</p>
                         <p className="text-xs text-gray-500">
-                          {format(
-                            new Date(booking.cancelledAt),
-                            'dd/MM/yyyy HH:mm',
-                            { locale: vi },
-                          )}
+                          {format(new Date(booking.cancelledAt), 'dd/MM/yyyy HH:mm', {
+                            locale: vi,
+                          })}
                         </p>
                       </div>
                     </div>
@@ -925,8 +1014,7 @@ export default function BookingDetailPage() {
           <DialogHeader>
             <DialogTitle>Hủy booking</DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn hủy booking này? Vui lòng cho biết lý do
-              hủy.
+              Bạn có chắc chắn muốn hủy booking này? Vui lòng cho biết lý do hủy.
             </DialogDescription>
           </DialogHeader>
 
@@ -940,10 +1028,7 @@ export default function BookingDetailPage() {
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCancelDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
               Đóng
             </Button>
             <Button
@@ -951,7 +1036,14 @@ export default function BookingDetailPage() {
               onClick={handleCancelBooking}
               disabled={cancelling || !cancelReason.trim()}
             >
-              {cancelling ? 'Đang hủy...' : 'Xác nhận hủy'}
+              {cancelling ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang hủy...
+                </>
+              ) : (
+                'Xác nhận hủy'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
