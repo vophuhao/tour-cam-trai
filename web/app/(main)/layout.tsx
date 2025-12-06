@@ -1,3 +1,4 @@
+import ChatbotWrapper from '@/components/chatbot-wrapper';
 import Footer from '@/components/footer';
 import Header from '@/components/Header';
 import ChatModal from '@/components/modals/chatModal';
@@ -41,7 +42,11 @@ export default function MainLayout({
       {children}
       <Footer />
 
-      <ChatModal />
+      <div className="mb-20">
+        <ChatModal />
+      </div>
+
+      <ChatbotWrapper />
     </>
   );
 }
