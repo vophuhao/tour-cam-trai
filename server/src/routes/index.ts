@@ -6,8 +6,6 @@ export { default as categoryRoutes } from "./category.route";
 
 export { default as productRoutes } from "./product.route";
 
-export { default as tourRoutes } from "./tour.route";
-
 export { default as mediaRoutes } from "./media.route";
 
 export { default as addressRoutes } from "./address.route";

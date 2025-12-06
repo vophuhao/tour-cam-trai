@@ -12,7 +12,6 @@ import {
   PropertyService,
   ReviewService,
   SiteService,
-  TourService,
   VerificationService,
 } from "@/services";
 import { Container } from "./container";
@@ -24,7 +23,6 @@ import RatingService from "@/services/rating.service";
 export const container = new Container();
 
 // Register services
-container.register(TOKENS.TourService, () => new TourService(), { singleton: true });
 container.register(TOKENS.CategoryService, () => new CategoryService(), { singleton: true });
 container.register(TOKENS.ProductService, () => new ProductService(), { singleton: true });
 container.register(TOKENS.AddressService, () => new AddressService(), { singleton: true });

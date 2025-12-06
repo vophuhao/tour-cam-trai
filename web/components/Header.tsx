@@ -1,9 +1,9 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { useCartCount } from '@/hooks/useCartCount';
 import { logout } from '@/lib/client-actions';
 import { useAuthStore } from '@/store/auth.store';
-import { useCartCount } from '@/hooks/useCartCount';
 import {
   LayoutDashboard,
   LogOut,
@@ -19,7 +19,6 @@ import { useState } from 'react';
 
 const navItems = [
   { name: 'Trang chủ', href: '/' },
-  { name: 'Tour', href: '/tours' },
   { name: 'Sản phẩm', href: '/products' },
   { name: 'Giới thiệu', href: '/about' },
   { name: 'Liên hệ', href: '/contact' },
@@ -61,8 +60,9 @@ export default function Header() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`hover:text-primary text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-foreground/60'
-                    }`}
+                  className={`hover:text-primary text-sm font-medium transition-colors ${
+                    isActive ? 'text-primary' : 'text-foreground/60'
+                  }`}
                 >
                   {item.name}
                 </Link>
@@ -92,7 +92,11 @@ export default function Header() {
               <div className="flex items-center gap-2">
                 {user.role === 'admin' && (
                   <Link href="/admin">
-                    <Button variant="outline" className='cursor-pointer' size="sm">
+                    <Button
+                      variant="outline"
+                      className="cursor-pointer"
+                      size="sm"
+                    >
                       {/* <LayoutDashboard className="mr-2 h-4 w-4" /> */}
                       Admin
                     </Button>
@@ -100,20 +104,28 @@ export default function Header() {
                 )}
                 {user.role === 'host' && (
                   <Link href="/host">
-                    <Button variant="outline" className='cursor-pointer' size="sm">
+                    <Button
+                      variant="outline"
+                      className="cursor-pointer"
+                      size="sm"
+                    >
                       {/* <LayoutDashboard className="mr-2 h-4 w-4" /> */}
                       Host
                     </Button>
                   </Link>
                 )}
-                { user.role === 'user' && (
-                   <Link href="/become-host">
-                    <Button variant="outline" className='cursor-pointer' size="sm">
+                {user.role === 'user' && (
+                  <Link href="/become-host">
+                    <Button
+                      variant="outline"
+                      className="cursor-pointer"
+                      size="sm"
+                    >
                       {/* <LayoutDashboard className="mr-2 h-4 w-4" /> */}
                       Become Host
                     </Button>
                   </Link>
-                  )}
+                )}
                 <Button
                   onClick={() => router.push('/cart')}
                   variant="ghost"
@@ -128,7 +140,10 @@ export default function Header() {
                   )}
                 </Button>
 
-                <div onClick={() => router.push(`/u/${user.username}`)} className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer">
+                <div
+                  onClick={() => router.push(`/u/${user.username}`)}
+                  className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2"
+                >
                   <User className="h-4 w-4" />
                   {/* <span className="text-sm font-medium">{user.username}</span> */}
                 </div>
@@ -183,10 +198,11 @@ export default function Header() {
                   key={item.name}
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`block rounded-md px-3 py-2 text-base font-medium transition-colors ${isActive
+                  className={`block rounded-md px-3 py-2 text-base font-medium transition-colors ${
+                    isActive
                       ? 'bg-primary/10 text-primary'
                       : 'text-foreground/60 hover:text-primary hover:bg-gray-100'
-                    }`}
+                  }`}
                 >
                   {item.name}
                 </Link>
@@ -199,7 +215,7 @@ export default function Header() {
                 router.push('/cart');
                 setMobileMenuOpen(false);
               }}
-              className="flex w-full items-center justify-between rounded-md px-3 py-2 text-base font-medium text-foreground/60 hover:bg-gray-100 hover:text-primary"
+              className="text-foreground/60 hover:text-primary flex w-full items-center justify-between rounded-md px-3 py-2 text-base font-medium hover:bg-gray-100"
             >
               <span className="flex items-center gap-2">
                 <ShoppingCart className="h-5 w-5" />
@@ -230,10 +246,7 @@ export default function Header() {
                     </Link>
                   )}
                   {user.role === 'host' && (
-                    <Link
-                      href="/host"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
+                    <Link href="/host" onClick={() => setMobileMenuOpen(false)}>
                       <Button
                         variant="outline"
                         className="w-full justify-start"

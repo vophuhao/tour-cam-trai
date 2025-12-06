@@ -12,7 +12,6 @@ import {
   amenityRoutes,
   authRoutes,
   bookingRoutes,
-  campsiteRoutes,
   categoryRoutes,
   mediaRoutes,
   orderRoutes,
@@ -20,7 +19,6 @@ import {
   propertyRoutes,
   reviewRoutes,
   siteRoutes,
-  tourRoutes,
   userRoutes,
 } from "./routes";
 import cartRoutes from "./routes/cart.route";
@@ -67,14 +65,12 @@ app.use("/auth", authRoutes);
 app.use("/users", authenticate, userRoutes);
 app.use("/categories", categoryRoutes);
 app.use("/products", productRoutes);
-app.use("/tours", tourRoutes);
 app.use("/media", authenticate, mediaRoutes);
 app.use("/cart", authenticate, cartRoutes);
 app.use("/address", authenticate, addressRoutes);
 app.use("/support", authenticate, supportRouter);
 app.use("/orders", authenticate, orderRoutes);
 app.use("/rating", authenticate, ratingRoutes);
-app.use("/campsites", campsiteRoutes);
 app.use("/bookings", bookingRoutes);
 app.use("/reviews", reviewRoutes);
 app.use("/amenities", amenityRoutes);
