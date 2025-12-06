@@ -1,11 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
-import { useCallback, useEffect, useState } from 'react';
-import { useAuthStore } from '@/store/auth.store';
-import ChatWindow from './chat-window';
 import { getUserConversations, searchUsers } from '@/lib/client-actions';
 import { useSocket } from '@/provider/socketProvider';
+import { useAuthStore } from '@/store/auth.store';
+import { useCallback, useEffect, useState } from 'react';
+import ChatWindow from './chat-window';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5555';
 
@@ -24,7 +24,7 @@ export default function ConversationsList() {
 
   const loadConversations = useCallback(async () => {
     if (!user) return;
-    
+
     try {
       setLoading(true);
       const res = await getUserConversations();
@@ -45,17 +45,17 @@ export default function ConversationsList() {
     if (!open || !socket) return;
 
     const handleConversationUpdate = (data: any) => {
-      setConversations((prev) => {
-        const updated = prev.map((conv) =>
+      setConversations(prev => {
+        const updated = prev.map(conv =>
           conv._id === data.conversationId
             ? {
                 ...conv,
                 lastMessage: data.lastMessage,
                 lastMessageAt: data.lastMessageAt,
               }
-            : conv
+            : conv,
         );
-        
+
         return updated.sort((a, b) => {
           const aTime = new Date(a.lastMessageAt || 0).getTime();
           const bTime = new Date(b.lastMessageAt || 0).getTime();
@@ -147,7 +147,10 @@ export default function ConversationsList() {
     await loadConversations();
   };
 
-  const totalUnread = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+  const totalUnread = conversations.reduce(
+    (sum, c) => sum + (c.unreadCount || 0),
+    0,
+  );
 
   if (!user) return null;
 
@@ -156,15 +159,25 @@ export default function ConversationsList() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg transition-all hover:bg-blue-600 hover:shadow-xl"
+        className="fixed right-6 bottom-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg transition-all hover:bg-blue-600 hover:shadow-xl"
         aria-label="Tin nhắn"
       >
-        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        <svg
+          className="h-6 w-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+          />
         </svg>
-        
+
         {totalUnread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
             {totalUnread > 9 ? '9+' : totalUnread}
           </span>
         )}
@@ -174,14 +187,18 @@ export default function ConversationsList() {
       {open && (
         <div
           id="conversations-panel"
-          className="fixed bottom-24 right-6 z-50 flex h-[600px] w-96 flex-col overflow-hidden rounded-lg bg-white shadow-2xl"
+          className="fixed right-6 bottom-24 z-50 flex h-[600px] w-96 flex-col overflow-hidden rounded-lg bg-white shadow-2xl"
         >
           {!selectedConversation ? (
             <>
               {/* Header */}
               <div className="border-b border-gray-200 bg-white px-5 py-4">
-                <h2 className="text-lg font-semibold text-gray-900">Tin nhắn</h2>
-                <p className="mt-0.5 text-sm text-gray-500">{conversations.length} cuộc trò chuyện</p>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Tin nhắn
+                </h2>
+                <p className="mt-0.5 text-sm text-gray-500">
+                  {conversations.length} cuộc trò chuyện
+                </p>
               </div>
 
               {/* Search */}
@@ -190,12 +207,12 @@ export default function ConversationsList() {
                   <input
                     type="text"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Tìm kiếm..."
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 pl-9 text-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 pl-9 text-sm placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                   />
                   <svg
-                    className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                    className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-gray-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -208,7 +225,7 @@ export default function ConversationsList() {
                     />
                   </svg>
                   {searching && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <div className="absolute top-1/2 right-2 -translate-y-1/2">
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
                     </div>
                   )}
@@ -225,7 +242,7 @@ export default function ConversationsList() {
                       </div>
                     )}
 
-                    {searchResults.map((searchUser) => (
+                    {searchResults.map(searchUser => (
                       <button
                         key={searchUser._id}
                         onClick={() => startChatWithUser(searchUser._id)}
@@ -245,12 +262,14 @@ export default function ConversationsList() {
                           )}
                         </div>
 
-                        <div className="flex-1 min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-gray-900">
                             {searchUser.username || searchUser.full_name}
                           </p>
                           {searchUser.email && (
-                            <p className="truncate text-xs text-gray-500">{searchUser.email}</p>
+                            <p className="truncate text-xs text-gray-500">
+                              {searchUser.email}
+                            </p>
                           )}
                         </div>
 
@@ -275,10 +294,13 @@ export default function ConversationsList() {
                     )}
 
                     {!loading &&
-                      conversations.map((conv) => {
+                      conversations.map(conv => {
                         const other = conv.otherParticipant;
                         const avatar = other?.avatar || other?.userId?.avatar;
-                        const name = other?.name || other?.userId?.username || 'Người dùng';
+                        const name =
+                          other?.name ||
+                          other?.userId?.username ||
+                          'Người dùng';
                         const hasUnread = conv.unreadCount > 0;
 
                         return (
@@ -302,27 +324,33 @@ export default function ConversationsList() {
                                 </div>
                               )}
                               {hasUnread && (
-                                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-medium text-white">
+                                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-medium text-white">
                                   {conv.unreadCount}
                                 </span>
                               )}
-                              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500"></span>
+                              <span className="absolute right-0 bottom-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500"></span>
                             </div>
 
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center justify-between gap-2">
-                                <p className={`truncate text-sm ${hasUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
+                                <p
+                                  className={`truncate text-sm ${hasUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}
+                                >
                                   {name}
                                 </p>
                                 <span className="flex-shrink-0 text-xs text-gray-400">
                                   {conv.lastMessageAt &&
-                                    new Date(conv.lastMessageAt).toLocaleDateString('vi-VN', {
+                                    new Date(
+                                      conv.lastMessageAt,
+                                    ).toLocaleDateString('vi-VN', {
                                       day: '2-digit',
                                       month: '2-digit',
                                     })}
                                 </span>
                               </div>
-                              <p className={`mt-0.5 truncate text-xs ${hasUnread ? 'font-medium text-gray-600' : 'text-gray-500'}`}>
+                              <p
+                                className={`mt-0.5 truncate text-xs ${hasUnread ? 'font-medium text-gray-600' : 'text-gray-500'}`}
+                              >
                                 {conv.lastMessage || 'Bắt đầu trò chuyện...'}
                               </p>
                             </div>

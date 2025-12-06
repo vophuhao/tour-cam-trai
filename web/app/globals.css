@@ -109,10 +109,6 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-@utility tour-highlight-card {
-  @apply flex items-center gap-2 rounded-lg p-3;
-}
-
 @utility info-label {
   @apply text-xs text-gray-600;
 }

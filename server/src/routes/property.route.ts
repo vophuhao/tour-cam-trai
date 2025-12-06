@@ -24,6 +24,9 @@ propertyRoutes.get("/", propertyController.searchProperties); // Alias
 propertyRoutes.get("/featured/list", propertyController.getFeaturedProperties);
 propertyRoutes.get("/nearby/:idOrSlug", propertyController.getNearbyProperties);
 
+// Personalized recommendations (protected, must be before /:idOrSlug)
+propertyRoutes.get("/recommendations/list", authenticate, propertyController.getRecommendations);
+
 // My properties (must be before /:idOrSlug to avoid matching "my" as ID)
 propertyRoutes.get("/my/list", authenticate, propertyController.getMyProperties);
 
@@ -46,6 +49,5 @@ propertyRoutes.patch("/:id", authenticate, propertyController.updateProperty);
 propertyRoutes.delete("/:id", authenticate, propertyController.deleteProperty);
 propertyRoutes.post("/:id/activate", authenticate, propertyController.activateProperty);
 propertyRoutes.post("/:id/deactivate", authenticate, propertyController.deactivateProperty);
-
 
 export default propertyRoutes;

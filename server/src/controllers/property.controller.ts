@@ -182,4 +182,20 @@ export default class PropertyController {
 
     return ResponseUtil.success(res, properties, "Lấy danh sách property gần đó thành công");
   });
+
+  /**
+   * Get personalized recommendations for logged-in user
+   * @route GET /api/properties/recommendations
+   */
+  getRecommendations = catchErrors(async (req, res) => {
+    const userId = mongoIdSchema.parse(req.userId);
+    const limit = parseInt(req.query.limit as string) || 8;
+
+    const recommendations = await this.propertyService.getPersonalizedRecommendations(
+      userId,
+      limit
+    );
+
+    return ResponseUtil.success(res, recommendations, "Lấy danh sách property gợi ý thành công");
+  });
 }

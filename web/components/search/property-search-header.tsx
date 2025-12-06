@@ -77,7 +77,7 @@ export function PropertySearchHeader() {
     if (totalGuests) params.set('guests', totalGuests.toString());
     if (pets > 0) params.set('pets', pets.toString());
 
-    router.push(`/properties/search?${params.toString()}`);
+    router.push(`/search?${params.toString()}`);
   };
 
   const handleNearbySearch = () => {
@@ -95,7 +95,7 @@ export function PropertySearchHeader() {
           params.set('radius', '50'); // 50km radius
 
           setSheetOpen(false);
-          router.push(`/properties/search?${params.toString()}`);
+          router.push(`/search?${params.toString()}`);
         },
         error => {
           console.error('Error getting location:', error);

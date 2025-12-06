@@ -1,5 +1,4 @@
 export const TOKENS = {
-  TourService: Symbol("TourService"),
   CategoryService: Symbol("CategoryService"),
   ProductService: Symbol("ProductService"),
   AuthService: Symbol("AuthService"),

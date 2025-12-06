@@ -12,6 +12,7 @@ const reviewController = new ReviewController(reviewService);
 // Public routes
 
 reviewRoutes.get("/my", authenticate, reviewController.getMyPropertiesReviews);
+reviewRoutes.get("/recent", reviewController.getRecentReviews);
 reviewRoutes.get("/", reviewController.searchReviews);
 reviewRoutes.get("/:id", reviewController.getReview);
 
