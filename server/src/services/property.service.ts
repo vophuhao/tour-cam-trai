@@ -44,7 +44,7 @@ export class PropertyService {
 
     const property = await PropertyModel.findOne(query).populate(
       "host",
-      "name email avatar phoneNumber"
+      "fullName email avatar phoneNumber"
     );
 
     appAssert(property, ErrorFactory.resourceNotFound("Property"));
@@ -61,11 +61,13 @@ export class PropertyService {
   async getPropertyWithSites(idOrSlug: string) {
     const property = await this.getProperty(idOrSlug);
 
-    // Get all active sites for this property
+    // Get all active sites for this property with populated amenities
     const sites = await SiteModel.find({
       property: property._id,
       isActive: true,
-    }).sort({ createdAt: -1 });
+    })
+      .populate("amenities", "name icon category description")
+      .sort({ createdAt: -1 });
 
     return {
       property,
@@ -85,7 +87,7 @@ export class PropertyService {
   ): Promise<PropertyDocument> {
     const property = await PropertyModel.findById(propertyId);
     appAssert(property, ErrorFactory.resourceNotFound("Property"));
-    console.log( input);
+    console.log(input);
     // Check ownership unless admin
     if (!isAdmin) {
       appAssert(

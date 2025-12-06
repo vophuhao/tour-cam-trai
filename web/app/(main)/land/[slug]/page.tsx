@@ -1,10 +1,12 @@
 import { LocationSection } from '@/components/campsite/location-section';
+import { NearbyAttractionsSection } from '@/components/property/nearby-attractions-section';
 import { PropertyBookingCard } from '@/components/property/property-booking-card';
 import { PropertyGallery } from '@/components/property/property-gallery';
 import { PropertyOverview } from '@/components/property/property-overview';
 import { PropertyReviewsSection } from '@/components/property/property-reviews-section';
-import { SharedAmenitiesSection } from '@/components/property/shared-amenities-section';
+import { PropertyRulesSection } from '@/components/property/property-rules-section';
 import { SimilarProperties } from '@/components/property/similar-properties';
+import { SiteAmenitiesSection } from '@/components/property/site-amenities-section';
 import { SitesListSection } from '@/components/property/sites-list-section';
 import { Separator } from '@/components/ui/separator';
 import type { Property, Site } from '@/types/property-site';
@@ -134,10 +136,36 @@ export default async function PropertyPage({
 
             <Separator className="my-8" />
 
-            {/* Property Amenities */}
-            <SharedAmenitiesSection amenities={property.amenities} />
+            {/* Site Amenities - Aggregated from all sites */}
+            {activeSites.length > 0 && (
+              <>
+                <SiteAmenitiesSection sites={activeSites} />
+                <Separator className="my-8" />
+              </>
+            )}
 
-            <Separator className="my-8" />
+            {/* Nearby Attractions */}
+            {property.nearbyAttractions &&
+              property.nearbyAttractions.length > 0 && (
+                <>
+                  <NearbyAttractionsSection
+                    attractions={property.nearbyAttractions}
+                  />
+                  <Separator className="my-8" />
+                </>
+              )}
+
+            {/* Rules & Instructions */}
+            {property.rules && property.rules.length > 0 && (
+              <>
+                <PropertyRulesSection
+                  rules={property.rules}
+                  checkInInstructions={property.checkInInstructions}
+                  checkOutInstructions={property.checkOutInstructions}
+                />
+                {/* <Separator className="my-8" /> */}
+              </>
+            )}
           </div>
 
           {/* Right Column - Quick Info / CTA */}

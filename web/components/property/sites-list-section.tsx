@@ -15,7 +15,7 @@ import { vi } from 'date-fns/locale';
 import { CalendarIcon, Dog, MapPin, Users } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const SiteMap = dynamic(
   () => import('@/components/property/site-map').then(mod => mod.SiteMap),
@@ -66,6 +66,9 @@ export function SitesListSection({
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const [guestPopoverOpen, setGuestPopoverOpen] = useState(false);
 
+  // Ref for scrolling to date selector
+  const dateRangeRef = useRef<HTMLDivElement>(null);
+
   // Sync local adults state when booking.guests changes from URL
   useEffect(() => {
     if (booking.guests !== adults + children) {
@@ -87,6 +90,22 @@ export function SitesListSection({
     setAdults(newAdults);
     setChildren(newChildren);
     booking.setGuests(newAdults + newChildren);
+  };
+
+  // Handle "Đặt ngay" click when no dates selected
+  const handleBookNowClick = (e: React.MouseEvent) => {
+    if (!booking.dateRange?.from || !booking.dateRange?.to) {
+      e.preventDefault();
+      // Scroll to date selector
+      dateRangeRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+      // Open date popover after a brief delay for smooth UX
+      setTimeout(() => {
+        setDatePopoverOpen(true);
+      }, 500);
+    }
   };
 
   const nights =
@@ -270,16 +289,15 @@ export function SitesListSection({
           <div className="flex-1 overflow-y-auto scroll-smooth pr-4 lg:pr-6">
             {/* Select a site header */}
             <div className="mb-6">
-              <h2 className="text-2xl font-bold sm:text-3xl">Select a site</h2>
+              <h2 className="text-xl font-bold sm:text-2xl">Chọn 1 vị trí</h2>
               {filteredSites.length > 0 && (
                 <p className="mt-1 text-sm text-gray-600">
-                  {filteredSites.length} site
-                  {filteredSites.length > 1 ? 's' : ''} available
+                  Còn {filteredSites.length} vị trí
                   {booking.dateRange?.from && booking.dateRange?.to && (
                     <>
                       {' '}
-                      for{' '}
-                      {format(booking.dateRange.from, 'MMM d', {
+                      cho{' '}
+                      {format(booking.dateRange.from, 'MMMM d', {
                         locale: vi,
                       })}{' '}
                       – {format(booking.dateRange.to, 'd', { locale: vi })}
@@ -290,14 +308,17 @@ export function SitesListSection({
             </div>
 
             {/* Date & Guest Selectors Row */}
-            <div className="mb-4 flex flex-wrap items-center gap-3">
+            <div
+              className="mb-4 flex flex-wrap items-center gap-3"
+              ref={dateRangeRef}
+            >
               {/* Date Range */}
               <DateRangePopover
                 dateRange={booking.dateRange}
                 onDateChange={booking.setDateRange}
                 open={datePopoverOpen}
                 onOpenChange={setDatePopoverOpen}
-                placeholder="Add dates"
+                placeholder="Chọn ngày"
                 buttonClassName="h-11 border-gray-300 bg-white px-4"
                 align="start"
                 dateFormat="MMM d"
@@ -324,15 +345,14 @@ export function SitesListSection({
                 align="start"
                 icon={<Users className="mr-2 h-4 w-4 text-gray-600" />}
                 labels={{
-                  adults: 'Guests',
-                  adultsSubtext: 'Ages 13 or above',
-                  children: 'Children',
-                  childrenSubtext: 'Ages 0-12',
-                  pets: 'Pets',
-                  petsSubtext: `Max ${maxCapacity.maxPets}`,
-                  guestsText: guests =>
-                    `${guests} guest${guests > 1 ? 's' : ''}`,
-                  childrenText: children => `${children} children`,
+                  adults: 'Khách',
+                  adultsSubtext: 'Từ 13 tuổi trở lên',
+                  children: 'Trẻ em',
+                  childrenSubtext: 'Dưới 13 tuổi',
+                  pets: 'Thú cưng',
+                  petsSubtext: `Tối đa ${maxCapacity.maxPets}`,
+                  guestsText: guests => `${guests} khách`,
+                  childrenText: children => `${children} trẻ em`,
                 }}
               />
             </div>
@@ -345,14 +365,14 @@ export function SitesListSection({
                 className="h-9 rounded-full border-gray-300 hover:border-orange-500 hover:bg-orange-50"
               >
                 <MapPin className="mr-1 h-4 w-4" />
-                Camping style
+                Loại hình
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 className="h-9 rounded-full border-gray-300 hover:border-orange-500 hover:bg-orange-50"
               >
-                Amenities
+                Tiện nghi
               </Button>
               <Button
                 variant={petsAllowed ? 'default' : 'outline'}
@@ -365,7 +385,7 @@ export function SitesListSection({
                 onClick={() => setPetsAllowed(!petsAllowed)}
               >
                 <Dog className="mr-1 h-4 w-4" />
-                Pets allowed
+                Cho phép thú cưng
               </Button>
               <Button
                 variant={instantBook ? 'default' : 'outline'}
@@ -377,7 +397,7 @@ export function SitesListSection({
                 }`}
                 onClick={() => setInstantBook(!instantBook)}
               >
-                ⚡ Instant book
+                ⚡ Đặt ngay
               </Button>
             </div>
 
@@ -392,8 +412,7 @@ export function SitesListSection({
                       {typeLabels[type] || type} sites
                     </h3>
                     <p className="text-sm text-gray-600">
-                      {sitesInGroup.length} site
-                      {sitesInGroup.length > 1 ? 's' : ''} left
+                      {sitesInGroup.length} vị trí hiện có
                     </p>
                   </div>
 
@@ -405,19 +424,19 @@ export function SitesListSection({
                       return (
                         <Card
                           key={site._id}
-                          className={`group cursor-pointer overflow-hidden border transition-all duration-200 ${
+                          className={`group cursor-pointer overflow-hidden border-0 transition-all duration-200 ${
                             selectedSite?._id === site._id
-                              ? 'shadow-lg ring-2 ring-orange-500'
+                              ? 'shadow-sm ring-1'
                               : 'hover:border-orange-200 hover:shadow-md'
                           }`}
                           onClick={() => setSelectedSite(site)}
                           onMouseEnter={() => setHoveredSite(site)}
                           onMouseLeave={() => setHoveredSite(null)}
                         >
-                          <div className="flex gap-4 p-4">
+                          <div className="flex gap-4">
                             {/* Site Image */}
                             {site.photos && site.photos.length > 0 && (
-                              <div className="relative h-48 w-72 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                              <div className="relative h-62 w-70 shrink-0 overflow-hidden rounded-lg bg-gray-100">
                                 <img
                                   src={
                                     site.photos.find(p => p.isCover)?.url ||
@@ -429,7 +448,7 @@ export function SitesListSection({
                                 />
                                 {site.photos.length > 1 && (
                                   <div className="absolute right-2 bottom-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white backdrop-blur-sm">
-                                    +{site.photos.length - 1} photos
+                                    +{site.photos.length - 1}
                                   </div>
                                 )}
                               </div>
@@ -439,18 +458,18 @@ export function SitesListSection({
                             <div className="flex flex-1 flex-col justify-between">
                               <div>
                                 {/* Title & Rating */}
-                                <div className="mb-2 flex items-start justify-between">
+                                <div className="flex items-start justify-between gap-2">
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
-                                      <h4 className="text-lg font-bold">
+                                      <h4 className="text-md font-bold">
                                         {site.name}
                                       </h4>
                                       {site.bookingSettings.instantBook && (
                                         <Badge
                                           variant="secondary"
-                                          className="text-xs"
+                                          className="text-[9px]"
                                         >
-                                          ⚡ Instant
+                                          ⚡ Đặt ngay
                                         </Badge>
                                       )}
                                       {/* Show unavailable reason badge */}
@@ -464,7 +483,7 @@ export function SitesListSection({
                                       )}
                                     </div>
                                   </div>
-                                  {site.stats?.averageRating &&
+                                  {/* {site.stats?.averageRating &&
                                     site.stats.averageRating > 0 && (
                                       <div className="flex items-center gap-1">
                                         <span className="text-lg">👍</span>
@@ -479,11 +498,11 @@ export function SitesListSection({
                                           ({site.stats.totalReviews || 0})
                                         </span>
                                       </div>
-                                    )}
+                                    )} */}
                                 </div>
 
                                 {/* Details */}
-                                <p className="mb-2 text-sm text-gray-700">
+                                <p className="mb-1 text-xs text-gray-700">
                                   {typeLabels[site.accommodationType]} · Sleeps{' '}
                                   {site.capacity.maxGuests} ·{' '}
                                   {site.capacity.maxVehicles &&
@@ -492,17 +511,18 @@ export function SitesListSection({
 
                                 {/* Description */}
                                 {site.description && (
-                                  <p className="mb-3 line-clamp-2 text-sm text-gray-600">
+                                  <p className="mb-3 line-clamp-2 text-xs text-gray-600">
                                     {site.description}
                                   </p>
                                 )}
 
                                 {/* Quick Info */}
-                                <div className="mb-3 flex flex-wrap gap-4 text-sm text-gray-600">
+                                <div className="mb-3 flex flex-wrap gap-4 text-xs text-gray-600">
                                   {site.capacity.maxPets &&
                                     site.capacity.maxPets > 0 && (
                                       <span className="flex items-center gap-1">
-                                        <Dog className="h-4 w-4" /> Pets allowed
+                                        <Dog className="h-4 w-4" /> Cho phép thú
+                                        cưng
                                       </span>
                                     )}
                                 </div>
@@ -511,11 +531,11 @@ export function SitesListSection({
                               {/* Price & CTA */}
                               <div className="flex items-end justify-between">
                                 <div>
-                                  <p className="text-2xl font-bold">
-                                    €{site.pricing.basePrice}
+                                  <p className="text-md font-bold">
+                                    {site.pricing.basePrice} VND
                                     <span className="text-sm font-normal text-gray-600">
                                       {' '}
-                                      / night
+                                      / đêm
                                     </span>
                                   </p>
 
@@ -523,9 +543,9 @@ export function SitesListSection({
                                     <div className="mt-1 flex items-center gap-2">
                                       <div className="flex items-center gap-1">
                                         <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
-                                        <span className="text-sm font-medium text-green-700">
+                                        <span className="text-xs font-medium text-green-700">
                                           {site.capacity.maxConcurrentBookings}{' '}
-                                          spots available
+                                          vị trí có sẵn
                                         </span>
                                       </div>
                                     </div>
@@ -533,66 +553,73 @@ export function SitesListSection({
                                 </div>
                                 <Button
                                   size="lg"
-                                  className="bg-orange-600 px-8 hover:bg-orange-700"
-                                  asChild
-                                >
-                                  <Link
-                                    href={
+                                  className="hover:bg-primary/90 m-2 px-8"
+                                  asChild={
+                                    !!(
                                       booking.dateRange?.from &&
                                       booking.dateRange?.to
-                                        ? `/checkouts/payment?` +
-                                          new URLSearchParams({
-                                            siteId: site._id,
-                                            propertyId:
-                                              typeof site.property === 'string'
-                                                ? site.property
-                                                : site.property._id,
-                                            name: site.name,
-                                            location: `${property.location.city}, ${property.location.state}`,
-                                            image:
-                                              site.photos?.find(p => p.isCover)
-                                                ?.url ||
-                                              site.photos?.[0]?.url ||
-                                              '',
-                                            checkIn:
-                                              booking.dateRange.from.toISOString(),
-                                            checkOut:
-                                              booking.dateRange.to.toISOString(),
-                                            basePrice:
-                                              site.pricing.basePrice.toString(),
-                                            nights: nights.toString(),
-                                            cleaningFee: (
-                                              site.pricing.cleaningFee || 0
-                                            ).toString(),
-                                            petFee: booking.pets
+                                    )
+                                  }
+                                  onClick={handleBookNowClick}
+                                >
+                                  {booking.dateRange?.from &&
+                                  booking.dateRange?.to ? (
+                                    <Link
+                                      href={
+                                        `/checkouts/payment?` +
+                                        new URLSearchParams({
+                                          siteId: site._id,
+                                          propertyId:
+                                            typeof site.property === 'string'
+                                              ? site.property
+                                              : site.property._id,
+                                          name: site.name,
+                                          location: `${property.location.city}, ${property.location.state}`,
+                                          image:
+                                            site.photos?.find(p => p.isCover)
+                                              ?.url ||
+                                            site.photos?.[0]?.url ||
+                                            '',
+                                          checkIn:
+                                            booking.dateRange.from.toISOString(),
+                                          checkOut:
+                                            booking.dateRange.to.toISOString(),
+                                          basePrice:
+                                            site.pricing.basePrice.toString(),
+                                          nights: nights.toString(),
+                                          cleaningFee: (
+                                            site.pricing.cleaningFee || 0
+                                          ).toString(),
+                                          petFee: booking.pets
+                                            ? (
+                                                (site.pricing.petFee || 0) *
+                                                booking.pets
+                                              ).toString()
+                                            : '0',
+                                          additionalGuestFee:
+                                            booking.guests >
+                                            site.capacity.maxGuests
                                               ? (
-                                                  (site.pricing.petFee || 0) *
-                                                  booking.pets
+                                                  (site.pricing
+                                                    .additionalGuestFee || 0) *
+                                                  (booking.guests -
+                                                    site.capacity.maxGuests)
                                                 ).toString()
                                               : '0',
-                                            additionalGuestFee:
-                                              booking.guests >
-                                              site.capacity.maxGuests
-                                                ? (
-                                                    (site.pricing
-                                                      .additionalGuestFee ||
-                                                      0) *
-                                                    (booking.guests -
-                                                      site.capacity.maxGuests)
-                                                  ).toString()
-                                                : '0',
-                                            total: totalPrice.toString(),
-                                            currency:
-                                              site.pricing.currency || 'VND',
-                                            guests: booking.guests.toString(),
-                                            pets: booking.pets.toString(),
-                                            vehicles: '1',
-                                          }).toString()
-                                        : `/land/${propertySlug}/sites/${site.slug}`
-                                    }
-                                  >
-                                    Reserve
-                                  </Link>
+                                          total: totalPrice.toString(),
+                                          currency:
+                                            site.pricing.currency || 'VND',
+                                          guests: booking.guests.toString(),
+                                          pets: booking.pets.toString(),
+                                          vehicles: '1',
+                                        }).toString()
+                                      }
+                                    >
+                                      Đặt ngay
+                                    </Link>
+                                  ) : (
+                                    <span>Đặt ngay</span>
+                                  )}
                                 </Button>
                               </div>
                             </div>
@@ -608,7 +635,7 @@ export function SitesListSection({
             {/* No Results */}
             {accommodationTypes.length === 0 && (
               <div className="py-12 text-center">
-                <p className="text-gray-500">No sites match your filters</p>
+                <p className="text-gray-500">Không có vị trí nào phù hợp</p>
               </div>
             )}
 
@@ -616,13 +643,8 @@ export function SitesListSection({
             {filteredSites.length < sites.length && (
               <div className="mt-12">
                 <h3 className="mb-4 text-xl font-bold">
-                  These aren&apos;t exact matches
+                  Những vị trí này có thể phù hợp với bạn
                 </h3>
-                <p className="mb-4 text-sm text-gray-600">
-                  {booking.dateRange?.from && booking.dateRange?.to
-                    ? 'These sites are not available for your selected dates or do not meet all your criteria.'
-                    : 'These sites do not meet all your selected criteria.'}
-                </p>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {sites
                     .filter(s => !filteredSites.includes(s) && s.isActive)

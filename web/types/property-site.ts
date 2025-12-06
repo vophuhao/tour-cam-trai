@@ -19,8 +19,10 @@ export type LodgingType =
 
 export interface PropertyRule {
   category: 'pets' | 'noise' | 'fire' | 'vehicle' | 'general';
+  text: string;
   description: string;
   isRequired: boolean;
+  order?: number;
 }
 
 export interface PropertyStats {
@@ -60,7 +62,6 @@ interface Amenity {
 }
 
 export interface Property {
-  [x: string]: boolean;
   [x: string]: any;
   _id: string;
   host: string | User;
@@ -79,6 +80,8 @@ export interface Property {
       coordinates: [number, number]; // [lng, lat]
     };
     accessInstructions?: string;
+    directions?: string;
+    parkingInstructions?: string;
   };
 
   propertyType: PropertyType;
@@ -90,9 +93,16 @@ export interface Property {
   };
   minPrice?: number; // Minimum price from sites
 
-  amenities: string[]; // Amenity IDs that apply to the property
-
   rules: PropertyRule[];
+
+  nearbyAttractions?: Array<{
+    name: string;
+    distance: number; // km
+    type: string;
+  }>;
+
+  checkInInstructions?: string;
+  checkOutInstructions?: string;
 
   photos: Array<{
     url: string;
