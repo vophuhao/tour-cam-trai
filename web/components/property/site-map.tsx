@@ -2,11 +2,12 @@
 
 import { Button } from '@/components/ui/button';
 import type { Property, Site } from '@/types/property-site';
+import { Caravan, Home, Tent, TreePine } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import Map, { MapRef, Marker, NavigationControl, Popup } from 'react-map-gl';
+import { toast } from 'sonner';
 
 // Helper to extract lat/lng from Site siteLocation (GeoJSON format)
 const getSiteCoordinates = (
@@ -35,6 +36,25 @@ const getPropertyCoordinates = (
     return { lng: coords.coordinates[0], lat: coords.coordinates[1] };
   }
   return null;
+};
+
+// Helper to get icon for accommodation type
+const getAccommodationIcon = (type: string) => {
+  switch (type) {
+    case 'tent':
+      return <Tent className="h-3 w-3" />;
+    case 'rv':
+    case 'vehicle':
+      return <Caravan className="h-3 w-3" />;
+    case 'cabin':
+      return <Home className="h-3 w-3" />;
+    case 'glamping':
+    case 'yurt':
+    case 'treehouse':
+      return <TreePine className="h-3 w-3" />;
+    default:
+      return <Tent className="h-3 w-3" />;
+  }
 };
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
@@ -148,7 +168,10 @@ export function SiteMap({
                     : 'border-gray-300 bg-white text-gray-900 hover:border-black hover:bg-black hover:text-white hover:shadow-md'
                 }`}
               >
-                <span>{formatPrice(site.pricing.basePrice)}</span>
+                <div className="flex items-center gap-1">
+                  {getAccommodationIcon(site.accommodationType)}
+                  <span>{formatPrice(site.pricing.basePrice)}</span>
+                </div>
                 {isUndesignated && (
                   <span className="text-[10px] font-normal opacity-80">
                     {maxConcurrentBookings} sites
@@ -244,16 +267,16 @@ export function SiteMap({
               className="site-popup overflow-hidden rounded-xl"
             >
               <div className="w-64 overflow-hidden">
-                <Link href={`/land/${property.slug}/sites/${popupInfo.slug}`}>
-                  <div className="relative h-40 w-full overflow-hidden rounded-lg">
-                    <Image
-                      src={getCoverPhoto(popupInfo)}
-                      alt={popupInfo.name}
-                      fill
-                      className="object-cover transition-transform duration-200 hover:scale-105"
-                    />
-                  </div>
-                </Link>
+                {/* <Link href={`/land/${property.slug}/sites/${popupInfo.slug}`}> */}
+                <div className="relative h-40 w-full overflow-hidden rounded-lg">
+                  <Image
+                    src={getCoverPhoto(popupInfo)}
+                    alt={popupInfo.name}
+                    fill
+                    className="object-cover transition-transform duration-200 hover:scale-105"
+                  />
+                </div>
+                {/* </Link> */}
                 <div className="space-y-2 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="line-clamp-2 text-sm font-semibold">
@@ -284,12 +307,12 @@ export function SiteMap({
                         / đêm
                       </span>
                     </div>
-                    <Button asChild size="sm">
-                      <Link
-                        href={`/land/${property.slug}/sites/${popupInfo.slug}`}
-                      >
-                        Xem
-                      </Link>
+                    <Button
+                      onClick={() => toast('hehe')}
+                      size="default"
+                      asChild
+                    >
+                      Đặt chỗ
                     </Button>
                   </div>
                 </div>

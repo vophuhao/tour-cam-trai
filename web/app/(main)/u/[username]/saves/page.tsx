@@ -33,7 +33,8 @@ const getUserSavedCampsites = async (): Promise<SavedCampsite[]> => {
 
 export default function SavesPage() {
   const params = useParams();
-  const username = params.username as string;
+  // Decode username to handle special characters and spaces
+  const username = decodeURIComponent(params.username as string);
   const { user: currentUser } = useAuthStore();
   const isOwnProfile = currentUser?.username === username;
 

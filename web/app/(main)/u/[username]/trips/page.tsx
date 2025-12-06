@@ -49,7 +49,8 @@ interface BookingData {
 
 export default function TripsPage() {
   const params = useParams();
-  const username = params.username as string;
+  // Decode username to handle special characters and spaces
+  const username = decodeURIComponent(params.username as string);
   const { user: currentUser } = useAuthStore();
   const isOwnProfile = currentUser?.username === username;
 

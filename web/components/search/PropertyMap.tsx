@@ -283,7 +283,7 @@ export function PropertyMap({
               className="property-popup overflow-hidden rounded-xl"
             >
               <div className="w-64 overflow-hidden">
-                <Link href={`/property/${popupInfo.slug || popupInfo._id}`}>
+                <Link href={`/land/${popupInfo.slug || popupInfo._id}`}>
                   <div className="relative h-40 w-full overflow-hidden rounded-lg">
                     <Image
                       src={getCoverPhoto(popupInfo)}
@@ -328,9 +328,7 @@ export function PropertyMap({
                       </span>
                     </div>
                     <Button asChild size="sm">
-                      <Link
-                        href={`/property/${popupInfo.slug || popupInfo._id}`}
-                      >
+                      <Link href={`/land/${popupInfo.slug || popupInfo._id}`}>
                         Xem
                       </Link>
                     </Button>

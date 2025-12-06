@@ -5,6 +5,25 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Encode username for use in URLs
+ * Handles Vietnamese characters, spaces, and special characters
+ * @param username - The username to encode
+ * @returns URL-safe encoded username
+ */
+export function encodeUsername(username: string): string {
+  return encodeURIComponent(username);
+}
+
+/**
+ * Decode username from URL
+ * @param encodedUsername - The URL-encoded username
+ * @returns Decoded username
+ */
+export function decodeUsername(encodedUsername: string): string {
+  return decodeURIComponent(encodedUsername);
+}
+
 export const formatDate = (isoDate: string) => {
   const date = new Date(isoDate);
   const day = date.getDate().toString().padStart(2, '0');

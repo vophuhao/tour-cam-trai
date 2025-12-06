@@ -12,10 +12,25 @@ import type { Property, Site } from '@/types/property-site';
 import { useQuery } from '@tanstack/react-query';
 import { differenceInDays, format } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { CalendarIcon, Dog, MapPin, Users } from 'lucide-react';
+import useEmblaCarousel from 'embla-carousel-react';
+import {
+  CalendarIcon,
+  Car,
+  ChevronLeft,
+  ChevronRight,
+  Dog,
+  Flame,
+  MapPin,
+  TreePine,
+  Users,
+  Utensils,
+  Wifi,
+  Zap,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 const SiteMap = dynamic(
   () => import('@/components/property/site-map').then(mod => mod.SiteMap),
@@ -68,6 +83,56 @@ export function SitesListSection({
 
   // Ref for scrolling to date selector
   const dateRangeRef = useRef<HTMLDivElement>(null);
+
+  // Embla carousel for suggested sites
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: 'start',
+    slidesToScroll: 1,
+    containScroll: 'trimSnaps',
+  });
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setCanScrollPrev(emblaApi.canScrollPrev());
+    setCanScrollNext(emblaApi.canScrollNext());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    onSelect();
+    emblaApi.on('select', onSelect);
+    emblaApi.on('reInit', onSelect);
+  }, [emblaApi, onSelect]);
+
+  // Helper to get amenity icon
+  const getAmenityIcon = (amenityName: string) => {
+    const name = amenityName.toLowerCase();
+    if (name.includes('wifi') || name.includes('internet'))
+      return <Wifi className="h-3.5 w-3.5" />;
+    if (name.includes('điện') || name.includes('electric'))
+      return <Zap className="h-3.5 w-3.5" />;
+    if (name.includes('lửa') || name.includes('fire') || name.includes('bếp'))
+      return <Flame className="h-3.5 w-3.5" />;
+    if (name.includes('cây') || name.includes('tree') || name.includes('shade'))
+      return <TreePine className="h-3.5 w-3.5" />;
+    if (
+      name.includes('ăn') ||
+      name.includes('food') ||
+      name.includes('kitchen')
+    )
+      return <Utensils className="h-3.5 w-3.5" />;
+    if (
+      name.includes('xe') ||
+      name.includes('parking') ||
+      name.includes('vehicle')
+    )
+      return <Car className="h-3.5 w-3.5" />;
+    if (name.includes('pet') || name.includes('thú'))
+      return <Dog className="h-3.5 w-3.5" />;
+    return <span className="text-emerald-600">•</span>;
+  };
 
   // Sync local adults state when booking.guests changes from URL
   useEffect(() => {
@@ -285,7 +350,7 @@ export function SitesListSection({
       {/* Sites List + Map Layout */}
       <div className="flex min-h-0 gap-0">
         {/* Sites List - Scrollable */}
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto scroll-smooth pr-4 lg:pr-6">
             {/* Select a site header */}
             <div className="mb-6">
@@ -426,7 +491,7 @@ export function SitesListSection({
                           key={site._id}
                           className={`group cursor-pointer overflow-hidden border-0 transition-all duration-200 ${
                             selectedSite?._id === site._id
-                              ? 'shadow-sm ring-1'
+                              ? 'shadow-md ring-2'
                               : 'hover:border-orange-200 hover:shadow-md'
                           }`}
                           onClick={() => setSelectedSite(site)}
@@ -436,7 +501,7 @@ export function SitesListSection({
                           <div className="flex gap-4">
                             {/* Site Image */}
                             {site.photos && site.photos.length > 0 && (
-                              <div className="relative h-62 w-70 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                              <div className="relative flex h-62 shrink-0 basis-[45%] overflow-hidden rounded-lg bg-gray-100">
                                 <img
                                   src={
                                     site.photos.find(p => p.isCover)?.url ||
@@ -454,8 +519,11 @@ export function SitesListSection({
                               </div>
                             )}
 
-                            {/* Site Info */}
-                            <div className="flex flex-1 flex-col justify-between">
+                            {/* Site Info - Max height matches image */}
+                            <div
+                              className="flex flex-1 flex-col justify-between overflow-hidden"
+                              style={{ maxHeight: '248px' }}
+                            >
                               <div>
                                 {/* Title & Rating */}
                                 <div className="flex items-start justify-between gap-2">
@@ -466,10 +534,10 @@ export function SitesListSection({
                                       </h4>
                                       {site.bookingSettings.instantBook && (
                                         <Badge
-                                          variant="secondary"
-                                          className="text-[9px]"
+                                          variant="outline"
+                                          className="text-center text-xs"
                                         >
-                                          ⚡ Đặt ngay
+                                          Đặt ngay
                                         </Badge>
                                       )}
                                       {/* Show unavailable reason badge */}
@@ -503,29 +571,47 @@ export function SitesListSection({
 
                                 {/* Details */}
                                 <p className="mb-1 text-xs text-gray-700">
-                                  {typeLabels[site.accommodationType]} · Sleeps{' '}
-                                  {site.capacity.maxGuests} ·{' '}
+                                  {typeLabels[site.accommodationType]} · Tối đa{' '}
+                                  {site.capacity.maxGuests} người
                                   {site.capacity.maxVehicles &&
-                                    `Vehicles under ${site.capacity.rvMaxLength || 35} ft`}
+                                    site.capacity.maxVehicles > 0 &&
+                                    ` · Xe dưới ${site.capacity.rvMaxLength || 35} ft`}
                                 </p>
 
                                 {/* Description */}
                                 {site.description && (
-                                  <p className="mb-3 line-clamp-2 text-xs text-gray-600">
+                                  <p className="mb-2 line-clamp-2 text-xs text-gray-600">
                                     {site.description}
                                   </p>
                                 )}
 
-                                {/* Quick Info */}
-                                <div className="mb-3 flex flex-wrap gap-4 text-xs text-gray-600">
-                                  {site.capacity.maxPets &&
-                                    site.capacity.maxPets > 0 && (
-                                      <span className="flex items-center gap-1">
-                                        <Dog className="h-4 w-4" /> Cho phép thú
-                                        cưng
-                                      </span>
-                                    )}
-                                </div>
+                                {/* Amenities Grid - 2 columns x 3 rows */}
+                                {site.amenities &&
+                                  site.amenities.length > 0 && (
+                                    <div className="mb-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-gray-600">
+                                      {site.amenities
+                                        .slice(0, 6)
+                                        .map((amenity, idx) => {
+                                          const amenityName =
+                                            typeof amenity === 'string'
+                                              ? amenity
+                                              : amenity.name;
+                                          const icon =
+                                            getAmenityIcon(amenityName);
+                                          return (
+                                            <span
+                                              key={idx}
+                                              className="flex items-center gap-1.5 truncate"
+                                            >
+                                              {icon}
+                                              <span className="truncate">
+                                                {amenityName}
+                                              </span>
+                                            </span>
+                                          );
+                                        })}
+                                    </div>
+                                  )}
                               </div>
 
                               {/* Price & CTA */}
@@ -639,101 +725,141 @@ export function SitesListSection({
               </div>
             )}
 
-            {/* "These aren't exact matches" section */}
+            {/* "These aren't exact matches" section - Carousel */}
             {filteredSites.length < sites.length && (
               <div className="mt-12">
-                <h3 className="mb-4 text-xl font-bold">
-                  Những vị trí này có thể phù hợp với bạn
-                </h3>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {sites
-                    .filter(s => !filteredSites.includes(s) && s.isActive)
-                    .slice(0, 3)
-                    .map(site => {
-                      const isBlocked = siteBlockedMap.get(site._id);
-                      return (
-                        <Card
-                          key={site._id}
-                          className="overflow-hidden opacity-75"
-                        >
-                          {site.photos && site.photos.length > 0 && (
-                            <div className="relative">
-                              <img
-                                src={site.photos[0].url}
-                                alt={site.name}
-                                className="h-48 w-full object-cover grayscale"
-                              />
-                              {isBlocked &&
-                                booking.dateRange?.from &&
-                                booking.dateRange?.to && (
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                                    <Badge
-                                      variant="destructive"
-                                      className="text-sm"
-                                    >
-                                      {siteUnavailableReason.get(site._id) ||
-                                        'Not available'}
-                                    </Badge>
-                                  </div>
-                                )}
-                            </div>
-                          )}
-                          <CardContent className="p-4">
-                            <div className="mb-2 flex items-center justify-between">
-                              <h4 className="font-bold text-gray-600">
-                                {site.name}
-                              </h4>
-                              {site.stats?.averageRating && (
-                                <span className="text-sm text-gray-500">
-                                  👍{' '}
-                                  {Math.round(
-                                    (site.stats.averageRating / 5) * 100,
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-xl font-bold">
+                    Những vị trí này có thể phù hợp với bạn
+                  </h3>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 rounded-full"
+                      onClick={() => emblaApi?.scrollPrev()}
+                      disabled={!canScrollPrev}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 rounded-full"
+                      onClick={() => emblaApi?.scrollNext()}
+                      disabled={!canScrollNext}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="overflow-hidden" ref={emblaRef}>
+                  <div className="flex gap-4">
+                    {sites
+                      .filter(s => !filteredSites.includes(s) && s.isActive)
+                      .map(site => {
+                        const isBlocked = siteBlockedMap.get(site._id);
+                        const totalPrice = site.pricing.basePrice * nights;
+                        return (
+                          <div
+                            key={site._id}
+                            className="max-w-60 min-w-[300px] shrink-0"
+                          >
+                            <Card className="h-full overflow-hidden border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
+                              {site.photos && site.photos.length > 0 && (
+                                <div className="relative h-[220px] w-full overflow-hidden">
+                                  <img
+                                    src={site.photos[0].url}
+                                    alt={site.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                  {isBlocked &&
+                                    booking.dateRange?.from &&
+                                    booking.dateRange?.to && (
+                                      <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                        <Badge
+                                          variant="destructive"
+                                          className="text-sm"
+                                        >
+                                          {siteUnavailableReason.get(
+                                            site._id,
+                                          ) || 'Không khả dụng'}
+                                        </Badge>
+                                      </div>
+                                    )}
+                                </div>
+                              )}
+                              <CardContent className="p-4">
+                                <div className="mb-2 flex items-start justify-between gap-2">
+                                  <h4 className="line-clamp-1 font-semibold">
+                                    {site.name}
+                                  </h4>
+                                  {site.stats?.averageRating && (
+                                    <span className="flex shrink-0 items-center gap-1 text-sm">
+                                      👍
+                                      <span className="font-medium">
+                                        {Math.round(
+                                          (site.stats.averageRating / 5) * 100,
+                                        )}
+                                        %
+                                      </span>
+                                      <span className="text-gray-400">
+                                        ({site.stats.totalReviews || 0})
+                                      </span>
+                                    </span>
                                   )}
-                                  %
-                                </span>
-                              )}
-                            </div>
-                            <p className="mb-3 text-sm text-gray-500">
-                              {typeLabels[site.accommodationType]} · Sleeps{' '}
-                              {site.capacity.maxGuests}
-                            </p>
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-lg font-bold text-gray-600">
-                                  €{site.pricing.basePrice}
+                                </div>
+                                <p className="mb-3 text-sm text-gray-600">
+                                  {typeLabels[site.accommodationType]} · Tối đa{' '}
+                                  {site.capacity.maxGuests} người
+                                  {site.capacity.maxVehicles &&
+                                    site.capacity.maxVehicles > 0 &&
+                                    ` · Xe dưới ${site.capacity.rvMaxLength || 35} ft`}
                                 </p>
-                                <p className="text-xs text-gray-400">/ night</p>
-                              </div>
-                              {isBlocked &&
-                              booking.dateRange?.from &&
-                              booking.dateRange?.to ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled
-                                  className="cursor-not-allowed"
-                                >
-                                  Unavailable
-                                </Button>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-gray-400 text-gray-600 hover:bg-gray-100"
-                                  asChild
-                                >
-                                  <Link
-                                    href={`/land/${propertySlug}/sites/${site.slug}`}
-                                  >
-                                    View details
-                                  </Link>
-                                </Button>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
+                                <div className="flex items-end justify-between">
+                                  <div>
+                                    <div className="flex items-baseline gap-2">
+                                      <p className="text-lg font-bold">
+                                        {site.pricing.basePrice.toLocaleString()}{' '}
+                                      </p>
+                                      <span className="text-sm text-gray-500">
+                                        / đêm
+                                      </span>
+                                    </div>
+                                    {booking.dateRange?.from &&
+                                      booking.dateRange?.to && (
+                                        <p className="text-sm text-gray-500">
+                                          {totalPrice.toLocaleString()} ₫ tổng
+                                        </p>
+                                      )}
+                                  </div>
+                                  {isBlocked &&
+                                  booking.dateRange?.from &&
+                                  booking.dateRange?.to ? (
+                                    <Button
+                                      size="default"
+                                      variant="outline"
+                                      disabled
+                                      className="cursor-not-allowed"
+                                    >
+                                      Không khả dụng
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      onClick={() => toast('hehe')}
+                                      size="default"
+                                      asChild
+                                    >
+                                      Đặt chỗ
+                                    </Button>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
               </div>
             )}
