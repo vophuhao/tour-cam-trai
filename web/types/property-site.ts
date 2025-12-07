@@ -47,9 +47,11 @@ export interface PropertyRating {
 // User type reference
 interface User {
   _id: string;
-  fullName: string;
+  username: string;
   email: string;
-  avatar?: string;
+  avatarUrl?: string;
+  phoneNumber?: string;
+  bio?: string;
 }
 
 // Amenity type reference
@@ -94,6 +96,22 @@ export interface Property {
   minPrice?: number; // Minimum price from sites
 
   rules: PropertyRule[];
+
+  petPolicy?: {
+    allowed: boolean;
+    maxPets?: number;
+    restrictions?: string;
+  };
+
+  childrenPolicy?: {
+    allowed: boolean;
+    minAge?: number;
+  };
+
+  cancellationPolicy?: {
+    type: 'flexible' | 'moderate' | 'strict';
+    description?: string;
+  };
 
   nearbyAttractions?: Array<{
     name: string;

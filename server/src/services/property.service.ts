@@ -44,7 +44,7 @@ export class PropertyService {
 
     const property = await PropertyModel.findOne(query).populate(
       "host",
-      "fullName email avatar phoneNumber"
+      "username email avatarUrl phoneNumber bio"
     );
 
     appAssert(property, ErrorFactory.resourceNotFound("Property"));

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { getUserByUsername } from '@/lib/client-actions';
+import { getUserByUsername, getUserStats } from '@/lib/client-actions';
 import { useAuthStore } from '@/store/auth.store';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -51,13 +51,23 @@ export default function UserProfileLayout({
     enabled: !!username,
   });
 
+  const { data: statsData } = useQuery({
+    queryKey: ['user-stats', username],
+    queryFn: () => getUserStats(username),
+    enabled: !!username,
+  });
+
   const profile = data?.data as UserProfile | undefined;
+  const stats = statsData?.data as
+    | { bookings: number; orders: number; reviews: number }
+    | undefined;
   const isOwnProfile = currentUser?.username === username;
 
   // Determine active tab
   const getActiveTab = () => {
     if (pathname.includes('/saves')) return 'saves';
     if (pathname.includes('/orders')) return 'orders';
+    if (pathname.includes('/reviews')) return 'reviews';
     return 'trips';
   };
 
@@ -253,10 +263,12 @@ export default function UserProfileLayout({
                       : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'
                   }`}
                 >
-                  <div className="text-lg font-bold">0</div>
+                  <div className="text-lg font-bold">
+                    {stats?.bookings ?? 0}
+                  </div>
                   <div className="mt-1 text-xs">Chuyến đi</div>
                 </Link>
-                <Link
+                {/* <Link
                   href={`/u/${username}/saves`}
                   className={`rounded-lg px-2 py-3 text-center transition-all ${
                     activeTab === 'saves'
@@ -266,7 +278,7 @@ export default function UserProfileLayout({
                 >
                   <div className="text-lg font-bold">0</div>
                   <div className="mt-1 text-xs">Đã lưu</div>
-                </Link>
+                </Link> */}
                 {isOwnProfile && (
                   <Link
                     href={`/u/${username}/orders`}
@@ -276,17 +288,26 @@ export default function UserProfileLayout({
                         : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'
                     }`}
                   >
-                    <div className="text-lg font-bold">0</div>
+                    <div className="text-lg font-bold">
+                      {stats?.orders ?? 0}
+                    </div>
                     <div className="mt-1 flex items-center justify-center gap-1 text-xs">
                       <ShoppingBag className="h-3 w-3" />
                       Đơn hàng
                     </div>
                   </Link>
                 )}
-                <div className="rounded-lg bg-white px-2 py-3 text-center text-gray-700 shadow-sm">
-                  <div className="text-lg font-bold">0</div>
+                <Link
+                  href={`/u/${username}/reviews`}
+                  className={`rounded-lg px-2 py-3 text-center transition-all ${
+                    activeTab === 'reviews'
+                      ? 'bg-gray-900 text-white shadow-md'
+                      : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="text-lg font-bold">{stats?.reviews ?? 0}</div>
                   <div className="mt-1 text-xs">Đánh giá</div>
-                </div>
+                </Link>
               </div>
             </div>
 

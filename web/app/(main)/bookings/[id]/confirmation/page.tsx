@@ -318,7 +318,9 @@ export default function ConfirmationPage() {
     '12:00';
 
   // Check if cancellable (only pending/confirmed bookings can be cancelled)
-  const isCancellable = ['pending', 'confirmed'].includes(booking.status);
+  const isCancellable =
+    ['pending', 'confirmed'].includes(booking.status) &&
+    new Date(booking.checkIn) > new Date();
 
   return (
     <div className="min-h-screen bg-white">
