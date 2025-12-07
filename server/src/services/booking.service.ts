@@ -315,7 +315,10 @@ export class BookingService {
       booking.status === "pending" || booking.status === "confirmed",
       ErrorFactory.badRequest("Không thể hủy booking này")
     );
-
+    if (input.cancellInformation) {
+      booking.cancellInformation = input.cancellInformation;
+      await booking.save();
+    }
     await booking.cancel(userId, input.cancellationReason);
 
     // Unblock dates when booking is cancelled
@@ -375,7 +378,6 @@ export class BookingService {
 
     // Set refund
     booking.status = "refunded";
-    booking.paymentStatus = "refunded";
     booking.refundAmount = refundAmount || booking.pricing.total;
     await booking.save();
 

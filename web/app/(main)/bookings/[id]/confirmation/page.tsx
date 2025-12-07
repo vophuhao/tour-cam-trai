@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -68,7 +69,7 @@ interface BookingData {
   hostMessage?: string;
   payOSOrderCode?: string;
   payOSCheckoutUrl?: string;
-  
+
   // New Property-Site architecture
   property?: Partial<Property>;
   site?: Partial<Site> & {
@@ -144,6 +145,11 @@ export default function ConfirmationPage() {
   // Cancel dialog state
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [cancellationReason, setCancellationReason] = useState('');
+  const [cancellInformation, setCancellInformation] = useState({
+    fullnameGuest: "",
+    bankCode: "",
+    bankType: "",
+  });
 
   // Review dialog state
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
@@ -157,7 +163,7 @@ export default function ConfirmationPage() {
   // Cancel booking mutation
   const cancelMutation = useMutation({
     mutationFn: (cancellationReason: string) =>
-      cancelBooking(bookingId, { cancellationReason }),
+      cancelBooking(bookingId, { cancellationReason , cancellInformation }),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['booking', bookingId] });
       const previousBooking = queryClient.getQueryData(['booking', bookingId]);
@@ -426,7 +432,7 @@ export default function ConfirmationPage() {
                       <p className="text-sm text-gray-600">
                         Booking của bạn đã được xác nhận và thanh toán thành công
                       </p>
-                      
+
                     </div>
                   </div>
                 </CardContent>
@@ -625,9 +631,11 @@ export default function ConfirmationPage() {
         </div>
       </div>
 
+
+
       {/* Cancel Booking Dialog */}
       <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-red-600" />
@@ -693,13 +701,12 @@ export default function ConfirmationPage() {
                   Thông tin này giúp chúng tôi cải thiện dịch vụ
                 </p>
                 <p
-                  className={`text-xs ${
-                    cancellationReason.length < 10
+                  className={`text-xs ${cancellationReason.length < 10
                       ? 'text-red-600'
                       : cancellationReason.length > 450
                         ? 'text-orange-600'
                         : 'text-muted-foreground'
-                  }`}
+                    }`}
                 >
                   {cancellationReason.length}/500
                 </p>
@@ -708,35 +715,35 @@ export default function ConfirmationPage() {
 
             {/* Cancellation Policy */}
             {booking?.property?.cancellationPolicy && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                <p className="text-sm text-red-900">
-                  <strong>Chính sách hủy:</strong>{' '}
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                <p className="text-sm font-semibold text-red-900 mb-2">
+                  📋 Chính sách hủy:{' '}
                   {booking.property.cancellationPolicy.type === 'flexible' && 'Linh hoạt'}
                   {booking.property.cancellationPolicy.type === 'moderate' && 'Trung bình'}
                   {booking.property.cancellationPolicy.type === 'strict' && 'Nghiêm ngặt'}
                 </p>
 
                 {booking.property.cancellationPolicy.description && (
-                  <p className="mt-1 text-xs text-red-800">
+                  <p className="mt-2 text-xs text-red-800 leading-relaxed">
                     {booking.property.cancellationPolicy.description}
                   </p>
                 )}
 
                 {booking.property.cancellationPolicy.refundRules &&
                   booking.property.cancellationPolicy.refundRules.length > 0 && (
-                    <div className="mt-3 space-y-1 text-sm text-red-800">
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs font-medium text-red-900">
+                        Quy tắc hoàn tiền:
+                      </p>
                       {booking.property.cancellationPolicy.refundRules
                         .sort((a, b) => b.daysBeforeCheckIn - a.daysBeforeCheckIn)
                         .map((rule, idx) => (
-                          <div key={idx} className="flex justify-between">
-                            <span>
-                              {rule.daysBeforeCheckIn === 0
-                                ? 'Trong ngày nhận phòng'
-                                : rule.daysBeforeCheckIn === 1
-                                  ? 'Trước 1 ngày'
-                                  : `Trước ${rule.daysBeforeCheckIn} ngày`}
+                          <div key={idx} className="flex items-start gap-2 text-sm text-red-800">
+                            <span className="text-red-600 mt-0.5">•</span>
+                            <span className="flex-1">
+                              Hủy trước <strong>{rule.daysBeforeCheckIn} ngày</strong> so với check-in:
+                              Hoàn <strong>{rule.refundPercentage}%</strong> số tiền đã thanh toán
                             </span>
-                            <span className="font-medium">Hoàn {rule.refundPercentage}%</span>
                           </div>
                         ))}
                     </div>
@@ -744,22 +751,106 @@ export default function ConfirmationPage() {
               </div>
             )}
 
+            {/* Refund Input Section */}
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
+              <h3 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                Thông tin tài khoản nhận hoàn tiền
+              </h3>
+
+              {/* Fullname */}
+              <div className="space-y-1.5">
+                <label htmlFor="refund-fullname" className="text-sm font-medium text-gray-700">
+                  Tên chủ tài khoản <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  id="refund-fullname"
+                  placeholder="Nhập họ tên đầy đủ chủ tài khoản..."
+                  value={cancellInformation.fullnameGuest}
+                  onChange={(e) =>
+                    setCancellInformation({ ...cancellInformation, fullnameGuest: e.target.value })
+                  }
+                  disabled={cancelMutation.isPending}
+                  maxLength={200}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Bank Code */}
+              <div className="space-y-1.5">
+                <label htmlFor="refund-bankcode" className="text-sm font-medium text-gray-700">
+                  Mã ngân hàng <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  id="refund-bankcode"
+                  placeholder="VD: VCB, ACB, TCB, MB, Vietcombank..."
+                  value={cancellInformation.bankCode}
+                  onChange={(e) =>
+                    setCancellInformation({ ...cancellInformation, bankCode: e.target.value })
+                  }
+                  disabled={cancelMutation.isPending}
+                  maxLength={20}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500">
+                  Nhập mã hoặc tên ngân hàng của bạn
+                </p>
+              </div>
+
+              {/* Bank Type */}
+              <div className="space-y-1.5">
+                <label htmlFor="refund-banktype" className="text-sm font-medium text-gray-700">
+                  Số tài khoản / Phương thức <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  id="refund-banktype"
+                  placeholder="VD: 1234567890, Thẻ ATM, Tài khoản thanh toán..."
+                  value={cancellInformation.bankType}
+                  onChange={(e) =>
+                    setCancellInformation({ ...cancellInformation, bankType: e.target.value })
+                  }
+                  disabled={cancelMutation.isPending}
+                  maxLength={100}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500">
+                  Nhập số tài khoản hoặc loại tài khoản
+                </p>
+              </div>
+            </div>
+
             {/* Refund Info */}
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-              <p className="text-sm text-blue-900">
-                <strong>Chính sách hoàn tiền:</strong> Tiền sẽ được hoàn lại vào
-                tài khoản của bạn trong vòng 5-7 ngày làm việc.
-              </p>
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900 mb-1">
+                    Lưu ý về hoàn tiền
+                  </p>
+                  <p className="text-xs text-blue-800 leading-relaxed">
+                    • Tiền sẽ được hoàn lại vào tài khoản của bạn trong vòng <strong>5-7 ngày làm việc</strong>
+                    <br />
+                    • Vui lòng kiểm tra kỹ thông tin tài khoản trước khi xác nhận
+                    <br />
+                    • Số tiền hoàn phụ thuộc vào chính sách hủy và thời điểm hủy
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2 sm:gap-0  bottom-0 bg-white pt-4 border-t">
             <Button
               type="button"
               variant="outline"
               onClick={() => {
                 setIsCancelDialogOpen(false);
                 setCancellationReason('');
+                setCancellInformation({
+                  fullnameGuest: "",
+                  bankCode: "",
+                  bankType: "",
+                });
               }}
               disabled={cancelMutation.isPending}
             >
@@ -772,7 +863,10 @@ export default function ConfirmationPage() {
               disabled={
                 cancelMutation.isPending ||
                 !cancellationReason.trim() ||
-                cancellationReason.trim().length < 10
+                cancellationReason.trim().length < 10 ||
+                !cancellInformation.fullnameGuest.trim() ||
+                !cancellInformation.bankCode.trim() ||
+                !cancellInformation.bankType.trim()
               }
             >
               {cancelMutation.isPending ? (
@@ -790,6 +884,7 @@ export default function ConfirmationPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       {/* Review Dialog */}
       {booking.status === 'completed' &&

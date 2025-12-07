@@ -57,6 +57,7 @@ const PAYMENT_STATUS_LABELS: Record<string, { label: string; color: string }> = 
     paid: { label: "Đã thanh toán", color: "bg-green-100 text-green-800" },
     refunded: { label: "Đã hoàn tiền", color: "bg-purple-100 text-purple-800" },
     failed: { label: "Thất bại", color: "bg-red-100 text-red-800" },
+    
 };
 
 export default function BookingsPage() {
@@ -165,7 +166,12 @@ export default function BookingsPage() {
             }
 
             const result = await cancelBooking(booking._id, {
-                cancellationReason: reason.trim()
+                cancellationReason: reason.trim(),
+                cancellInformation: {
+                    fullnameGuest: "", // Add appropriate value
+                    bankCode: "", // Add appropriate value
+                    bankType: "", // Add appropriate value
+                },
             });
 
             if (result?.success) {
@@ -338,12 +344,13 @@ export default function BookingsPage() {
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
-                        <TabsList className="grid w-full grid-cols-5 sm:w-auto">
+                        <TabsList className="grid w-full grid-cols-6 sm:w-auto">
                             <TabsTrigger value="all">Tất cả</TabsTrigger>
-                            <TabsTrigger value="pending">Chờ</TabsTrigger>
+                            <TabsTrigger value="pending">Chờ xác nhận</TabsTrigger>
                             <TabsTrigger value="confirmed">Đã xác nhận</TabsTrigger>
                             <TabsTrigger value="completed">Hoàn thành</TabsTrigger>
                             <TabsTrigger value="cancelled">Đã hủy</TabsTrigger>
+                            <TabsTrigger value="refunded">Đã hoàn tiền</TabsTrigger>
                         </TabsList>
                     </Tabs>
 

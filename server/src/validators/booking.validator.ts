@@ -56,6 +56,11 @@ export const confirmBookingSchema = z.object({
 // Validator cho cancel booking
 export const cancelBookingSchema = z.object({
   cancellationReason: z.string().min(10).max(500),
+  cancellInformation: z.object({
+    fullnameGuest: z.string().max(200),
+    bankCode: z.string().max(50),
+    bankType: z.string().max(50),
+  }).optional(),
 });
 
 // Validator cho search bookings

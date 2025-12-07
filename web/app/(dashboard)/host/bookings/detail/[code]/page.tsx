@@ -19,7 +19,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from '@/components/ui/alert';
-import { getBookingByCode } from '@/lib/client-actions';
+import { getBookingByCode, refundBooking } from '@/lib/client-actions';
 import type { Property, Site } from '@/types/property-site';
 import { format, differenceInDays } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -48,6 +48,8 @@ import {
   Phone,
   Receipt,
   Wallet,
+  Building,
+  User,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -70,7 +72,11 @@ interface BookingData {
   paymentMethod?: 'deposit' | 'full';
   guestMessage?: string;
   hostMessage?: string;
-
+  cancellInformation?: {
+    fullnameGuest?: string;
+    bankCode?: string;
+    bankType?: string;
+  };
   // Property-Site architecture
   property: Partial<Property>;
   site: Partial<Site>;
@@ -253,18 +259,10 @@ export default function BookingDetailPage() {
 
     try {
       setProcessing(true);
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/bookings/${booking._id}/refund`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-        },
-      );
-
-      if (!res.ok) throw new Error('Không thể xử lý hoàn tiền');
+      const res = await refundBooking(booking._id);
+      if (res.success === false) {
+        throw new Error(res.message || 'Không thể hoàn tiền');
+      }
 
       toast.success('Đã xử lý hoàn tiền thành công');
       fetchBooking();
@@ -789,7 +787,7 @@ export default function BookingDetailPage() {
             )}
 
             {/* Cancellation & Refund Info */}
-            {booking.status === 'cancelled' && booking.cancelledAt && (
+            {(booking.status === 'cancelled' || booking.status === 'refunded') && booking.cancelledAt && (
               <Card className="border-2 border-red-200 bg-red-50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-red-900">
@@ -951,7 +949,7 @@ export default function BookingDetailPage() {
                   </div>
 
                   {/* Refund Action Button */}
-                  {booking.paymentStatus !== 'refunded' && refundInfo.refundAmount > 0 && (
+                  {booking.status === 'cancelled' && refundInfo.refundAmount > 0 && (
                     <Button
                       className="w-full bg-blue-600 hover:bg-blue-700"
                       size="lg"
@@ -966,6 +964,7 @@ export default function BookingDetailPage() {
                       ) : (
                         <>
                           <RefreshCw className="mr-2 h-4 w-4" />
+
                           Xác nhận đã hoàn tiền {formatPrice(refundInfo.refundAmount)}
                         </>
                       )}
@@ -1170,6 +1169,11 @@ export default function BookingDetailPage() {
               </CardContent>
             </Card>
 
+
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
             {/* Guest Info */}
             <Card>
               <CardHeader>
@@ -1222,10 +1226,6 @@ export default function BookingDetailPage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
             {/* Pricing */}
             <Card>
               <CardHeader>
@@ -1349,39 +1349,60 @@ export default function BookingDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Actions */}
             <Card>
               <CardHeader>
-                <CardTitle>Thao tác</CardTitle>
+                <CardTitle>Thông tin hoàn tiền</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleExportPDF}
-                  disabled={exporting}
-                >
-                  {exporting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileText className="mr-2 h-4 w-4" />
-                  )}
-                  {exporting ? 'Đang xuất...' : 'Xuất hóa đơn PDF'}
-                </Button>
 
-                {(booking.status === 'pending' || booking.status === 'confirmed') && (
-                  <Button
-                    variant="destructive"
-                    className="w-full"
-                    onClick={() => setCancelDialogOpen(true)}
-                  >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Hủy booking
-                  </Button>
+              <CardContent>
+                {booking.cancellInformation ? (
+                  <div className="space-y-4">
+                    {/* Fullname Guest */}
+                    <div className="flex gap-3">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
+                        <User className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Tên chủ tài khoản</p>
+                        <p className="text-xs text-gray-600">
+                          {booking.cancellInformation.fullnameGuest || 'Không có dữ liệu'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Bank Code */}
+                    <div className="flex gap-3">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-100">
+                        <Building className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Mã ngân hàng</p>
+                        <p className="text-xs text-gray-600">
+                          {booking.cancellInformation.bankCode || 'Không có dữ liệu'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Bank Type */}
+                    <div className="flex gap-3">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100">
+                        <CreditCard className="h-4 w-4 text-indigo-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Loại tài khoản</p>
+                        <p className="text-xs text-gray-600">
+                          {booking.cancellInformation.bankType || 'Không có dữ liệu'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    Chưa có thông tin hoàn tiền
+                  </div>
                 )}
               </CardContent>
             </Card>
-
             {/* Timeline */}
             <Card>
               <CardHeader>
@@ -1465,6 +1486,39 @@ export default function BookingDetailPage() {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Thao tác</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleExportPDF}
+                  disabled={exporting}
+                >
+                  {exporting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText className="mr-2 h-4 w-4" />
+                  )}
+                  {exporting ? 'Đang xuất...' : 'Xuất hóa đơn PDF'}
+                </Button>
+
+                {(booking.status === 'pending' || booking.status === 'confirmed') && (
+                  <Button
+                    variant="destructive"
+                    className="w-full"
+                    onClick={() => setCancelDialogOpen(true)}
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Hủy booking
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>
