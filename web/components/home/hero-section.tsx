@@ -24,7 +24,7 @@ export default function HeroSection() {
     lng: number;
   }>();
   const [dateRange, setDateRange] = useState<DateRangeType>();
-  const [guests, setGuests] = useState(2);
+  const [guests, setGuests] = useState(0);
   const [childrenCount, setChildrenCount] = useState(0);
   const [pets, setPets] = useState(0);
 

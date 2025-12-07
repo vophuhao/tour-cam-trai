@@ -116,7 +116,7 @@ export function PropertyGrid({
               onMouseLeave={() => setHoveredProperty(null)}
             >
               <Link href={buildPropertyLink(property.slug || property._id)}>
-                <div className="relative h-48 w-full">
+                <div className="relative h-48 w-full overflow-hidden rounded-lg">
                   <Image
                     src={getCoverPhoto(property)}
                     alt={property.name}

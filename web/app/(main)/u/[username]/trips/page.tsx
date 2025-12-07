@@ -72,6 +72,9 @@ export default function TripsPage() {
   const pastTrips = bookings.filter(
     b => new Date(b.checkOut) < now || b.status === 'completed',
   );
+  const cancelledTrips = bookings.filter(
+    b => b.status === 'cancelled' || b.status === 'refunded',
+  );
 
   const getStatusBadge = (status: BookingData['status']) => {
     const styles: Record<BookingData['status'], string> = {
@@ -233,6 +236,19 @@ export default function TripsPage() {
           <h2 className="mb-4 text-xl font-semibold">Chuyến đi đã qua</h2>
           <div className="grid gap-6 md:grid-cols-2">
             {pastTrips.map(booking => (
+              <TripCard key={booking._id} booking={booking} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Cancelled Trips */}
+      {cancelledTrips.length > 0 && (
+        <section>
+          <Separator className="mb-6" />
+          <h2 className="mb-4 text-xl font-semibold">Chuyến đi đã hủy</h2>
+          <div className="grid gap-6 md:grid-cols-2">
+            {cancelledTrips.map(booking => (
               <TripCard key={booking._id} booking={booking} />
             ))}
           </div>
