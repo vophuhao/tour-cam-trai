@@ -218,6 +218,11 @@ export function SitesListSection({
     return { maxGuests, maxPets };
   }, [sites]);
 
+  // Auto-detect if this is undesignated property
+  const isUndesignated = useMemo(() => {
+    return sites.some(site => (site.capacity.maxConcurrentBookings ?? 1) > 1);
+  }, [sites]);
+
   // Collect all site IDs to check their availability
   const siteIdsForAvailability = useMemo(() => {
     if (sites.length > 0) {
@@ -226,24 +231,22 @@ export function SitesListSection({
     return [];
   }, [sites]);
 
-  // Fetch blocked dates for all sites when dates are selected
+  // Fetch blocked dates for a 6-month window from today (for calendar display)
   const availabilityWindow = useMemo(() => {
-    if (!booking.dateRange?.from || !booking.dateRange?.to) return null;
+    const today = new Date();
+    const sixMonthsLater = new Date();
+    sixMonthsLater.setMonth(today.getMonth() + 6);
     return {
-      checkIn: booking.dateRange.from.toISOString(),
-      checkOut: booking.dateRange.to.toISOString(),
+      checkIn: today.toISOString(),
+      checkOut: sixMonthsLater.toISOString(),
     };
-  }, [booking.dateRange]);
+  }, []);
 
   // Fetch blocked dates for each site
   const { data: siteAvailabilities } = useQuery({
-    queryKey: [
-      'site-blocked-dates',
-      siteIdsForAvailability,
-      availabilityWindow,
-    ],
+    queryKey: ['site-blocked-dates', siteIdsForAvailability],
     queryFn: async () => {
-      if (siteIdsForAvailability.length === 0 || !availabilityWindow) return [];
+      if (siteIdsForAvailability.length === 0) return [];
       const results = await Promise.all(
         siteIdsForAvailability.map(siteId =>
           getBlockedDates(
@@ -255,15 +258,123 @@ export function SitesListSection({
       );
       return results;
     },
-    enabled: siteIdsForAvailability.length > 0 && !!availabilityWindow,
+    enabled: siteIdsForAvailability.length > 0,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Create a map of site ID to blocked status
+  // Process blocked dates for calendar display (same logic as property-booking-card)
+  const blockedDates = useMemo(() => {
+    if (!siteAvailabilities || siteAvailabilities.length === 0) return [];
+
+    if (isUndesignated) {
+      // For UNDESIGNATED: Find undesignated sites and merge their blocked dates
+      const undesignatedIndices: number[] = [];
+      sites.forEach((site, index) => {
+        if ((site.capacity.maxConcurrentBookings ?? 1) > 1) {
+          undesignatedIndices.push(index);
+        }
+      });
+
+      if (undesignatedIndices.length === 0) return [];
+
+      // If only one undesignated site, use its blocked dates directly
+      if (undesignatedIndices.length === 1) {
+        const result = siteAvailabilities[undesignatedIndices[0]];
+        if (result?.data?.blockedDates) {
+          return result.data.blockedDates.map(
+            (dateStr: string) => new Date(dateStr),
+          );
+        }
+        return [];
+      }
+
+      // If multiple undesignated sites, block only when ALL are blocked
+      const dateBlockedCount = new Map<string, number>();
+      undesignatedIndices.forEach(index => {
+        const result = siteAvailabilities[index];
+        if (result?.data?.blockedDates) {
+          result.data.blockedDates.forEach((dateStr: string) => {
+            dateBlockedCount.set(
+              dateStr,
+              (dateBlockedCount.get(dateStr) || 0) + 1,
+            );
+          });
+        }
+      });
+
+      const fullyBlockedDates: string[] = [];
+      dateBlockedCount.forEach((count, dateStr) => {
+        if (count === undesignatedIndices.length) {
+          fullyBlockedDates.push(dateStr);
+        }
+      });
+
+      return fullyBlockedDates.map(dateStr => new Date(dateStr));
+    } else {
+      // For DESIGNATED: Block dates only when ALL sites are blocked
+      const dateBlockedCount = new Map<string, number>();
+
+      siteAvailabilities.forEach(
+        (result: { data?: { blockedDates?: string[] } }) => {
+          if (result.data?.blockedDates) {
+            result.data.blockedDates.forEach((dateStr: string) => {
+              dateBlockedCount.set(
+                dateStr,
+                (dateBlockedCount.get(dateStr) || 0) + 1,
+              );
+            });
+          }
+        },
+      );
+
+      const fullyBlockedDates: string[] = [];
+      dateBlockedCount.forEach((count, dateStr) => {
+        if (count === siteAvailabilities.length) {
+          fullyBlockedDates.push(dateStr);
+        }
+      });
+
+      return fullyBlockedDates.map(dateStr => new Date(dateStr));
+    }
+  }, [siteAvailabilities, isUndesignated, sites]);
+
+  // Separate query for checking site blocking in user's selected date range
+  const selectedDateWindow = useMemo(() => {
+    if (!booking.dateRange?.from || !booking.dateRange?.to) return null;
+    return {
+      checkIn: booking.dateRange.from.toISOString(),
+      checkOut: booking.dateRange.to.toISOString(),
+    };
+  }, [booking.dateRange]);
+
+  const { data: selectedDateAvailabilities } = useQuery({
+    queryKey: [
+      'site-selected-dates-blocked',
+      siteIdsForAvailability,
+      selectedDateWindow,
+    ],
+    queryFn: async () => {
+      if (siteIdsForAvailability.length === 0 || !selectedDateWindow) return [];
+      const results = await Promise.all(
+        siteIdsForAvailability.map(siteId =>
+          getBlockedDates(
+            siteId,
+            selectedDateWindow.checkIn,
+            selectedDateWindow.checkOut,
+          ),
+        ),
+      );
+      return results;
+    },
+    enabled: siteIdsForAvailability.length > 0 && !!selectedDateWindow,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Create a map of site ID to blocked status (for filtering)
   const siteBlockedMap = useMemo(() => {
     const map = new Map<string, boolean>();
     if (
-      !siteAvailabilities ||
+      !selectedDateAvailabilities ||
       !booking.dateRange?.from ||
       !booking.dateRange?.to
     ) {
@@ -271,7 +382,7 @@ export function SitesListSection({
     }
 
     sites.forEach((site, index) => {
-      const result = siteAvailabilities[index];
+      const result = selectedDateAvailabilities[index];
       // If site has any blocked dates in the selected range, mark as blocked
       const hasBlockedDates =
         result?.data?.blockedDates && result.data.blockedDates.length > 0;
@@ -283,7 +394,12 @@ export function SitesListSection({
     });
 
     return map;
-  }, [siteAvailabilities, sites, booking.dateRange, siteUnavailableReason]);
+  }, [
+    selectedDateAvailabilities,
+    sites,
+    booking.dateRange,
+    siteUnavailableReason,
+  ]);
 
   // Filter sites
   const filteredSites = useMemo(() => {
@@ -381,6 +497,7 @@ export function SitesListSection({
               <DateRangePopover
                 dateRange={booking.dateRange}
                 onDateChange={booking.setDateRange}
+                disabledDates={blockedDates}
                 open={datePopoverOpen}
                 onOpenChange={setDatePopoverOpen}
                 placeholder="Chọn ngày"

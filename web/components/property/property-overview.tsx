@@ -19,9 +19,6 @@ const propertyTypeLabels: Record<string, string> = {
 };
 
 export function PropertyOverview({ property }: PropertyOverviewProps) {
-  const host =
-    typeof property.host === 'object' ? property.host : { _id: property.host };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -63,19 +60,32 @@ export function PropertyOverview({ property }: PropertyOverviewProps) {
       </div>
 
       {/* Host Info */}
-      {'fullName' in host && (
+      {typeof property.host === 'object' && 'username' in property.host && (
         <div className="flex items-center gap-4 rounded-lg border p-4">
           <Avatar className="h-16 w-16">
-            <AvatarImage src={host.avatar} alt={host.fullName || host.email} />
+            <AvatarImage
+              src={property.host.avatarUrl}
+              alt={property.host.username || property.host.email}
+            />
             <AvatarFallback>
-              {(host.fullName || host.email).charAt(0).toUpperCase()}
+              {(property.host.username || property.host.email)
+                .charAt(0)
+                .toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div>
             <p className="font-semibold">
-              Chủ đất: {host.fullName || host.email.split('@')[0]}
+              Chủ đất:{' '}
+              {property.host.username || property.host.email.split('@')[0]}
             </p>
-            <p className="text-muted-foreground text-sm">{host.email}</p>
+            <p className="text-muted-foreground text-sm">
+              {property.host.email}
+            </p>
+            {property.host.bio && (
+              <p className="text-muted-foreground mt-1 text-xs">
+                {property.host.bio}
+              </p>
+            )}
           </div>
         </div>
       )}

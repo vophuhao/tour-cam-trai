@@ -10,6 +10,8 @@ export { default as CategoryModel, type CategoryDocument } from "./category.mode
 
 export { default as ProductModel, type ProductDocument } from "./product.model";
 
+export { OrderModel, type OrderDocument } from "./order.model";
+
 // Hipcamp-style models
 export { AmenityModel, type AmenityDocument } from "./amenity.model";
 export {

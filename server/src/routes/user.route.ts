@@ -12,10 +12,11 @@ userRoutes.get("/hosts", authenticate, userController.getAllHost);
 userRoutes.get("/search", authenticate, userController.searchUsers);
 userRoutes.get("/me", authenticate, userController.getUserHandler);
 userRoutes.patch("/me", authenticate, userController.updateProfileHandler);
+userRoutes.get("/:username/stats", userController.getUserStats);
+userRoutes.get("/:username/reviews", userController.getUserReviews);
 userRoutes.get("/:username", userController.getUserByUsernameHandler);
 userRoutes.get("/", authenticate, userController.getAllUsers);
 userRoutes.post("/become-host", authenticate, userController.becomeHostHandler);
 userRoutes.post("/update-status-host/:id", authenticate, userController.updateStatusHostHandler);
-
 
 export default userRoutes;

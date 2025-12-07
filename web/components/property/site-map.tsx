@@ -174,7 +174,7 @@ export function SiteMap({
                 </div>
                 {isUndesignated && (
                   <span className="text-[10px] font-normal opacity-80">
-                    {maxConcurrentBookings} sites
+                    Còn {maxConcurrentBookings} chỗ
                   </span>
                 )}
               </div>

@@ -544,8 +544,9 @@ export class BookingService {
     const dates: Date[] = [];
     const currentDate = new Date(checkIn);
 
-    // Generate all dates from checkIn to checkOut (exclusive)
-    while (currentDate < checkOut) {
+    // Generate all dates from checkIn to checkOut (INCLUSIVE)
+    // Must include checkout date to prevent overlapping bookings
+    while (currentDate <= checkOut) {
       dates.push(new Date(currentDate));
       currentDate.setDate(currentDate.getDate() + 1);
     }
@@ -581,12 +582,12 @@ export class BookingService {
     checkIn: Date,
     checkOut: Date
   ): Promise<void> {
-    // Remove availability records for booked dates
+    // Remove availability records for booked dates (inclusive of checkout)
     // Only applies to designated sites (maxConcurrentBookings = 1)
     // Undesignated sites don't create availability blocks
     await AvailabilityModel.deleteMany({
       site: siteId,
-      date: { $gte: checkIn, $lt: checkOut },
+      date: { $gte: checkIn, $lte: checkOut },
       blockType: "booked",
     });
   }

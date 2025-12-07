@@ -1,8 +1,9 @@
 import { catchErrors, ErrorFactory } from "@/errors";
+import { BookingModel, OrderModel, ReviewModel } from "@/models";
+import HostModel from "@/models/host.modal";
 import { ResponseUtil, sendMail } from "@/utils";
 import UserModel from "../models/user.model";
 import appAssert from "../utils/app-assert";
-import HostModel from "@/models/host.modal";
 
 export default class UserController {
   getUserHandler = catchErrors(async (req, res) => {
@@ -12,8 +13,10 @@ export default class UserController {
   });
 
   getAllHost = catchErrors(async (req, res) => {
-    const hosts = await UserModel.find({ role: "host" }).select('username email avatarUrl createdAt');
-    return ResponseUtil.success(res, hosts, 'Lấy danh sách host thành công');
+    const hosts = await UserModel.find({ role: "host" }).select(
+      "username email avatarUrl createdAt"
+    );
+    return ResponseUtil.success(res, hosts, "Lấy danh sách host thành công");
   });
 
   getUserByUsernameHandler = catchErrors(async (req, res) => {
@@ -56,10 +59,10 @@ export default class UserController {
 
   searchUsers = catchErrors(async (req, res) => {
     const userId = req.userId;
-    appAssert(userId, ErrorFactory.invalidCredentials('Người dùng chưa đăng nhập'));
+    appAssert(userId, ErrorFactory.invalidCredentials("Người dùng chưa đăng nhập"));
 
     const { q } = req.query;
-    appAssert(q, ErrorFactory.badRequest('Thiếu từ khóa tìm kiếm'));
+    appAssert(q, ErrorFactory.badRequest("Thiếu từ khóa tìm kiếm"));
 
     const query = String(q).trim();
 
@@ -68,20 +71,20 @@ export default class UserController {
       _id: { $ne: userId },
       role: "host",
       $or: [
-        { username: { $regex: query, $options: 'i' } },
-        { email: { $regex: query, $options: 'i' } },
+        { username: { $regex: query, $options: "i" } },
+        { email: { $regex: query, $options: "i" } },
         { role: "host" },
       ],
     })
-      .select('username  avatar email')
+      .select("username  avatar email")
       .limit(10);
 
-    return ResponseUtil.success(res, users, 'Search results');
+    return ResponseUtil.success(res, users, "Search results");
   });
 
   getAllUsers = catchErrors(async (req, res) => {
-    const users = await UserModel.find().select('username email role createdAt avatarUrl');
-    return ResponseUtil.success(res, users, 'Lấy danh sách người dùng thành công');
+    const users = await UserModel.find().select("username email role createdAt avatarUrl");
+    return ResponseUtil.success(res, users, "Lấy danh sách người dùng thành công");
   });
 
   becomeHostHandler = catchErrors(async (req, res) => {
@@ -94,14 +97,13 @@ export default class UserController {
   });
 
   getAllBecomeHost = catchErrors(async (req, res) => {
-    const hosts = await HostModel.find().populate('user', 'username email avatarUrl');
-    return ResponseUtil.success(res, hosts, 'Lấy danh sách đăng ký host thành công');
+    const hosts = await HostModel.find().populate("user", "username email avatarUrl");
+    return ResponseUtil.success(res, hosts, "Lấy danh sách đăng ký host thành công");
   });
 
   updateStatusHostHandler = catchErrors(async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
-
 
     const host = await HostModel.findById(id);
     const user = await UserModel.findById(host?.user);
@@ -112,11 +114,10 @@ export default class UserController {
     await host.save();
 
     // Gửi email thông báo
-    if (status === 'approved' && previousStatus !== 'approved') {
-
+    if (status === "approved" && previousStatus !== "approved") {
       await sendMail({
         to: host.gmail,
-        subject: '🎉 Chúc mừng! Yêu cầu trở thành Host đã được chấp nhận',
+        subject: "🎉 Chúc mừng! Yêu cầu trở thành Host đã được chấp nhận",
         html: `
           <!DOCTYPE html>
           <html>
@@ -147,7 +148,7 @@ export default class UserController {
                   <h3 style="margin-top: 0; color: #10b981;">📋 Thông tin tài khoản Host</h3>
                   <p><strong>Tên:</strong> ${host.name}</p>
                   <p><strong>Email:</strong> ${host.gmail}</p>
-                  ${host.phone ? `<p><strong>Số điện thoại:</strong> ${host.phone}</p>` : ''}
+                  ${host.phone ? `<p><strong>Số điện thoại:</strong> ${host.phone}</p>` : ""}
                   <p><strong>Trạng thái:</strong> <span style="color: #10b981; font-weight: bold;">Đã kích hoạt</span></p>
                 </div>
                 
@@ -184,12 +185,12 @@ export default class UserController {
           </html>
         `,
       });
-      await user?.updateOne({ role: 'host' });
-    } else if (status === 'rejected' && previousStatus !== 'rejected') {
+      await user?.updateOne({ role: "host" });
+    } else if (status === "rejected" && previousStatus !== "rejected") {
       // Email cho rejected
       await sendMail({
         to: host.gmail,
-        subject: '❌ Thông báo về yêu cầu trở thành Host',
+        subject: "❌ Thông báo về yêu cầu trở thành Host",
         html: `
           <!DOCTYPE html>
           <html>
@@ -221,7 +222,7 @@ export default class UserController {
                   <h3 style="margin-top: 0; color: #ef4444;">📋 Thông tin yêu cầu</h3>
                   <p><strong>Tên:</strong> ${host.name}</p>
                   <p><strong>Email:</strong> ${host.gmail}</p>
-                  ${host.phone ? `<p><strong>Số điện thoại:</strong> ${host.phone}</p>` : ''}
+                  ${host.phone ? `<p><strong>Số điện thoại:</strong> ${host.phone}</p>` : ""}
                   <p><strong>Trạng thái:</strong> <span style="color: #ef4444; font-weight: bold;">Chưa được chấp nhận</span></p>
                 </div>
                 
@@ -270,6 +271,54 @@ export default class UserController {
       });
     }
 
-    return ResponseUtil.success(res, null, 'Cập nhật trạng thái host thành công');
+    return ResponseUtil.success(res, null, "Cập nhật trạng thái host thành công");
   });
-} 
+
+  /**
+   * Get user stats (bookings, orders, reviews count)
+   * @route GET /api/users/:username/stats
+   */
+  getUserStats = catchErrors(async (req, res) => {
+    const { username } = req.params;
+    const user = await UserModel.findOne({ username });
+    appAssert(user, ErrorFactory.resourceNotFound("User"));
+
+    // Count bookings where user is guest
+    const bookingsCount = await BookingModel.countDocuments({ guest: user._id });
+
+    // Count orders
+    const ordersCount = await OrderModel.countDocuments({ user: user._id });
+
+    // Count reviews written by user
+    const reviewsCount = await ReviewModel.countDocuments({ guest: user._id, isPublished: true });
+
+    return ResponseUtil.success(
+      res,
+      {
+        bookings: bookingsCount,
+        orders: ordersCount,
+        reviews: reviewsCount,
+      },
+      "Lấy thống kê user thành công"
+    );
+  });
+
+  /**
+   * Get user reviews
+   * @route GET /api/users/:username/reviews
+   */
+  getUserReviews = catchErrors(async (req, res) => {
+    const { username } = req.params;
+    const user = await UserModel.findOne({ username });
+    appAssert(user, ErrorFactory.resourceNotFound("User"));
+
+    const reviews = await ReviewModel.find({ guest: user._id, isPublished: true })
+      .populate("property", "name slug photos location")
+      .populate("site", "name")
+      .populate("booking", "checkIn checkOut")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return ResponseUtil.success(res, reviews, "Lấy danh sách review thành công");
+  });
+}

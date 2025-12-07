@@ -65,6 +65,15 @@ export const searchUsers = async (
 ): Promise<ApiResponse> =>
   apiClient.get(`/users/search?q=${encodeURIComponent(query)}`);
 
+export const getUserStats = async (
+  username: string,
+): Promise<
+  ApiResponse<{ bookings: number; orders: number; reviews: number }>
+> => apiClient.get(`/users/${username}/stats`);
+
+export const getUserReviews = async (username: string): Promise<ApiResponse> =>
+  apiClient.get(`/users/${username}/reviews`);
+
 export async function uploadMedia(formData: FormData): Promise<ApiResponse> {
   return apiClient.post('/media/save', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
