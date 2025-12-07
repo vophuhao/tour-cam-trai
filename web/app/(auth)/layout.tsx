@@ -1,4 +1,5 @@
 import { ModeToggle } from '@/components/mode-toggle';
+import Image from 'next/image';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -9,7 +10,16 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       </div>
 
       {/* Left Section - Camping Theme (Hidden on mobile) */}
-      <section className="bg-primary hidden lg:flex"></section>
+      <section className="bg-background relative hidden h-full w-full overflow-hidden lg:flex">
+        <div className="relative h-full w-full rounded-r-3xl">
+          <Image
+            src="/assets/images/auth-banner.jpg"
+            alt="banner"
+            fill
+            className="rounded-r-3xl object-cover"
+          />
+        </div>
+      </section>
 
       {/* Right Section - Auth Form */}
       <section className="bg-background flex items-center justify-center p-6 lg:p-12">

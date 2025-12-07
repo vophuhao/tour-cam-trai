@@ -19,9 +19,10 @@ import { useState } from 'react';
 
 const navItems = [
   { name: 'Trang chủ', href: '/' },
+  { name: 'Tìm kiếm', href: '/search' },
   { name: 'Sản phẩm', href: '/products' },
-  { name: 'Giới thiệu', href: '/about' },
-  { name: 'Liên hệ', href: '/contact' },
+  // { name: 'Giới thiệu', href: '/about' },
+  // { name: 'Liên hệ', href: '/contact' },
 ];
 
 export default function Header() {
@@ -40,7 +41,7 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-backdrop-filter:bg-white/60">
+    <header className="sticky top-0 z-50 w-full bg-white/10 backdrop-blur-xs supports-backdrop-filter:bg-white/35">
       <div className="container-padding mx-auto max-w-7xl">
         <div className="flex-between h-16">
           {/* Logo */}

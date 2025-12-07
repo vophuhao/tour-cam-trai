@@ -87,7 +87,7 @@ export default function HeroSection() {
       {/* Background Image */}
       <div className="absolute inset-0">
         <Image
-          src="/assets/images/landing-image.jpeg"
+          src="/assets/images/landing-image-1.avif"
           alt="Camping in nature"
           fill
           sizes="100vw"
