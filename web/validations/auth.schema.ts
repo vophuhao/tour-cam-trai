@@ -4,7 +4,7 @@ import z from 'zod';
 export const authFormSchema = (formType: FormType) => {
   return z
     .object({
-      email: z.email('email không hợp lệ'),
+      email: z.string().email('email không hợp lệ'),
       username:
         formType === 'sign-up'
           ? z
@@ -40,7 +40,7 @@ export const authFormSchema = (formType: FormType) => {
 };
 
 export const forgotPasswordFormSchema = z.object({
-  email: z.email('email không hợp lệ'),
+  email: z.string().email('email không hợp lệ'),
 });
 
 export const resetPasswordFormSchema = z

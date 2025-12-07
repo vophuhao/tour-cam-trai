@@ -55,7 +55,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
       {/* Hero Image Banner */}
       <div className="relative -mt-16 h-48 w-full overflow-hidden md:h-64">
         <Image
-          src="https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=1920&q=80"
+          src="/assets/images/product-banner-1.jpg"
           alt="Products"
           fill
           sizes="100vw"
