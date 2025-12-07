@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // ==================== PROPERTY-SITE ARCHITECTURE TYPES ====================
 
 /**
@@ -84,6 +85,14 @@ export interface Property {
     accessInstructions?: string;
     directions?: string;
     parkingInstructions?: string;
+  };
+  cancellationPolicy?: {
+    type: 'flexible' | 'moderate' | 'strict';
+    description?: string;
+    refundRules?: Array<{
+      daysBeforeCheckIn: number;
+      refundPercentage: number;
+    }>;
   };
 
   propertyType: PropertyType;

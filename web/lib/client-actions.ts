@@ -295,7 +295,10 @@ export async function createBooking(data: {
   numberOfPets?: number;
   numberOfVehicles?: number;
   guestMessage?: string;
-  paymentMethod: 'card';
+  paymentMethod: 'deposit' | 'full';
+  fullnameGuest: string;
+  phone?: string;
+  email?: string;
 }): Promise<ApiResponse<Booking>> {
   return apiClient.post('/bookings', data);
 }
@@ -550,3 +553,8 @@ export async function getAllApprovedHosts(): Promise<ApiResponse> {
 export const getDashboardStats = async (type: string) => {
   return apiClient.get(`/dashboard/${type}`);
 };
+
+
+export const userCancelPayment = async (bookingId: string): Promise<ApiResponse> => {
+  return apiClient.post(`/bookings/${bookingId}/cancel-payment`);
+}

@@ -17,23 +17,20 @@ import { Badge } from "@/components/ui/badge";
 import {
     Calendar,
     Users,
-    MapPin,
     Clock,
     DollarSign,
     CheckCircle,
     XCircle,
-    AlertCircle,
     Eye,
     MessageSquare,
     Download,
-    Filter,
     Search,
-
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -45,9 +42,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-
-import { getMyBookings } from "@/lib/client-actions";
-
+import { cancelBooking, completeBooking, getMyBookings } from "@/lib/client-actions";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
     pending: { label: "Chờ xác nhận", color: "bg-yellow-100 text-yellow-800" },
@@ -71,24 +66,30 @@ export default function BookingsPage() {
     const [sortBy, setSortBy] = useState("newest");
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(true);
-    const [selectedBooking, setSelectedBooking] = useState<any>(null);
     const router = useRouter();
+    
     const [actionDialog, setActionDialog] = useState<{
         open: boolean;
         type: "confirm" | "cancel" | "complete" | null;
         booking: any;
     }>({ open: false, type: null, booking: null });
 
-     async function fetchBookings() {
+    // State mới cho cancel dialog
+    const [cancelDialog, setCancelDialog] = useState<{
+        open: boolean;
+        booking: any;
+        reason: string;
+    }>({ open: false, booking: null, reason: "" });
+
+    async function fetchBookings() {
         try {
             const res = await getMyBookings();
             if (res.success) {
-                 setBookings(res.data ?? []);
+                setBookings(res.data ?? []);
             }
             setLoading(true);
-            
+
             setTimeout(() => {
-               
                 setLoading(false);
             }, 1000);
         } catch (error) {
@@ -106,17 +107,13 @@ export default function BookingsPage() {
         filterBookings();
     }, [bookings, activeTab, sortBy, searchTerm]);
 
-   
-
     function filterBookings() {
         let filtered = [...bookings];
 
-        // Filter by tab
         if (activeTab !== "all") {
             filtered = filtered.filter((b) => b.status === activeTab);
         }
 
-        // Search
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
             filtered = filtered.filter(
@@ -127,7 +124,6 @@ export default function BookingsPage() {
             );
         }
 
-        // Sort
         filtered.sort((a, b) => {
             switch (sortBy) {
                 case "newest":
@@ -151,7 +147,38 @@ export default function BookingsPage() {
     }
 
     function handleAction(type: "confirm" | "cancel" | "complete", booking: any) {
-        setActionDialog({ open: true, type, booking });
+        if (type === "cancel") {
+            // Mở cancel dialog thay vì action dialog
+            setCancelDialog({ open: true, booking, reason: "" });
+        } else {
+            setActionDialog({ open: true, type, booking });
+        }
+    }
+
+    // Hàm xử lý cancel với lý do
+    async function executeCancelWithReason() {
+        try {
+            const { booking, reason } = cancelDialog;
+            if (!booking || !reason.trim()) {
+                toast.error("Vui lòng nhập lý do từ chối booking");
+                return;
+            }
+
+            const result = await cancelBooking(booking._id, {
+                cancellationReason: reason.trim()
+            });
+
+            if (result?.success) {
+                toast.success("Đã từ chối booking!");
+                setCancelDialog({ open: false, booking: null, reason: "" });
+                await fetchBookings();
+            } else {
+                throw new Error(result?.message || 'Có lỗi xảy ra');
+            }
+        } catch (error: any) {
+            console.error("Error canceling booking:", error);
+            toast.error(error?.message || "Có lỗi xảy ra khi từ chối booking");
+        }
     }
 
     async function executeAction() {
@@ -159,17 +186,32 @@ export default function BookingsPage() {
             const { type, booking } = actionDialog;
             if (!type || !booking) return;
 
-            // TODO: Call actual API
-            // if (type === 'confirm') await confirmBooking(booking._id);
-            // if (type === 'cancel') await cancelBooking(booking._id);
-            // if (type === 'complete') await completeBooking(booking._id);
+            let result;
 
-            toast.success(`Đã ${type === "confirm" ? "xác nhận" : type === "cancel" ? "hủy" : "hoàn thành"} booking!`);
-            setActionDialog({ open: false, type: null, booking: null });
-            await fetchBookings();
-        } catch (error) {
+            switch (type) {
+                case 'confirm':
+                    toast.info("Chức năng xác nhận đang được phát triển");
+                    setActionDialog({ open: false, type: null, booking: null });
+                    return;
+
+                case 'complete':
+                    result = await completeBooking(booking._id);
+                    break;
+
+                default:
+                    throw new Error('Invalid action type');
+            }
+
+            if (result?.success) {
+                toast.success(type === "complete" ? "Đã hoàn thành booking!" : "Thành công!");
+                setActionDialog({ open: false, type: null, booking: null });
+                await fetchBookings();
+            } else {
+                throw new Error(result?.message || 'Có lỗi xảy ra');
+            }
+        } catch (error: any) {
             console.error("Error executing action:", error);
-            toast.error("Có lỗi xảy ra");
+            toast.error(error?.message || "Có lỗi xảy ra");
         }
     }
 
@@ -185,11 +227,6 @@ export default function BookingsPage() {
         });
     }
 
-    function getDaysBetween(start: string, end: string) {
-        const diff = new Date(end).getTime() - new Date(start).getTime();
-        return Math.ceil(diff / (1000 * 60 * 60 * 24));
-    }
-
     const stats = {
         total: bookings.length,
         pending: bookings.filter((b) => b.status === "pending").length,
@@ -199,7 +236,7 @@ export default function BookingsPage() {
             .filter((b) => b.paymentStatus === "paid")
             .reduce((sum, b) => sum + b.pricing.total, 0),
     };
-    console.log("Bookings:", bookings);
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
@@ -368,7 +405,7 @@ export default function BookingsPage() {
                                         {/* Campsite Image */}
                                         <div className="relative h-48 w-full lg:h-auto lg:w-64">
                                             <Image
-                                                src={booking.site.photos?.[0].url }
+                                                src={booking.site.photos?.[0].url}
                                                 alt={booking.site.name}
                                                 fill
                                                 className="object-cover"
@@ -396,11 +433,6 @@ export default function BookingsPage() {
                                                             • {booking.guest.email}
                                                         </span>
                                                     </div>
-                                                    {/* <div className="mt-1 flex items-center text-sm text-gray-600">
-                                                        <MapPin className="mr-1 h-4 w-4 text-gray-400" />
-                                                        {booking.site.name} - {booking.site.location.city},{" "}
-                                                        {booking.site.location.state}
-                                                    </div> */}
                                                 </div>
 
                                                 <div className="text-right">
@@ -492,9 +524,9 @@ export default function BookingsPage() {
                                                         </Button>
                                                     )}
 
-                                                <Button 
-                                                onClick={() => router.push(`/host/bookings/detail/${booking.code}`)}
-                                                 size="sm" variant="outline" className="flex-1">
+                                                <Button
+                                                    onClick={() => router.push(`/host/bookings/detail/${booking.code}`)}
+                                                    size="sm" variant="outline" className="flex-1">
                                                     <Eye className="mr-2 h-4 w-4" />
                                                     Xem chi tiết
                                                 </Button>
@@ -512,7 +544,57 @@ export default function BookingsPage() {
                 )}
             </div>
 
-            {/* Action Dialog */}
+            {/* Cancel Dialog with Reason */}
+            <AlertDialog 
+                open={cancelDialog.open} 
+                onOpenChange={(open) => !open && setCancelDialog({ open: false, booking: null, reason: "" })}
+            >
+                <AlertDialogContent className="sm:max-w-[500px]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <XCircle className="h-5 w-5 text-red-600" />
+                            Từ chối booking
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Vui lòng nhập lý do từ chối booking này. Khách hàng sẽ nhận được thông báo về lý do từ chối.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    
+                    <div className="py-4">
+                        <label htmlFor="cancelReason" className="mb-2 block text-sm font-medium text-gray-700">
+                            Lý do từ chối <span className="text-red-500">*</span>
+                        </label>
+                        <Textarea
+                            id="cancelReason"
+                            value={cancelDialog.reason}
+                            onChange={(e) => setCancelDialog({ ...cancelDialog, reason: e.target.value })}
+                            placeholder="Ví dụ: Địa điểm đã được đặt đầy, không thể phục vụ vào thời gian này..."
+                            className="min-h-[120px] resize-none"
+                            maxLength={500}
+                        />
+                        <p className="mt-1.5 text-xs text-gray-500">
+                            {cancelDialog.reason.length}/500 ký tự
+                        </p>
+                    </div>
+
+                    <AlertDialogFooter>
+                        <AlertDialogCancel 
+                            onClick={() => setCancelDialog({ open: false, booking: null, reason: "" })}
+                        >
+                            Hủy bỏ
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={executeCancelWithReason}
+                            className="bg-red-600 hover:bg-red-700"
+                            disabled={!cancelDialog.reason.trim()}
+                        >
+                            Xác nhận từ chối
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Confirm/Complete Action Dialog */}
             <AlertDialog open={actionDialog.open} onOpenChange={(open) => setActionDialog({ ...actionDialog, open })}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -521,12 +603,6 @@ export default function BookingsPage() {
                                 <>
                                     <CheckCircle className="h-5 w-5 text-green-600" />
                                     Xác nhận booking
-                                </>
-                            )}
-                            {actionDialog.type === "cancel" && (
-                                <>
-                                    <XCircle className="h-5 w-5 text-red-600" />
-                                    Từ chối booking
                                 </>
                             )}
                             {actionDialog.type === "complete" && (
@@ -539,8 +615,6 @@ export default function BookingsPage() {
                         <AlertDialogDescription>
                             {actionDialog.type === "confirm" &&
                                 "Bạn có chắc chắn muốn xác nhận booking này? Khách hàng sẽ nhận được email xác nhận."}
-                            {actionDialog.type === "cancel" &&
-                                "Bạn có chắc chắn muốn từ chối booking này? Hành động này không thể hoàn tác."}
                             {actionDialog.type === "complete" &&
                                 "Đánh dấu booking này là đã hoàn thành? Khách hàng có thể để lại đánh giá sau khi hoàn thành."}
                         </AlertDialogDescription>
@@ -550,9 +624,7 @@ export default function BookingsPage() {
                         <AlertDialogAction
                             onClick={executeAction}
                             className={
-                                actionDialog.type === "cancel"
-                                    ? "bg-red-600 hover:bg-red-700"
-                                    : actionDialog.type === "confirm"
+                                actionDialog.type === "confirm"
                                     ? "bg-emerald-600 hover:bg-emerald-700"
                                     : "bg-blue-600 hover:bg-blue-700"
                             }

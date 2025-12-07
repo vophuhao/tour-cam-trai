@@ -22,7 +22,7 @@ bookingRoutes.post("/:id/refund", authenticate, bookingController.refundBooking)
 // Booking by code
 bookingRoutes.post("/:code/code", authenticate, bookingController.getBookingByCode);
 bookingRoutes.post("/payos/webhook", bookingController.handlePayOSWebhook);
-
+bookingRoutes.post("/:id/cancel-payment", authenticate, bookingController.userCancelPayment);
 // Payment (admin only)
 bookingRoutes.patch("/:id/payment", authenticate, requireAdmin, bookingController.updatePayment);
 

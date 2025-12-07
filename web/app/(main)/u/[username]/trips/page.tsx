@@ -18,6 +18,7 @@ import { useParams } from 'next/navigation';
 // Backend Booking type matching the populated response
 interface BookingData {
   _id: string;
+  code?: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded';
   checkIn: string;
   checkOut: string;
@@ -190,7 +191,7 @@ export default function TripsPage() {
 
           {/* Trip Page Button */}
           <Button asChild variant="outline" className="mt-4 w-full">
-            <Link href={`/bookings/${booking._id}/confirmation`}>
+            <Link href={`/bookings/${booking.code}/confirmation`}>
               Trang chuyến đi
             </Link>
           </Button>

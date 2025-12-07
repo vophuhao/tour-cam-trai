@@ -1,11 +1,29 @@
 'use client';
 
+import { userCancelPayment } from '@/lib/client-actions';
 import { XCircle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function PaymentCancelPage() {
   const router = useRouter();
+   const searchParams = useSearchParams();
+  const orderCode = searchParams.get("orderCode");
+  console.log('Booking ID from params:', orderCode);
+  useEffect(() => {
+    // Call API to cancel payment and remove booking
+    const cancelPayment = async () => {
+      try {
+        const response = await userCancelPayment(orderCode!);
+        
+        console.log('Payment cancelled:', response);
+      } catch (error) {
+        console.error('Error cancelling payment:', error);
+      }
+    };
 
+    cancelPayment();
+  }, [orderCode]);
   return (
     <div className="flex min-h-[80vh] flex-col items-center justify-center bg-linear-to-b from-red-50 to-white px-6 text-center">
       <XCircle className="mb-4 h-20 w-20 text-red-500" />
@@ -18,12 +36,7 @@ export default function PaymentCancelPage() {
       </p>
 
       <div className="flex gap-3">
-        <button
-          onClick={() => router.push('/bookings')}
-          className="rounded-lg bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-3 text-white hover:opacity-95"
-        >
-          Quay lại giỏ hàng
-        </button>
+
         <button
           onClick={() => router.push('/')}
           className="rounded-lg border border-gray-300 px-6 py-3 text-gray-700 hover:bg-gray-50"

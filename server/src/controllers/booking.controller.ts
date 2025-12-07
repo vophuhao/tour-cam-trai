@@ -149,4 +149,10 @@ export default class BookingController {
     const result = await this.bookingService.handlePayOSWebhook(req.body);
     return res.status(200).json(result);
   });
+
+  userCancelPayment = catchErrors(async (req, res) => {
+    const { id } = req.params;
+    const result = await this.bookingService.userCancelPayment(id || "");
+    return ResponseUtil.success(res, result, "Hủy thanh toán booking thành công");
+  });
 }

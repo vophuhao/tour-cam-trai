@@ -38,6 +38,7 @@ import {
   Calendar,
   CheckCircle,
   Clock,
+  CreditCard,
   Home,
   Loader2,
   MapPin,
@@ -65,7 +66,9 @@ interface BookingData {
   paymentMethod?: string;
   guestMessage?: string;
   hostMessage?: string;
-
+  payOSOrderCode?: string;
+  payOSCheckoutUrl?: string;
+  
   // New Property-Site architecture
   property?: Partial<Property>;
   site?: Partial<Site> & {
@@ -150,18 +153,14 @@ export default function ConfirmationPage() {
     queryFn: () => getBooking(bookingId),
     enabled: !!bookingId,
   });
-
+  console.log('Booking data:', data);
   // Cancel booking mutation
   const cancelMutation = useMutation({
     mutationFn: (cancellationReason: string) =>
       cancelBooking(bookingId, { cancellationReason }),
     onMutate: async () => {
-      // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['booking', bookingId] });
-
-      // Snapshot previous value for rollback
       const previousBooking = queryClient.getQueryData(['booking', bookingId]);
-
       return { previousBooking };
     },
     onSuccess: () => {
@@ -169,31 +168,24 @@ export default function ConfirmationPage() {
         description:
           'Chúng tôi sẽ xử lý hoàn tiền trong vòng 5-7 ngày làm việc.',
       });
-
-      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['user-bookings'] });
-
-      // Close dialog and reset form
       setIsCancelDialogOpen(false);
       setCancellationReason('');
     },
     onError: (error: Error, _variables, context) => {
-      // Rollback on error
       if (context?.previousBooking) {
         queryClient.setQueryData(
           ['booking', bookingId],
           context.previousBooking,
         );
       }
-
       toast.error('Không thể hủy đặt chỗ', {
         description: error?.message || 'Vui lòng thử lại sau.',
       });
     },
     onSettled: () => {
-      // Always refetch after mutation
       queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
     },
   });
@@ -205,8 +197,6 @@ export default function ConfirmationPage() {
       toast.success('Đã hoàn thành chuyến đi', {
         description: 'Bạn có thể đánh giá trải nghiệm của mình ngay bây giờ.',
       });
-
-      // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['user-bookings'] });
@@ -318,9 +308,8 @@ export default function ConfirmationPage() {
     '12:00';
 
   // Check if cancellable (only pending/confirmed bookings can be cancelled)
-  const isCancellable =
-    ['pending', 'confirmed'].includes(booking.status) &&
-    new Date(booking.checkIn) > new Date();
+  const isCancellable = ['pending', 'confirmed'].includes(booking.status) &&
+    new Date(booking.checkIn) > new Date() && booking.paymentStatus !== 'pending';
 
   return (
     <div className="min-h-screen bg-white">
@@ -387,6 +376,63 @@ export default function ConfirmationPage() {
               </span>
             </div>
 
+            {/* Payment Status Alert - Pending */}
+            {booking.paymentStatus === 'pending' && (
+              <Card className="mb-6 border-2 border-orange-300 bg-gradient-to-r from-orange-50 to-yellow-50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-orange-500">
+                      <AlertCircle className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">
+                        Chưa hoàn tất thanh toán
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Vui lòng hoàn tất thanh toán để xác nhận booking của bạn
+                      </p>
+                    </div>
+                    <Button
+                      size="lg"
+                      className="bg-orange-600 hover:bg-orange-700"
+                      asChild
+                    >
+                      <a
+                        href={booking.payOSCheckoutUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        Tiếp tục thanh toán
+                      </a>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Payment Status Alert - Paid */}
+            {booking.paymentStatus === 'paid' && (
+              <Card className="mb-6 border-2 border-green-300 bg-gradient-to-r from-green-50 to-emerald-50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-green-500">
+                      <CheckCircle className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">
+                        Thanh toán thành công
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Booking của bạn đã được xác nhận và thanh toán thành công
+                      </p>
+                      
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Trip Title */}
             <h1 className="mb-6 text-2xl font-bold md:text-3xl">
               Chuyến đi sắp tới của bạn đến {siteName}
@@ -433,19 +479,6 @@ export default function ConfirmationPage() {
                 </Button>
               )}
 
-              {/* {['pending', 'confirmed'].includes(booking.status) && (
-                <>
-                  <Button className="flex-1 bg-emerald-500 hover:bg-emerald-600">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Thêm dịch vụ
-                  </Button>
-                  <Button variant="outline" className="flex-1">
-                    <PencilLine className="mr-2 h-4 w-4" />
-                    Chỉnh sửa chuyến đi
-                  </Button>
-                </>
-              )} */}
-
               {isCancellable && (
                 <Button
                   variant="outline"
@@ -457,11 +490,6 @@ export default function ConfirmationPage() {
                   Hủy đặt chỗ
                 </Button>
               )}
-
-              {/* <Button variant="outline" className="flex-1">
-                <HelpCircle className="mr-2 h-4 w-4" />
-                Trợ giúp
-              </Button> */}
             </div>
 
             {/* Trip Details */}
@@ -677,6 +705,44 @@ export default function ConfirmationPage() {
                 </p>
               </div>
             </div>
+
+            {/* Cancellation Policy */}
+            {booking?.property?.cancellationPolicy && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                <p className="text-sm text-red-900">
+                  <strong>Chính sách hủy:</strong>{' '}
+                  {booking.property.cancellationPolicy.type === 'flexible' && 'Linh hoạt'}
+                  {booking.property.cancellationPolicy.type === 'moderate' && 'Trung bình'}
+                  {booking.property.cancellationPolicy.type === 'strict' && 'Nghiêm ngặt'}
+                </p>
+
+                {booking.property.cancellationPolicy.description && (
+                  <p className="mt-1 text-xs text-red-800">
+                    {booking.property.cancellationPolicy.description}
+                  </p>
+                )}
+
+                {booking.property.cancellationPolicy.refundRules &&
+                  booking.property.cancellationPolicy.refundRules.length > 0 && (
+                    <div className="mt-3 space-y-1 text-sm text-red-800">
+                      {booking.property.cancellationPolicy.refundRules
+                        .sort((a, b) => b.daysBeforeCheckIn - a.daysBeforeCheckIn)
+                        .map((rule, idx) => (
+                          <div key={idx} className="flex justify-between">
+                            <span>
+                              {rule.daysBeforeCheckIn === 0
+                                ? 'Trong ngày nhận phòng'
+                                : rule.daysBeforeCheckIn === 1
+                                  ? 'Trước 1 ngày'
+                                  : `Trước ${rule.daysBeforeCheckIn} ngày`}
+                            </span>
+                            <span className="font-medium">Hoàn {rule.refundPercentage}%</span>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+              </div>
+            )}
 
             {/* Refund Info */}
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">

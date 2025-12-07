@@ -17,22 +17,22 @@ export default class PayOSService {
         const description = data.data?.description || ""; // Lấy description
         const isBooking = description.includes("BOOKING")
         const isOrder = description.includes("ORDER");
-
+        console.log(data);
         if (isBooking) {
             try {
-                const orderCode = data.data?.code;
+                const orderCode = data.data?.orderCode;
                 const success = data.data?.status === "PAID" || data.success;
-
-
                 const booking = await BookingModel.findOne({ payOSOrderCode: orderCode })
                 appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
-
+                console.log("Found booking for PayOS webhook:", booking);
                 if (success) {
                     booking.paymentStatus = "paid";
                     await booking.save();
                     return { success: true, code: "PAYMENT_SUCCESS", message: "Thanh toán thành công", booking };
                 } else {
+                    console.error("Payment failed for booking with orderCode:", orderCode);
                     booking.paymentStatus = "failed";
+                    console.error("đã vô đây");
                     await booking.save();
 
 

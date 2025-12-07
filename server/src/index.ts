@@ -27,7 +27,7 @@ import dashboardRoutes from "./routes/dashboard.route";
 import supportRouter from "./routes/directMessage.route";
 import payosRoutes from "./routes/payos.route,";
 import ratingRoutes from "./routes/rating.route";
-import { OrderService } from "./services";
+import { BookingService, OrderService } from "./services";
 import { initializeSocket } from "./socket";
 // import dashboardRoutes from "./routes/dashboard.route";
 
@@ -45,12 +45,22 @@ app.use(
 app.use(cookieParser());
 
 const orderService = new OrderService();
-
+const bookingService = new BookingService();
 // Ch?y m?i 10 ph?t
 cron.schedule("*/10 * * * *", async () => {
   console.log("?? Cron: ki?m tra don c?n h?y...");
   await orderService.cancelExpiredOrders();
 });
+  cron.schedule("0 * * * *", async () => {
+    console.log("🔄 Running booking cleanup job...");
+    try {
+      const result = await bookingService.cancelExpiredPendingBookings();
+      console.log(`✅ Cleanup completed: ${result.remindersSent} reminders, ${result.bookingsCancelled} cancelled`);
+    } catch (err) {
+      console.error("❌ Booking cleanup job failed:", err);
+    }
+  });
+
 // health check
 app.get("/", (_, res) => {
   return res.status(OK).json({
