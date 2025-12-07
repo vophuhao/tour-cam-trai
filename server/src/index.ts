@@ -70,7 +70,7 @@ app.use("/cart", authenticate, cartRoutes);
 app.use("/address", authenticate, addressRoutes);
 app.use("/support", authenticate, supportRouter);
 app.use("/orders", authenticate, orderRoutes);
-app.use("/rating", authenticate, ratingRoutes);
+app.use("/rating", ratingRoutes);
 app.use("/bookings", bookingRoutes);
 app.use("/reviews", reviewRoutes);
 app.use("/amenities", amenityRoutes);

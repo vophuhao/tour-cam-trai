@@ -21,15 +21,21 @@ import {
     Check,
     Send,
     Eye,
+    Home,
+    Tent,
 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
-const RATING_LABELS: Record<string, string> = {
-    overall: "Tổng quan",
+const PROPERTY_RATING_LABELS: Record<string, string> = {
+    location: "Vị trí",
+    communication: "Giao tiếp",
+    value: "Giá trị",
+};
+
+const SITE_RATING_LABELS: Record<string, string> = {
     cleanliness: "Vệ sinh",
     accuracy: "Đúng mô tả",
-    location: "Vị trí",
-    value: "Giá trị",
-    communication: "Giao tiếp",
+    amenities: "Tiện nghi",
 };
 
 interface ReviewDetailDialogProps {
@@ -82,11 +88,17 @@ export function ReviewDetailDialog({
                                             Đã xác minh
                                         </Badge>
                                     )}
+                                    {review.isFeatured && (
+                                        <Badge className="bg-purple-600 text-xs">
+                                            Nổi bật
+                                        </Badge>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-gray-500 font-normal">
                                     <MapPin className="h-4 w-4" />
-                                    {review.campsite?.name}
+                                    {review.property?.name} - {review.site?.name}
                                     <span>•</span>
+                                    <Calendar className="h-4 w-4" />
                                     {formatDate(review.createdAt)}
                                 </div>
                             </div>
@@ -94,32 +106,61 @@ export function ReviewDetailDialog({
                     </DialogHeader>
 
                     {/* Overall Rating */}
-                    <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                        <div className="text-center">
+                    <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg border border-emerald-200">
+                        <div className="text-center px-4 border-r border-emerald-300">
                             <div className="flex items-center gap-1">
                                 <Star
                                     className={`h-8 w-8 fill-current ${getStarColor(
-                                        review.ratings?.overall
+                                        review.overallRating || 0
                                     )}`}
                                 />
                                 <span className="text-3xl font-bold text-gray-900">
-                                    {review.ratings?.overall?.toFixed(1)}
+                                    {review.overallRating?.toFixed(1) || "0.0"}
                                 </span>
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">Tổng quan</p>
+                            <p className="text-xs text-gray-600 mt-1 font-medium">Tổng quan</p>
                         </div>
-                        <div className="flex-1 grid grid-cols-2 gap-3">
-                            {Object.entries(review.ratings || {})
-                                .filter(([key]) => key !== "overall")
-                                .map(([key, value]) => (
-                                    <div key={key}>
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="text-gray-600">{RATING_LABELS[key]}</span>
-                                            {/* <span className="font-medium">{value}/5</span> */}
+                        
+                        <div className="flex-1 space-y-4">
+                            {/* Property Ratings */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Home className="h-4 w-4 text-blue-600" />
+                                    <p className="text-sm font-semibold text-blue-900">Đánh giá Property</p>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {Object.entries(review.propertyRatings || {}).map(([key, value]) => (
+                                        <div key={key}>
+                                            <div className="flex items-center justify-between text-xs mb-1">
+                                                <span className="text-gray-600">{PROPERTY_RATING_LABELS[key]}</span>
+                                                <span className="font-medium text-gray-900">{value as number}/5</span>
+                                            </div>
+                                            <Progress value={((value as number) / 5) * 100} className="h-1.5" />
                                         </div>
-                                        <Progress value={((value as number) / 5) * 100} className="mt-1 h-2" />
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Site Ratings */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Tent className="h-4 w-4 text-emerald-600" />
+                                    <p className="text-sm font-semibold text-emerald-900">Đánh giá Site</p>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {Object.entries(review.siteRatings || {}).map(([key, value]) => (
+                                        <div key={key}>
+                                            <div className="flex items-center justify-between text-xs mb-1">
+                                                <span className="text-gray-600">{SITE_RATING_LABELS[key]}</span>
+                                                <span className="font-medium text-gray-900">{value as number}/5</span>
+                                            </div>
+                                            <Progress value={((value as number) / 5) * 100} className="h-1.5" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -129,13 +170,32 @@ export function ReviewDetailDialog({
                     )}
 
                     {/* Comment */}
-                    <p className="text-gray-700 leading-relaxed">{review.comment}</p>
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <p className="text-gray-700 leading-relaxed">{review.comment}</p>
+                    </div>
+
+                    {/* Images */}
+                    {review.images && review.images.length > 0 && (
+                        <div>
+                            <p className="text-sm font-medium text-gray-700 mb-3">Hình ảnh</p>
+                            <div className="grid grid-cols-3 gap-3">
+                                {review.images.map((image: string, i: number) => (
+                                    <img
+                                        key={i}
+                                        src={image}
+                                        alt={`Review image ${i + 1}`}
+                                        className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Pros & Cons */}
                     {(review.pros?.length > 0 || review.cons?.length > 0) && (
                         <div className="grid gap-4 sm:grid-cols-2">
                             {review.pros?.length > 0 && (
-                                <div className="rounded-lg bg-green-50 p-4">
+                                <div className="rounded-lg bg-green-50 p-4 border border-green-200">
                                     <p className="mb-3 flex items-center gap-2 font-medium text-green-800">
                                         <ThumbsUp className="h-4 w-4" />
                                         Điểm tốt
@@ -150,7 +210,7 @@ export function ReviewDetailDialog({
                                 </div>
                             )}
                             {review.cons?.length > 0 && (
-                                <div className="rounded-lg bg-red-50 p-4">
+                                <div className="rounded-lg bg-red-50 p-4 border border-red-200">
                                     <p className="mb-3 flex items-center gap-2 font-medium text-red-800">
                                         <ThumbsDown className="h-4 w-4" />
                                         Điểm chưa tốt
@@ -205,17 +265,17 @@ export function ReviewDetailDialog({
                         <div className="flex items-center gap-4 text-sm text-gray-500">
                             <span className="flex items-center gap-1">
                                 <ThumbsUp className="h-4 w-4" />
-                                {review.helpfulCount} hữu ích
+                                {review.helpfulCount || 0} hữu ích
                             </span>
                             <span className="flex items-center gap-1">
                                 <ThumbsDown className="h-4 w-4" />
-                                {review.notHelpfulCount}
+                                {review.notHelpfulCount || 0}
                             </span>
                         </div>
                         <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => window.open(`/campsites/${review.campsite?.slug}`, "_blank")}
+                            onClick={() => window.open(`/properties/${review.property?.slug}`, "_blank")}
                         >
                             <Eye className="mr-2 h-4 w-4" />
                             Xem địa điểm

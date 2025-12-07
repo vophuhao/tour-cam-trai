@@ -82,9 +82,9 @@ export default function ReviewsPage() {
         } else if (activeTab === "featured") {
             filtered = filtered.filter((r) => r.isFeatured);
         } else if (activeTab === "high-rated") {
-            filtered = filtered.filter((r) => r.ratings.overall >= 4);
+            filtered = filtered.filter((r) => r.overallRating >= 4);
         } else if (activeTab === "low-rated") {
-            filtered = filtered.filter((r) => r.ratings.overall < 4);
+            filtered = filtered.filter((r) => r.overallRating < 4);
         }
 
         if (searchTerm) {
@@ -92,7 +92,8 @@ export default function ReviewsPage() {
             filtered = filtered.filter(
                 (r) =>
                     r.guest?.username?.toLowerCase().includes(term) ||
-                    r.campsite?.name?.toLowerCase().includes(term) ||
+                    r.property?.name?.toLowerCase().includes(term) ||
+                    r.site?.name?.toLowerCase().includes(term) ||
                     r.comment?.toLowerCase().includes(term)
             );
         }
@@ -104,11 +105,11 @@ export default function ReviewsPage() {
                 case "oldest":
                     return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
                 case "rating-high":
-                    return b.ratings.overall - a.ratings.overall;
+                    return (b.overallRating || 0) - (a.overallRating || 0);
                 case "rating-low":
-                    return a.ratings.overall - b.ratings.overall;
+                    return (a.overallRating || 0) - (b.overallRating || 0);
                 case "most-helpful":
-                    return b.helpfulCount - a.helpfulCount;
+                    return (b.helpfulCount || 0) - (a.helpfulCount || 0);
                 default:
                     return 0;
             }
@@ -146,21 +147,19 @@ export default function ReviewsPage() {
         responded: reviews.filter((r) => r.hostResponse).length,
         featured: reviews.filter((r) => r.isFeatured).length,
         avgRating: reviews.length
-            ? (reviews.reduce((sum, r) => sum + r.ratings.overall, 0) / reviews.length).toFixed(1)
+            ? (reviews.reduce((sum, r) => sum + (r.overallRating || 0), 0) / reviews.length).toFixed(1)
             : 0,
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen">
             {/* Header */}
-            <div className="bg-white border-b">
+            <div className="bg-white ">
                 <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900">Quản lý đánh giá</h1>
-                            <p className="mt-1 text-sm text-gray-500">
-                                Xem và phản hồi các đánh giá từ khách hàng
-                            </p>
+                          
                         </div>
                     </div>
                 </div>
@@ -339,7 +338,9 @@ export default function ReviewsPage() {
                                                 </div>
                                                 <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                                                     <MapPin className="h-3 w-3 flex-shrink-0" />
-                                                    <span className="truncate">{review.campsite?.name}</span>
+                                                    <span className="truncate">
+                                                        {review.property?.name} - {review.site?.name}
+                                                    </span>
                                                     <span className="flex-shrink-0">•</span>
                                                     <Calendar className="h-3 w-3 flex-shrink-0" />
                                                     <span className="flex-shrink-0">{formatDate(review.createdAt)}</span>
@@ -357,11 +358,11 @@ export default function ReviewsPage() {
                                             <div className="flex items-center gap-1">
                                                 <Star
                                                     className={`h-5 w-5 fill-current ${getStarColor(
-                                                        review.ratings?.overall || 0
+                                                        review.overallRating || 0
                                                     )}`}
                                                 />
                                                 <span className="font-semibold text-gray-900">
-                                                    {review.ratings?.overall?.toFixed(1) || "0.0"}
+                                                    {review.overallRating?.toFixed(1) || "0.0"}
                                                 </span>
                                             </div>
 
