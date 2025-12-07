@@ -37,7 +37,7 @@ export interface BookingDocument extends mongoose.Document {
 
   // Payment
   paymentStatus: "pending" | "paid" | "refunded" | "failed";
-  paymentMethod?: "card";
+  paymentMethod?: "deposit" | "full";
   transactionId?: string;
   paidAt?: Date;
 
@@ -61,6 +61,11 @@ export interface BookingDocument extends mongoose.Document {
 
   payOSOrderCode?: Number;
   payOSCheckoutUrl?: String;
+
+  fullnameGuest?: string;
+  phone ?: string;
+  email ?: string;
+  
 
   // Methods
   confirm(): Promise<BookingDocument>;
@@ -116,14 +121,17 @@ const bookingSchema = new mongoose.Schema<BookingDocument>(
 
     paymentStatus: {
       type: String,
-      enum: ["pending", "paid", "refunded", "failed"],
+      enum: ["pending", "paid", "processing", "cancelled"],
       default: "pending",
       index: true,
     },
     paymentMethod: {
       type: String,
-      enum: ["card"],
+      enum: ["deposit", "full"],
     },
+    fullnameGuest: { type: String, maxlength: 200 },
+    phone: { type: String, maxlength: 20 },
+    email: { type: String, maxlength: 100 },
     payOSOrderCode: { type: Number },
     payOSCheckoutUrl: { type: String },
 
@@ -140,6 +148,7 @@ const bookingSchema = new mongoose.Schema<BookingDocument>(
 
     reviewed: { type: Boolean, default: false },
     review: { type: mongoose.Schema.Types.ObjectId, ref: "Review" },
+    
   },
   {
     timestamps: true,
@@ -164,7 +173,6 @@ bookingSchema.index({ site: 1, checkIn: 1, checkOut: 1 });
 // Methods
 bookingSchema.methods.confirm = async function (this: BookingDocument) {
   this.status = "confirmed";
-  this.paymentStatus = "paid";
   this.paidAt = new Date();
   return this.save();
 };

@@ -14,7 +14,7 @@ import type {
   SearchBookingInput,
 } from "@/validators/booking.validator";
 import mongoose from "mongoose";
-
+import { sendMail } from "@/utils/send-mail";
 const { PayOS } = require("@payos/node");
 
 const payos = new PayOS({
@@ -38,6 +38,9 @@ export class BookingService {
       numberOfPets,
       numberOfVehicles,
       guestMessage,
+      fullnameGuest,
+      phone,
+      email,
       paymentMethod,
     } = input;
 
@@ -121,7 +124,7 @@ export class BookingService {
         orderCode: payOSOrderCode,
         amount,
         description: `BOOKING ${code}`,
-        returnUrl: `${CLIENT_URL}/bookings/${code}/success`,
+        returnUrl: `${CLIENT_URL}/bookings/${code}/confirmation`,
         cancelUrl: `${CLIENT_URL}/bookings/cancel`,
       });
 
@@ -152,9 +155,11 @@ export class BookingService {
       numberOfVehicles,
       pricing,
       guestMessage,
-      payment: {
-        method: paymentMethod,
-      },
+      fullnameGuest: fullnameGuest,
+      phone: phone,
+      email: email,
+      paymentMethod,
+      paymentStatus: "pending",
     });
 
     // Calculate total
@@ -234,14 +239,14 @@ export class BookingService {
    * Get booking by ID
    */
   async getBooking(bookingId: string, userId: string): Promise<BookingDocument> {
-    const booking = await BookingModel.findById(bookingId)
-      .populate("property", "name location photos")
+    const booking = await BookingModel.findOne({ code: bookingId })
+      .populate("property", "name location photos cancellationPolicy slug")
       .populate({
         path: "site",
         select: "name accommodationType photos pricing slug",
         populate: {
           path: "property",
-          select: "name location photos slug host",
+          select: "name location photos slug host cancellationPolicy",
           populate: {
             path: "host",
             select: "fullName username avatarUrl",
@@ -297,7 +302,7 @@ export class BookingService {
     userId: mongoose.Types.ObjectId,
     input: CancelBookingInput
   ): Promise<BookingDocument> {
-    const booking = await BookingModel.findById(bookingId);
+    const booking = await BookingModel.findOne({ code: bookingId });
     appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
 
     // Check permission
@@ -612,9 +617,346 @@ export class BookingService {
     };
   }
 
+  async userCancelPayment(orderCode: string) {
+    const booking = await BookingModel.findOne({ payOSOrderCode: orderCode });
+    appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
+
+    const bookingId = (booking._id as mongoose.Types.ObjectId).toString();
+    // ❗ cancelBooking cần booking._id (ObjectId), không phải orderCode
+    await this.cancelBooking(
+      bookingId,
+      booking.guest as mongoose.Types.ObjectId,
+      {
+        cancellationReason: "User cancelled payment",
+      }
+    );
+    await booking.deleteOne();
+    return {
+      success: true,
+      message: "Booking payment cancelled and booking removed"
+    };
+  }
+
   /**
-   * REMOVED: bookUndesignatedSite()
-   * No longer needed - maxConcurrentBookings handles this automatically
-   * Just use createBooking() directly - it will check capacity
-   */
+ * Auto cancel expired pending bookings and send reminder emails
+ * - Send reminder email after 6 hours
+ * - Auto cancel and delete after 24 hours
+ */
+
+
+  async cancelExpiredPendingBookings() {
+    const REMINDER_HOURS = 6;
+    const CANCEL_HOURS = 24;
+
+    const now = new Date();
+    const reminderTime = new Date(now.getTime() - REMINDER_HOURS * 60 * 60 * 1000);
+    const cancelTime = new Date(now.getTime() - CANCEL_HOURS * 60 * 60 * 1000);
+
+    // 1) TÌM BOOKING CẦN GỬI EMAIL NHẮC NHỞ (6 giờ)
+    const bookingsNeedReminder = await BookingModel.find({
+      paymentStatus: "pending",
+      createdAt: { $lt: reminderTime, $gte: cancelTime },
+      reminderSent: { $ne: true },
+    })
+      .populate("guest", "username email fullName")
+      .populate("site", "name")
+      .populate("property", "name");
+
+    for (const booking of bookingsNeedReminder) {
+      try {
+        const guestEmail = booking.email || (booking.guest as any)?.email;
+        const guestName = booking.fullnameGuest || (booking.guest as any)?.fullName || (booking.guest as any)?.username || "Quý khách";
+        const propertyName = (booking.property as any)?.name || "Khu cắm trại";
+        const siteName = (booking.site as any)?.name || "Site";
+        const totalAmount = booking.pricing?.total || 0;
+        const checkoutUrl = booking.payOSCheckoutUrl || `${CLIENT_URL}/bookings/${booking.code}/confirmation`;
+
+        // Gửi email nhắc nhở thanh toán
+        await sendMail({
+          to: guestEmail,
+          subject: '⏰ Nhắc nhở hoàn tất thanh toán booking',
+          html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { 
+                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); 
+                color: white; 
+                padding: 30px; 
+                text-align: center; 
+                border-radius: 10px 10px 0 0; 
+              }
+              .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+              .button { 
+                display: inline-block; 
+                background: #10b981; 
+                color: white !important; 
+                padding: 15px 40px; 
+                text-decoration: none; 
+                border-radius: 8px; 
+                margin: 20px 0;
+                font-weight: bold;
+              }
+              .info-box { 
+                background: white; 
+                padding: 20px; 
+                border-left: 4px solid #f59e0b; 
+                margin: 20px 0; 
+                border-radius: 5px; 
+              }
+              .warning-box { 
+                background: #fee2e2; 
+                padding: 20px; 
+                border-left: 4px solid #ef4444; 
+                margin: 20px 0; 
+                border-radius: 5px; 
+              }
+              .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
+              .highlight { color: #f59e0b; font-weight: bold; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>⏰ Nhắc nhở thanh toán</h1>
+                <p style="font-size: 16px; margin: 10px 0;">Booking của bạn đang chờ thanh toán</p>
+              </div>
+              
+              <div class="content">
+                <p>Xin chào <strong>${guestName}</strong>,</p>
+                
+                <p>Chúng tôi nhận thấy booking <strong class="highlight">${booking.code}</strong> của bạn chưa được thanh toán.</p>
+                
+                <div class="info-box">
+                  <h3 style="margin-top: 0; color: #f59e0b;">📋 Thông tin booking</h3>
+                  <p><strong>Mã booking:</strong> ${booking.code}</p>
+                  <p><strong>Địa điểm:</strong> ${siteName} - ${propertyName}</p>
+                  <p><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString('vi-VN')}</p>
+                  <p><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString('vi-VN')}</p>
+                  <p><strong>Số đêm:</strong> ${booking.nights} đêm</p>
+                  <p><strong>Số khách:</strong> ${booking.numberOfGuests} người</p>
+                  <p style="font-size: 18px; color: #10b981; margin-top: 15px;">
+                    <strong>Tổng tiền:</strong> ${totalAmount.toLocaleString('vi-VN')} ₫
+                  </p>
+                </div>
+                
+                <div class="warning-box">
+                  <p style="margin: 0; color: #dc2626;">
+                    <strong>⚠️ Lưu ý quan trọng:</strong> Booking sẽ tự động bị hủy sau <strong>18 giờ nữa</strong> nếu không được thanh toán.
+                  </p>
+                </div>
+                
+                <p style="text-align: center; margin: 30px 0;">
+                  <a href="${checkoutUrl}" class="button" style="color: white;">
+                    💳 Thanh toán ngay
+                  </a>
+                </p>
+                
+                <h3>📌 Tại sao cần thanh toán ngay?</h3>
+                <ul>
+                  <li>Đảm bảo chỗ của bạn không bị người khác đặt</li>
+                  <li>Tránh mất slot trong thời gian cao điểm</li>
+                  <li>Nhận xác nhận booking ngay lập tức</li>
+                  <li>Yên tâm chuẩn bị cho chuyến đi</li>
+                </ul>
+                
+                <p style="margin-top: 30px;">Nếu bạn gặp vấn đề khi thanh toán, vui lòng liên hệ với chúng tôi ngay.</p>
+                
+                <p style="margin-top: 20px;">
+                  Trân trọng,<br>
+                  <strong>Đội ngũ HipCamp</strong>
+                </p>
+              </div>
+              
+              <div class="footer">
+                <p>© ${new Date().getFullYear()} HipCamp. All rights reserved.</p>
+                <p>Email này được gửi tự động, vui lòng không trả lời.</p>
+                <p>Liên hệ: support@hipcamp.vn</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `,
+        });
+
+        // Đánh dấu đã gửi reminder
+        await BookingModel.updateOne(
+          { _id: booking._id },
+          { $set: { reminderSent: true } }
+        );
+
+        console.log(`📧 Đã gửi email nhắc nhở thanh toán: Booking ${booking.code} đến ${guestEmail}`);
+      } catch (err) {
+        console.error(`❌ Lỗi gửi email nhắc nhở Booking ${booking.code}:`, err);
+      }
+    }
+
+    // 2) TÌM VÀ HỦY BOOKING QUÁ HẠN 24 GIỜ
+    const expiredBookings = await BookingModel.find({
+      paymentStatus: "pending",
+      status: "pending",
+      createdAt: { $lt: cancelTime },
+    })
+      .populate("guest", "username email fullName")
+      .populate("site", "name")
+      .populate("property", "name");
+
+    for (const booking of expiredBookings) {
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      try {
+        const bookingId = (booking._id as mongoose.Types.ObjectId).toString();
+        const siteId = booking.site.toString();
+
+        // Unblock dates (giải phóng lịch)
+        await this.unblockDatesForBooking(
+          siteId,
+          booking.checkIn,
+          booking.checkOut
+        );
+
+        // Hủy booking (sử dụng logic existing)
+        await this.cancelBooking(
+          bookingId,
+          booking.guest as mongoose.Types.ObjectId,
+          {
+            cancellationReason: "Auto-cancelled: Payment timeout after 24 hours",
+          }
+        );
+        await booking.save();
+        await session.commitTransaction();
+        session.endSession();
+
+        console.log(`⛔ Đã tự động hủy và xóa booking quá hạn 24h: ${booking.code}`);
+
+        // Gửi email thông báo hủy
+        try {
+          const guestEmail = booking.email || (booking.guest as any)?.email;
+          const guestName = booking.fullnameGuest || (booking.guest as any)?.fullName || (booking.guest as any)?.username || "Quý khách";
+          const propertyName = (booking.property as any)?.name || "Khu cắm trại";
+          const siteName = (booking.site as any)?.name || "Site";
+
+          await sendMail({
+            to: guestEmail,
+            subject: '❌ Booking đã bị hủy do quá thời gian thanh toán',
+            html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { 
+                  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
+                  color: white; 
+                  padding: 30px; 
+                  text-align: center; 
+                  border-radius: 10px 10px 0 0; 
+                }
+                .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+                .button { 
+                  display: inline-block; 
+                  background: #3b82f6; 
+                  color: white !important; 
+                  padding: 15px 40px; 
+                  text-decoration: none; 
+                  border-radius: 8px; 
+                  margin: 20px 0;
+                  font-weight: bold;
+                }
+                .info-box { 
+                  background: white; 
+                  padding: 20px; 
+                  border-left: 4px solid #ef4444; 
+                  margin: 20px 0; 
+                  border-radius: 5px; 
+                }
+                .tips-box { 
+                  background: #dbeafe; 
+                  padding: 20px; 
+                  border-left: 4px solid #3b82f6; 
+                  margin: 20px 0; 
+                  border-radius: 5px; 
+                }
+                .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1>❌ Booking đã bị hủy</h1>
+                  <p style="font-size: 16px; margin: 10px 0;">Hết thời gian thanh toán</p>
+                </div>
+                
+                <div class="content">
+                  <p>Xin chào <strong>${guestName}</strong>,</p>
+                  
+                  <p>Rất tiếc, booking <strong>${booking.code}</strong> của bạn đã bị hủy tự động do không được thanh toán trong vòng 24 giờ.</p>
+                  
+                  <div class="info-box">
+                    <h3 style="margin-top: 0; color: #ef4444;">📋 Thông tin booking đã hủy</h3>
+                    <p><strong>Mã booking:</strong> ${booking.code}</p>
+                    <p><strong>Địa điểm:</strong> ${siteName} - ${propertyName}</p>
+                    <p><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString('vi-VN')}</p>
+                    <p><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString('vi-VN')}</p>
+                    <p><strong>Lý do hủy:</strong> <span style="color: #ef4444;">Quá thời gian thanh toán (24 giờ)</span></p>
+                  </div>
+                  
+                  <div class="tips-box">
+                    <h3 style="margin-top: 0; color: #3b82f6;">💡 Bạn vẫn muốn đặt chỗ?</h3>
+                    <ul>
+                      <li>Kiểm tra lại lịch trống tại địa điểm</li>
+                      <li>Tạo booking mới và thanh toán ngay</li>
+                      <li>Liên hệ với chúng tôi nếu cần hỗ trợ</li>
+                    </ul>
+                  </div>
+                  
+                  <div style="text-align: center;">
+                    <a href="${CLIENT_URL}/properties" class="button" style="color: white;">
+                      🔍 Tìm địa điểm khác
+                    </a>
+                  </div>
+                  
+                  <p style="margin-top: 30px;">
+                    Nếu có bất kỳ thắc mắc nào, vui lòng liên hệ với đội ngũ hỗ trợ của chúng tôi.
+                  </p>
+                  
+                  <p style="margin-top: 20px;">
+                    Trân trọng,<br>
+                    <strong>Đội ngũ HipCamp</strong>
+                  </p>
+                </div>
+                
+                <div class="footer">
+                  <p>© ${new Date().getFullYear()} HipCamp. All rights reserved.</p>
+                  <p>Liên hệ hỗ trợ: support@hipcamp.vn | Hotline: 1900-xxxx</p>
+                </div>
+              </div>
+            </body>
+            </html>
+          `,
+          });
+
+          console.log(`📧 Đã gửi email thông báo hủy booking: ${booking.code} đến ${guestEmail}`);
+        } catch (emailErr) {
+          console.error(`❌ Lỗi gửi email thông báo hủy Booking ${booking.code}:`, emailErr);
+        }
+
+      } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error(`❌ Lỗi khi hủy booking ${booking.code}:`, err);
+      }
+    }
+
+    return {
+      remindersSent: bookingsNeedReminder.length,
+      bookingsCancelled: expiredBookings.length,
+    };
+  }
+
 }

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 'use client';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -8,35 +9,30 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { createBooking } from '@/lib/client-actions';
+import { createBooking, getSiteById } from '@/lib/client-actions';
 import { useAuthStore } from '@/store/auth.store';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
-  Building2,
   CreditCard,
   Dog,
   Loader2,
   MapPin,
-  Smartphone,
+  Percent,
   Users,
+  Car,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface BookingSummaryData {
-  // NEW: Property-Site architecture
   siteId?: string;
   propertyId?: string;
   siteName?: string;
   propertyName?: string;
-
-  // LEGACY: Old campsite support (for backward compatibility)
   campsiteId?: string;
   campsiteName?: string;
-
-  // Shared fields
   location: string;
   image: string;
   checkIn: string;
@@ -45,31 +41,52 @@ interface BookingSummaryData {
   nights: number;
   cleaningFee: number;
   petFee: number;
+  vehicleFee: number;
   additionalGuestFee: number;
   total: number;
   currency: string;
   guests: number;
   pets: number;
   vehicles: number;
+  depositAmount: number;
 }
+
+interface SiteDetails {
+  _id: string;
+  name: string;
+  pricing: {
+    basePrice: number;
+    cleaningFee?: number;
+    petFee?: number;
+    vehicleFee?: number;
+    additionalGuestFee?: number;
+    depositAmount?: number;
+    currency: string;
+  };
+  capacity: {
+    maxGuests: number;
+    maxPets?: number;
+    maxVehicles?: number;
+  };
+  photos: Array<{
+    url: string;
+    isCover: boolean;
+  }>;
+}
+
 
 export default function PaymentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuthStore();
 
-  // Parse booking data from URL params (supports both new Property-Site and legacy Campsite)
-  const bookingData: BookingSummaryData = {
-    // NEW: Property-Site params (from BookingSiteForm)
+  // Parse booking data from URL params
+  const initialBookingData: BookingSummaryData = {
     siteId: searchParams.get('siteId') || undefined,
     propertyId: searchParams.get('propertyId') || undefined,
     siteName: searchParams.get('name') || undefined,
-
-    // LEGACY: Campsite params (for backward compatibility)
     campsiteId: searchParams.get('campsiteId') || undefined,
     campsiteName: searchParams.get('name') || undefined,
-
-    // Shared params
     location: searchParams.get('location') || '',
     image: searchParams.get('image') || '',
     checkIn: searchParams.get('checkIn') || '',
@@ -78,17 +95,43 @@ export default function PaymentPage() {
     nights: Number(searchParams.get('nights')) || 1,
     cleaningFee: Number(searchParams.get('cleaningFee')) || 0,
     petFee: Number(searchParams.get('petFee')) || 0,
+    vehicleFee: Number(searchParams.get('vehicleFee')) || 0,
     additionalGuestFee: Number(searchParams.get('additionalGuestFee')) || 0,
     total: Number(searchParams.get('total')) || 0,
     currency: searchParams.get('currency') || 'VND',
     guests: Number(searchParams.get('guests')) || 1,
     pets: Number(searchParams.get('pets')) || 0,
     vehicles: Number(searchParams.get('vehicles')) || 1,
+    depositAmount: Number(searchParams.get('depositAmount')) || 0,
   };
 
-  // Determine which architecture we're using
-  const isPropertySiteBooking =
-    !!bookingData.siteId && !!bookingData.propertyId;
+  const [bookingData, setBookingData] = useState(initialBookingData);
+
+  // Fetch site details if siteId exists
+  const { data: siteDetails, isLoading: isSiteLoading } = useQuery({
+    queryKey: ['site', bookingData.siteId],
+    queryFn: () => getSiteById(bookingData.siteId!),
+    enabled: !!bookingData.siteId,
+  });
+
+
+  // Update booking data when site details are loaded
+  useEffect(() => {
+    if (siteDetails) {
+      setBookingData(prev => ({
+        ...prev,
+        basePrice: siteDetails.data.pricing.basePrice,
+        cleaningFee: siteDetails.data.pricing.cleaningFee || 0,
+        petFee: siteDetails.data.pricing.petFee || 0,
+        vehicleFee: siteDetails.data.pricing.vehicleFee || 0,
+        additionalGuestFee: siteDetails.data.pricing.additionalGuestFee || 0,
+        depositAmount: siteDetails.data.pricing.depositAmount || 0,
+        currency: siteDetails.data.pricing.currency,
+      }));
+    }
+  }, [siteDetails]);
+
+  const isPropertySiteBooking = !!bookingData.siteId && !!bookingData.propertyId;
   const displayName = isPropertySiteBooking
     ? bookingData.siteName
     : bookingData.campsiteName || 'Site Name';
@@ -98,28 +141,45 @@ export default function PaymentPage() {
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState('');
   const [guestMessage, setGuestMessage] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<
-    'card' | 'bank_transfer' | 'momo' | 'zalopay'
-  >('card');
+  const [paymentMethod, setPaymentMethod] = useState<'deposit' | 'full'>('full');
 
-  // Calculate pricing (use backend values from BookingSiteForm)
+  // Calculate pricing with proper fees
   const nights = bookingData.nights;
   const subtotal = bookingData.basePrice * nights;
+  
+  // Calculate fees based on site pricing
+  const totalCleaningFee = bookingData.cleaningFee || 0;
+  const totalPetFee = (bookingData.petFee || 0) * bookingData.pets;
+  const totalVehicleFee = (bookingData.vehicleFee || 0) * bookingData.vehicles;
+  
+  // Calculate additional guest fee (guests over base capacity)
+  const baseGuestsIncluded = siteDetails?.data.capacity.maxGuests || 2;
+  const additionalGuests = Math.max(0, bookingData.guests - baseGuestsIncluded);
+  const totalAdditionalGuestFee = (bookingData.additionalGuestFee || 0) * additionalGuests;
+
   const serviceFee = Math.round(subtotal * 0.1); // 10% service fee
   const tax = Math.round((subtotal + serviceFee) * 0.08); // 8% tax
-  const totalPetFee = bookingData.petFee;
-  const additionalGuestFee = bookingData.additionalGuestFee;
 
-  // Use backend-calculated total or calculate locally
-  const total =
-    bookingData.total ||
+  // Calculate total
+  const total = 
     subtotal +
-      bookingData.cleaningFee +
-      totalPetFee +
-      additionalGuestFee +
-      serviceFee +
-      tax;
+    totalCleaningFee +
+    totalPetFee +
+    totalVehicleFee +
+    totalAdditionalGuestFee +
+    serviceFee +
+    tax;
 
+  // Deposit calculation - use site's depositAmount or 30% of total
+  const siteDepositAmount = bookingData.depositAmount || 0;
+  const depositAmount = siteDepositAmount > 0 
+    ? siteDepositAmount 
+    : Math.round(total * 0.3);
+  const remainingAmount = total - depositAmount;
+
+  // Check if deposit option is available
+  const hasDepositOption = siteDepositAmount > 0 ;
+  console.log('Deposit Option Available:', hasDepositOption);
   const formatPrice = (price: number) =>
     new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -134,15 +194,13 @@ export default function PaymentPage() {
     phone.trim() &&
     /^[0-9]{10,11}$/.test(phone);
 
-  // Booking mutation (supports both Property-Site and legacy Campsite)
+  // Booking mutation
   const bookingMutation = useMutation({
     mutationFn: async () => {
-      // Ensure we have site and property IDs (required for new architecture)
       if (!bookingData.siteId || !bookingData.propertyId) {
         throw new Error('Missing site or property ID');
       }
 
-      // Property-Site booking (site + property required)
       return createBooking({
         site: bookingData.siteId,
         property: bookingData.propertyId,
@@ -153,6 +211,9 @@ export default function PaymentPage() {
         numberOfVehicles: bookingData.vehicles,
         guestMessage: guestMessage || undefined,
         paymentMethod,
+        fullnameGuest: fullName,
+        phone,
+        email,
       });
     },
     onSuccess: data => {
@@ -160,15 +221,12 @@ export default function PaymentPage() {
         (data?.data as { _id?: string; id?: string })?._id ||
         (data?.data as { _id?: string; id?: string })?.id;
 
-      // Check if response has payOSCheckoutUrl for payment redirect
       const responseData = data?.data as { payOSCheckoutUrl?: string };
       if (responseData?.payOSCheckoutUrl) {
         router.replace(responseData.payOSCheckoutUrl);
       } else if (bookingId) {
-        // Otherwise, redirect to booking confirmation page
         router.replace(`/bookings/${bookingId}`);
       } else {
-        // Fallback to bookings list
         router.replace('/bookings');
       }
     },
@@ -180,10 +238,17 @@ export default function PaymentPage() {
     bookingMutation.mutate();
   };
 
+  if (isSiteLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Header */}
         <Button
           variant="ghost"
           onClick={() => router.back()}
@@ -270,83 +335,84 @@ export default function PaymentPage() {
                   <RadioGroup
                     value={paymentMethod}
                     onValueChange={(value: string) =>
-                      setPaymentMethod(
-                        value as 'card' | 'bank_transfer' | 'momo' | 'zalopay',
-                      )
+                      setPaymentMethod(value as 'deposit' | 'full')
                     }
                   >
                     <div className="space-y-3">
-                      {/* Credit Card */}
+                      {/* Full Payment */}
                       <label
-                        htmlFor="card"
-                        className="hover:bg-accent flex cursor-pointer items-center space-x-3 rounded-lg border p-4 transition"
+                        htmlFor="full"
+                        className={`flex cursor-pointer items-start space-x-3 rounded-lg border-2 p-4 transition hover:bg-accent ${
+                          paymentMethod === 'full'
+                            ? 'border-emerald-600 bg-emerald-50'
+                            : 'border-gray-200'
+                        }`}
                       >
-                        <RadioGroupItem value="card" id="card" />
-                        <CreditCard className="h-5 w-5 text-blue-600" />
-                        <div className="flex-1">
-                          <p className="font-medium">Thẻ tín dụng / Ghi nợ</p>
+                        <RadioGroupItem value="full" id="full" className="mt-1" />
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="h-5 w-5 text-emerald-600" />
+                            <p className="font-semibold">Thanh toán đầy đủ</p>
+                          </div>
                           <p className="text-muted-foreground text-sm">
-                            Visa, Mastercard, JCB
+                            Thanh toán toàn bộ {formatPrice(total)} ngay bây giờ
                           </p>
+                          <div className="mt-2 rounded-md bg-emerald-100 px-3 py-2">
+                            <p className="text-sm font-medium text-emerald-800">
+                              💳 Số tiền thanh toán: {formatPrice(total)}
+                            </p>
+                          </div>
                         </div>
                       </label>
 
-                      {/* Bank Transfer */}
-                      <label
-                        htmlFor="bank"
-                        className="hover:bg-accent flex cursor-pointer items-center space-x-3 rounded-lg border p-4 transition"
-                      >
-                        <RadioGroupItem value="bank_transfer" id="bank" />
-                        <Building2 className="h-5 w-5 text-green-600" />
-                        <div className="flex-1">
-                          <p className="font-medium">Chuyển khoản ngân hàng</p>
-                          <p className="text-muted-foreground text-sm">
-                            Chuyển khoản trực tiếp
-                          </p>
-                        </div>
-                      </label>
-
-                      {/* Momo */}
-                      <label
-                        htmlFor="momo"
-                        className="hover:bg-accent flex cursor-pointer items-center space-x-3 rounded-lg border p-4 transition"
-                      >
-                        <RadioGroupItem value="momo" id="momo" />
-                        <Smartphone className="h-5 w-5 text-pink-600" />
-                        <div className="flex-1">
-                          <p className="font-medium">Ví MoMo</p>
-                          <p className="text-muted-foreground text-sm">
-                            Thanh toán qua ví điện tử
-                          </p>
-                        </div>
-                      </label>
-
-                      {/* ZaloPay */}
-                      <label
-                        htmlFor="zalopay"
-                        className="hover:bg-accent flex cursor-pointer items-center space-x-3 rounded-lg border p-4 transition"
-                      >
-                        <RadioGroupItem value="zalopay" id="zalopay" />
-                        <Smartphone className="h-5 w-5 text-blue-500" />
-                        <div className="flex-1">
-                          <p className="font-medium">ZaloPay</p>
-                          <p className="text-muted-foreground text-sm">
-                            Thanh toán qua ví điện tử
-                          </p>
-                        </div>
-                      </label>
+                      {/* Deposit Payment - Only show if deposit is available */}
+                      {hasDepositOption && (
+                        <label
+                          htmlFor="deposit"
+                          className={`flex cursor-pointer items-start space-x-3 rounded-lg border-2 p-4 transition hover:bg-accent ${
+                            paymentMethod === 'deposit'
+                              ? 'border-blue-600 bg-blue-50'
+                              : 'border-gray-200'
+                          }`}
+                        >
+                          <RadioGroupItem value="deposit" id="deposit" className="mt-1" />
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Percent className="h-5 w-5 text-blue-600" />
+                              <p className="font-semibold">
+                                Đặt cọc {siteDepositAmount > 0 ? formatPrice(siteDepositAmount) : '30%'}
+                              </p>
+                              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                Phổ biến
+                              </span>
+                            </div>
+                            <p className="text-muted-foreground text-sm">
+                              {siteDepositAmount > 0 
+                                ? `Đặt cọc ${formatPrice(depositAmount)}, trả phần còn lại khi nhận phòng`
+                                : `Đặt cọc ${formatPrice(depositAmount)} (30%), trả phần còn lại khi nhận phòng`
+                              }
+                            </p>
+                            <div className="mt-2 space-y-1 rounded-md bg-blue-100 px-3 py-2">
+                              <p className="text-sm font-medium text-blue-800">
+                                💰 Đặt cọc ngay: {formatPrice(depositAmount)}
+                              </p>
+                              <p className="text-xs text-blue-700">
+                                📅 Trả khi nhận phòng: {formatPrice(remainingAmount)}
+                              </p>
+                            </div>
+                          </div>
+                        </label>
+                      )}
                     </div>
                   </RadioGroup>
 
-                  {/* Payment Instructions */}
-                  {paymentMethod === 'bank_transfer' && (
-                    <Alert className="mt-4">
-                      <AlertDescription>
-                        Thông tin chuyển khoản sẽ được gửi qua email sau khi xác
-                        nhận đặt chỗ.
-                      </AlertDescription>
-                    </Alert>
-                  )}
+                  {/* Payment Info */}
+                  <div className="mt-4 rounded-lg bg-gray-50 p-4">
+                    <p className="text-xs text-gray-600">
+                      ℹ️ Sau khi xác nhận, bạn sẽ được chuyển đến trang thanh toán an toàn qua PayOS. 
+                      Hỗ trợ các phương thức: Thẻ ATM, Ví điện tử (MoMo, ZaloPay), QR Code.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -374,7 +440,7 @@ export default function PaymentPage() {
                     Đang xử lý...
                   </>
                 ) : (
-                  `Xác nhận và thanh toán ${formatPrice(total)}`
+                  `Xác nhận và thanh toán ${formatPrice(paymentMethod === 'deposit' ? depositAmount : total)}`
                 )}
               </Button>
             </div>
@@ -387,12 +453,12 @@ export default function PaymentPage() {
                 <CardTitle>Chi tiết đặt chỗ</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Campsite/Site Info */}
+                {/* Site Info */}
                 <div className="flex gap-4">
                   {bookingData.image && (
                     <Image
                       src={bookingData.image}
-                      alt={displayName || 'Campsite'}
+                      alt={displayName || 'Site'}
                       width={80}
                       height={80}
                       className="h-20 w-20 rounded-lg object-cover"
@@ -404,62 +470,52 @@ export default function PaymentPage() {
                       <MapPin className="h-3 w-3" />
                       {bookingData.location}
                     </p>
-                    {isPropertySiteBooking && (
-                      <p className="text-muted-foreground mt-1 text-xs">
-                        {bookingData.nights} nights • {bookingData.guests}{' '}
-                        guests
-                        {bookingData.pets > 0 && ` • ${bookingData.pets} pets`}
-                        {bookingData.vehicles > 0 &&
-                          ` • ${bookingData.vehicles} vehicles`}
-                      </p>
-                    )}
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {bookingData.nights} đêm • {bookingData.guests} khách
+                      {bookingData.pets > 0 && ` • ${bookingData.pets} thú cưng`}
+                      {bookingData.vehicles > 0 && ` • ${bookingData.vehicles} xe`}
+                    </p>
                   </div>
                 </div>
 
                 <Separator />
 
-                {/* Date Range */}
-                {/* <div className="flex items-start gap-3">
-                  <Calendar className="text-muted-foreground mt-0.5 h-5 w-5" />
-                  <div className="flex-1">
-                    <p className="text-muted-foreground text-sm">
-                      {format(new Date(bookingData.checkIn), 'dd/MM/yyyy', {
-                        locale: vi,
-                      })}{' '}
-                      -{' '}
-                      {format(new Date(bookingData.checkOut), 'dd/MM/yyyy', {
-                        locale: vi,
-                      })}
-                    </p>
-                    <p className="text-muted-foreground text-xs">
-                      {nights} đêm
-                    </p>
-                  </div>
-                </div> */}
-
-                {/* Guests */}
-                <div className="flex items-start gap-3">
-                  <Users className="text-muted-foreground mt-0.5 h-5 w-5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Khách</p>
-                    <p className="text-muted-foreground text-sm">
-                      {bookingData.guests} người
-                    </p>
-                  </div>
-                </div>
-
-                {/* Pets */}
-                {bookingData.pets > 0 && (
+                {/* Guest Details */}
+                <div className="space-y-3">
                   <div className="flex items-start gap-3">
-                    <Dog className="text-muted-foreground mt-0.5 h-5 w-5" />
+                    <Users className="text-muted-foreground mt-0.5 h-5 w-5" />
                     <div className="flex-1">
-                      <p className="text-sm font-medium">Thú cưng</p>
+                      <p className="text-sm font-medium">Khách</p>
                       <p className="text-muted-foreground text-sm">
-                        {bookingData.pets} con
+                        {bookingData.guests} người
                       </p>
                     </div>
                   </div>
-                )}
+
+                  {bookingData.pets > 0 && (
+                    <div className="flex items-start gap-3">
+                      <Dog className="text-muted-foreground mt-0.5 h-5 w-5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Thú cưng</p>
+                        <p className="text-muted-foreground text-sm">
+                          {bookingData.pets} con
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {bookingData.vehicles > 0 && (
+                    <div className="flex items-start gap-3">
+                      <Car className="text-muted-foreground mt-0.5 h-5 w-5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Phương tiện</p>
+                        <p className="text-muted-foreground text-sm">
+                          {bookingData.vehicles} xe
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <Separator />
 
@@ -472,24 +528,31 @@ export default function PaymentPage() {
                     <span>{formatPrice(subtotal)}</span>
                   </div>
 
-                  {bookingData.cleaningFee > 0 && (
+                  {totalCleaningFee > 0 && (
                     <div className="flex justify-between text-sm">
                       <span>Phí vệ sinh</span>
-                      <span>{formatPrice(bookingData.cleaningFee)}</span>
+                      <span>{formatPrice(totalCleaningFee)}</span>
                     </div>
                   )}
 
                   {totalPetFee > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span>Phí thú cưng</span>
+                      <span>Phí thú cưng ({bookingData.pets} con)</span>
                       <span>{formatPrice(totalPetFee)}</span>
                     </div>
                   )}
 
-                  {additionalGuestFee > 0 && (
+                  {totalVehicleFee > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span>Phí khách thêm</span>
-                      <span>{formatPrice(additionalGuestFee)}</span>
+                      <span>Phí phương tiện ({bookingData.vehicles} xe)</span>
+                      <span>{formatPrice(totalVehicleFee)}</span>
+                    </div>
+                  )}
+
+                  {totalAdditionalGuestFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Phí khách thêm ({additionalGuests} người)</span>
+                      <span>{formatPrice(totalAdditionalGuestFee)}</span>
                     </div>
                   )}
 
@@ -509,6 +572,23 @@ export default function PaymentPage() {
                     <span>Tổng cộng</span>
                     <span>{formatPrice(total)}</span>
                   </div>
+
+                  {/* Payment Summary */}
+                  {paymentMethod === 'deposit' && hasDepositOption && (
+                    <>
+                      <Separator className="my-2" />
+                      <div className="space-y-1 rounded-lg bg-blue-50 p-3">
+                        <div className="flex justify-between text-sm font-medium text-blue-900">
+                          <span>Thanh toán ngay {siteDepositAmount > 0 ? '(Cọc)' : '(30%)'}</span>
+                          <span>{formatPrice(depositAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-blue-700">
+                          <span>Thanh toán khi nhận phòng</span>
+                          <span>{formatPrice(remainingAmount)}</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>

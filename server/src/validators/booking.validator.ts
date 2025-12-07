@@ -31,7 +31,10 @@ export const createBookingSchema = z
     guestMessage: z.string().max(1000).optional(),
 
     // Payment method
-    paymentMethod: z.enum(["card", "bank_transfer", "momo", "zalopay"]).default("card"),
+    paymentMethod: z.enum(["deposit", "full"]),
+    fullnameGuest: z.string().max(200),
+    phone: z.string().max(20).optional(),
+    email: z.string().max(100).optional(),
   })
   .refine(
     (data) => {
