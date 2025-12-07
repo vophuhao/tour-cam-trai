@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { MapPin, Target, Copy } from "lucide-react";
 
-const MapPreview: any = dynamic(() => import("@/components/MapPreview"), { ssr: false });
+const MapPreview: any = dynamic(() => import("./site-map-review"), { ssr: false });
 
 interface PropertyLocation {
   coordinates?: {
@@ -24,6 +24,19 @@ interface PropertyLocation {
   zipCode?: string;
 }
 
+interface ExistingSite {
+  _id: string;
+  name: string;
+  siteLocation?: {
+    coordinates?: {
+      type: "Point";
+      coordinates: [number, number];
+    };
+    mapPinLabel?: string;
+    relativeDescription?: string;
+  };
+}
+
 interface SiteLocationProps {
   data: {
     coordinates?: { type: "Point"; coordinates: [number, number] } | undefined;
@@ -32,8 +45,9 @@ interface SiteLocationProps {
   } | undefined;
   propertyLocation?: PropertyLocation | undefined;
   onChange: (data: any) => void;
-  // maximum allowed distance from property center in kilometers
   maxDistanceKm?: number;
+  currentSiteId?: string; // ID của site đang edit (nếu có)
+  existingSites?: ExistingSite[]; // Danh sách các site khác trong property
 }
 
 const EARTH_KM = 6371;
@@ -67,14 +81,13 @@ export function SiteLocation({
   propertyLocation,
   onChange,
   maxDistanceKm = 10,
+  currentSiteId,
+  existingSites = [],
 }: SiteLocationProps) {
-  // property center (lng, lat)
-  console.log("Property Location:", propertyLocation);
   const propCoords = propertyLocation?.coordinates;
   const propLng = propCoords?.coordinates[0];
   const propLat = propCoords?.coordinates[1];
 
-  // initial site coords prefer explicit site coords, otherwise property center
   const initialLng =
     data?.coordinates?.coordinates?.[0] ?? (propLng ?? undefined);
   const initialLat =
@@ -86,9 +99,21 @@ export function SiteLocation({
   const [relativeDescription, setRelativeDescription] = useState(
     data?.relativeDescription ?? ""
   );
-  const [showMapSelector, setShowMapSelector] = useState(false);
 
-  // populate defaults from property when site has no explicit coords
+  // Filter out current site and sites without coordinates
+  const otherSites = existingSites.filter((site) => {
+    const hasCoordinates = 
+      site.siteLocation?.coordinates?.coordinates &&
+      Array.isArray(site.siteLocation.coordinates.coordinates) &&
+      site.siteLocation.coordinates.coordinates.length === 2 &&
+      site.siteLocation.coordinates.coordinates[0] !== 0 &&
+      site.siteLocation.coordinates.coordinates[1] !== 0;
+    
+    const isNotCurrentSite = site._id !== currentSiteId;
+    return hasCoordinates && isNotCurrentSite;
+  });
+
+
   useEffect(() => {
     const siteHasCoords =
       !!data?.coordinates?.coordinates &&
@@ -108,7 +133,6 @@ export function SiteLocation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propLng, propLat]);
 
-  // emit onChange when lat/lng or metadata change (with validation)
   useEffect(() => {
     if (lat === "" || lng === "") {
       onChange({
@@ -123,7 +147,6 @@ export function SiteLocation({
     const lgn = typeof lng === "string" ? parseFloat(lng) : lng;
     if (isNaN(ltn) || isNaN(lgn)) return;
 
-    // if property center exists, enforce radius
     if (propCoords) {
       const distKm = haversineKm(propLat ?? 0, propLng ?? 0, ltn, lgn);
       if (distKm > maxDistanceKm) {
@@ -190,7 +213,7 @@ export function SiteLocation({
       toast.error("Không thể sao chép");
     }
   };
-  console.log({ propLat, propLng });
+
   return (
     <div className="space-y-6">
       {/* Property info (read-only) */}
@@ -244,16 +267,20 @@ export function SiteLocation({
             <Target className="h-5 w-5 text-sky-600" />
             <div>
               <div className="text-sm font-semibold text-gray-900">Vị trí Site</div>
-              <div className="text-xs text-gray-500">Mặc định lấy tọa độ property, có thể chỉnh vị trí trong vùng cho phép.</div>
+              <div className="text-xs text-gray-500">
+                Mặc định lấy tọa độ property, có thể chỉnh vị trí trong vùng cho phép.
+                {otherSites.length > 0 && (
+                  <span className="text-blue-600 font-medium ml-1">
+                    ({otherSites.length} site khác đang hiển thị trên bản đồ)
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="flex gap-2">
             <Button size="sm" variant="secondary" onClick={handleUsePropertyCoords}>
               Sử dụng property
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setShowMapSelector((s) => !s)}>
-              {showMapSelector ? "Đóng bản đồ" : "Chọn trên bản đồ"}
             </Button>
           </div>
         </div>
@@ -322,30 +349,74 @@ export function SiteLocation({
           </div>
         </div>
 
-        {showMapSelector && (
-          <div className="mt-4 rounded border p-3">
-            <div className="text-sm text-gray-600 mb-2">
-              Click hoặc kéo để chọn vị trí (giới hạn {maxDistanceKm} km).
+        {/* Map always visible */}
+        <div className="mt-4 rounded border p-3 bg-gray-50">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm font-medium text-gray-700">
+              Bản đồ vị trí
             </div>
-            <div className="h-[340px]">
-              <MapPreview
-                lat={lat === "" ? propLat ?? 16.0544 : Number(lat)}
-                lng={lng === "" ? propLng ?? 108.2022 : Number(lng)}
-                zoom={14}
-                height={340}
-                interactive={true}
-                onLocationChange={(newLat: number, newLng: number) => {
-                  handleMapPick(newLat, newLng);
-                }}
-                circleCenter={propCoords ? { lat: propLat ?? 0, lng: propLng ?? 0, km: maxDistanceKm } : undefined}
-              />
+            <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-1">
+                <div className="h-3 w-3 rounded-full bg-red-500"></div>
+                <span className="text-gray-600">Site hiện tại</span>
+              </div>
+              {otherSites.length > 0 && (
+                <div className="flex items-center gap-1">
+                  <div className="h-3 w-3 rounded-full bg-blue-500"></div>
+                  <span className="text-gray-600">Site khác ({otherSites.length})</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1">
+                <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                <span className="text-gray-600">Property</span>
+              </div>
             </div>
           </div>
-        )}
+          <div className="text-xs text-gray-600 mb-2">
+            Click hoặc kéo marker đỏ để thay đổi vị trí site (giới hạn {maxDistanceKm} km từ property).
+            {otherSites.length > 0 && " Các marker xanh là vị trí của sites khác (chỉ xem, không thay đổi được)."}
+          </div>
+          <div className="h-[400px] rounded overflow-hidden">
+            <MapPreview
+              lat={lat === "" ? propLat ?? 16.0544 : Number(lat)}
+              lng={lng === "" ? propLng ?? 108.2022 : Number(lng)}
+              zoom={15}
+              height={400}
+              interactive={true}
+              onLocationChange={(newLat: number, newLng: number) => {
+                handleMapPick(newLat, newLng);
+              }}
+              circleCenter={propCoords ? { lat: propLat ?? 0, lng: propLng ?? 0, km: maxDistanceKm } : undefined}
+              // Pass other sites as read-only markers
+              otherMarkers={otherSites.map(site => ({
+                lat: site.siteLocation!.coordinates!.coordinates[1],
+                lng: site.siteLocation!.coordinates!.coordinates[0],
+                label: site.siteLocation?.mapPinLabel || site.name,
+                color: 'blue',
+                draggable: false,
+              }))}
+              // Pass property center
+              propertyCenter={propCoords ? {
+                lat: propLat ?? 0,
+                lng: propLng ?? 0,
+                label: 'Property Center',
+              } : undefined}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="text-sm text-gray-500">
-        Ghi chú: tọa độ property hiển thị chỉ để tham khảo và không thể sửa từ đây. Nếu muốn thay đổi tọa độ property, chỉnh thông tin Property.
+        <strong>Lưu ý:</strong>
+        <ul className="list-disc list-inside mt-1 space-y-1">
+          <li>Marker đỏ: vị trí site hiện tại (có thể kéo thả để thay đổi)</li>
+          {otherSites.length > 0 && (
+            <li>Marker xanh ({otherSites.length}): vị trí các site khác trong property (chỉ xem, không thể thay đổi)</li>
+          )}
+          <li>Marker xanh lá: vị trí trung tâm property (tham chiếu)</li>
+          <li>Vùng tròn: giới hạn {maxDistanceKm} km từ property center</li>
+          <li>Tọa độ property không thể sửa từ đây. Nếu muốn thay đổi, vui lòng chỉnh trong thông tin Property.</li>
+        </ul>
       </div>
     </div>
   );

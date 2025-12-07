@@ -11,7 +11,8 @@ import { SiteAmenitiesRules } from "@/components/host/site/site-amenities-rules"
 import { SiteLocation } from "@/components/host/site/site-location";
 import { SitePhotos } from "@/components/host/site/site-photos";
 import { SiteBookingSettings } from "@/components/host/site/site-booking-settings";
-import { getPropertyById, getSiteById, updateSite, uploadMedia } from "@/lib/client-actions";
+import { getPropertyById, getSiteById, getSitesByProperty, updateSite, uploadMedia } from "@/lib/client-actions";
+import { useQuery } from "@tanstack/react-query";
 
 export default function EditSitePage() {
   const params = useParams() as any;
@@ -38,7 +39,17 @@ export default function EditSitePage() {
   const [propertyLocation, setPropertyLocation] = useState<any | null>(null);
   const [form, setForm] = useState<any>({ ...defaultForm });
   const [step, setStep] = useState(0);
+  
+  const { data: sitesData } = useQuery({
+  queryKey: ['property-sites', propertyId],
+  queryFn: async () => {
+    const response = await  getSitesByProperty(propertyId);
+    return response.data;
+  },
+  enabled: !!propertyId,
+});
 
+ 
   useEffect(() => {
     if (!propertyId) return;
     let mounted = true;
@@ -319,6 +330,8 @@ export default function EditSitePage() {
             onChange={(d: any) =>
               update({ siteLocation: { ...(form.siteLocation ?? {}), ...(d ?? {}) } })
             }
+            currentSiteId={siteId}
+            existingSites={sitesData.sites|| []}
           />
         )}
 

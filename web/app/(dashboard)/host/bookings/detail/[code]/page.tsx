@@ -1052,7 +1052,7 @@ export default function BookingDetailPage() {
                 <Separator />
 
                 <Button variant="outline" size="sm" className="w-full" asChild>
-                  <Link href={`/properties/${booking.property.slug}`}>
+                  <Link href={`/land/${booking.property.slug}`}>
                     Xem chi tiết property
                   </Link>
                 </Button>

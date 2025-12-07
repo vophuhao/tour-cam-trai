@@ -239,7 +239,7 @@ export default function BookingsPage() {
         confirmed: bookings.filter((b) => b.status === "confirmed").length,
         completed: bookings.filter((b) => b.status === "completed").length,
         totalRevenue: bookings
-            .filter((b) => b.paymentStatus === "paid")
+            .filter((b) => b.paymentStatus === "paid" && b.status === "completed")
             .reduce((sum, b) => sum + b.pricing.total, 0),
     };
 
