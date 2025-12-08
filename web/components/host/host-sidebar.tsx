@@ -5,14 +5,14 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import {
   BarChart,
-  Home,
-  LogOut,
   Calendar,
-  Star,
-  MessageSquare,
-  Tent,
   ChevronDown,
   ChevronRight,
+  Home,
+  LogOut,
+  MessageSquare,
+  Star,
+  Tent,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -48,25 +48,25 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   };
 
   const toggleMenu = (name: string) => {
-    setExpandedMenus((prev) =>
-      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+    setExpandedMenus(prev =>
+      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name],
     );
   };
 
   const menuItems: MenuItem[] = [
-  { name: 'Dashboard', href: '/host', icon: Home },
-  { name: 'Bookings', href: '/host/bookings', icon: Calendar }, 
-  { name: 'Properties', href: '/host/properties', icon: Tent }, 
-  { name: 'Đánh giá', href: '/host/reviews', icon: Star },
-  { name: 'Hỗ trợ', href: '/host/support', icon: MessageSquare },
-  { name: 'Đăng xuất', icon: LogOut, action: handleLogout }, 
-];
+    { name: 'Dashboard', href: '/host', icon: Home },
+    { name: 'Booking & Lịch', href: '/host/bookings', icon: Calendar },
+    { name: 'Khu đất', href: '/host/properties', icon: Tent },
+    { name: 'Đánh giá', href: '/host/reviews', icon: Star },
+    { name: 'Hỗ trợ', href: '/host/support', icon: MessageSquare },
+    { name: 'Đăng xuất', icon: LogOut, action: handleLogout },
+  ];
 
   return (
     <aside
       className={cn(
-        'fixed top-0 left-0 h-screen bg-white shadow-lg flex flex-col transition-all duration-300',
-        collapsed ? 'w-16' : 'w-45'
+        'fixed top-0 left-0 z-50 flex h-screen flex-col bg-white shadow-lg transition-all duration-300',
+        collapsed ? 'w-16' : 'w-45',
       )}
     >
       {/* Logo + Toggle */}
@@ -74,14 +74,14 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
         <h1
           className={cn(
             'text-xl font-bold transition-all duration-300',
-            collapsed ? 'opacity-0 w-0 overflow-hidden' : ''
+            collapsed ? 'w-0 overflow-hidden opacity-0' : '',
           )}
         >
-          Admin Panel
+          Host Panel
         </h1>
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="p-1 rounded hover:bg-gray-200"
+          className="rounded p-1 hover:bg-gray-200"
         >
           <BarChart className="h-5 w-5" />
         </button>
@@ -89,7 +89,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
 
       {/* Menu */}
       <nav className="flex-1 px-2 py-1">
-        {menuItems.map((item) => {
+        {menuItems.map(item => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
           const isHovered = hovered === (item.href || item.name);
@@ -98,21 +98,25 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
           const isExpanded = expandedMenus.includes(item.name);
 
           const finalClasses = cn(
-            'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors w-full justify-between',
+            'flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors',
             isHovered
               ? 'bg-[#3B6E5F] text-[#F4FAF4]'
               : !hovered && isActive
-              ? 'bg-[#3B6E5F] text-[#F4FAF4]'
-              : 'hover:bg-gray-200'
+                ? 'bg-[#3B6E5F] text-[#F4FAF4]'
+                : 'hover:bg-gray-200',
           );
 
           const mainContent = (
-            <div className="flex items-center gap-3 w-full">
+            <div className="flex w-full items-center gap-3">
               <Icon className="h-5 w-5 flex-shrink-0" />
               {!collapsed && <span className="flex-1">{item.name}</span>}
               {!collapsed && hasSubmenu && (
                 <span className="flex-shrink-0">
-                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
                 </span>
               )}
             </div>
@@ -133,18 +137,18 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
 
                 {/* Submenu */}
                 {isExpanded && !collapsed && (
-                  <div className="ml-6 flex flex-col gap-1 mt-1">
-                    {item.subMenu!.map((sub) => {
+                  <div className="mt-1 ml-6 flex flex-col gap-1">
+                    {item.subMenu!.map(sub => {
                       const subActive = pathname === sub.href;
                       return (
                         <Link
                           key={sub.name}
                           href={sub.href}
                           className={cn(
-                            'px-3 py-2 rounded-lg text-sm transition-colors',
+                            'rounded-lg px-3 py-2 text-sm transition-colors',
                             subActive
                               ? 'bg-[#3B6E5F] text-[#F4FAF4]'
-                              : 'hover:bg-gray-200'
+                              : 'hover:bg-gray-200',
                           )}
                         >
                           {sub.name}

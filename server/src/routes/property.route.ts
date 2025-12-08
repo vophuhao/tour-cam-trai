@@ -43,6 +43,15 @@ propertyRoutes.get("/:idOrSlug/with-sites", propertyController.getPropertyWithSi
 // Property details (MUST BE LAST among GET routes)
 propertyRoutes.get("/:idOrSlug", propertyController.getProperty);
 
+// Blocked dates routes (host only)
+propertyRoutes.get("/:id/blocked-dates", propertyController.getPropertyBlockedDates);
+propertyRoutes.post("/:id/block-dates", authenticate, propertyController.blockPropertyDates);
+propertyRoutes.delete(
+  "/blocked-dates/:blockId",
+  authenticate,
+  propertyController.unblockPropertyDates
+);
+
 // Protected routes (host/admin)
 propertyRoutes.post("/", authenticate, propertyController.createProperty);
 propertyRoutes.patch("/:id", authenticate, propertyController.updateProperty);

@@ -17,8 +17,10 @@ export { AmenityModel, type AmenityDocument } from "./amenity.model";
 export {
   AvailabilityModel,
   FavoriteModel,
+  PropertyAvailabilityModel,
   type AvailabilityDocument,
   type FavoriteDocument,
+  type PropertyAvailabilityDocument,
 } from "./availability.model";
 export { BookingModel, type BookingDocument } from "./booking.model";
 export { CampsiteModel, type CampsiteDocument } from "./campsite.model";

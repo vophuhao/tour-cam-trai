@@ -1,9 +1,11 @@
 import { ErrorFactory } from "@/errors";
 import {
   BookingModel,
+  PropertyAvailabilityModel,
   PropertyModel,
   ReviewModel,
   SiteModel,
+  type PropertyAvailabilityDocument,
   type PropertyDocument,
 } from "@/models";
 import appAssert from "@/utils/app-assert";
@@ -1029,6 +1031,90 @@ export class PropertyService {
       .populate("host", "fullName avatar")
       .select("name slug location photos propertyType avgRating totalReviews lowestPrice")
       .lean();
+  }
+
+  /**
+   * Block dates for a property (host only)
+   */
+  async blockPropertyDates(
+    propertyId: string,
+    hostId: string,
+    startDate: Date,
+    endDate: Date,
+    reason?: string
+  ): Promise<PropertyAvailabilityDocument> {
+    // Verify property exists and user is the host
+    const property = await PropertyModel.findById(propertyId);
+    appAssert(property, ErrorFactory.resourceNotFound("Property"));
+    appAssert(
+      property!.host.toString() === hostId,
+      ErrorFactory.forbidden("Bạn không có quyền block property này")
+    );
+
+    // Validate dates
+    appAssert(
+      startDate < endDate,
+      ErrorFactory.badRequest("Ngày bắt đầu phải trước ngày kết thúc")
+    );
+
+    // Create blocked date range
+    const blocked = await PropertyAvailabilityModel.create({
+      property: propertyId,
+      startDate,
+      endDate,
+      reason,
+      createdBy: hostId,
+    });
+
+    return blocked;
+  }
+
+  /**
+   * Unblock dates for a property (host only)
+   */
+  async unblockPropertyDates(blockId: string, hostId: string): Promise<void> {
+    const block = await PropertyAvailabilityModel.findById(blockId).populate("property");
+    appAssert(block, ErrorFactory.resourceNotFound("Blocked dates"));
+
+    // Verify ownership
+    const property = block!.property as any;
+    appAssert(
+      property.host.toString() === hostId,
+      ErrorFactory.forbidden("Bạn không có quyền unblock property này")
+    );
+
+    await PropertyAvailabilityModel.findByIdAndDelete(blockId);
+  }
+
+  /**
+   * Get all blocked dates for a property
+   */
+  async getPropertyBlockedDates(propertyId: string) {
+    return PropertyAvailabilityModel.find({
+      property: propertyId,
+      endDate: { $gte: new Date() }, // Only future/active blocks
+    })
+      .populate("property", "name")
+      .sort({ startDate: 1 })
+      .lean();
+  }
+
+  /**
+   * Check if property has any blocked dates in range
+   */
+  async isPropertyBlocked(propertyId: string, checkIn: Date, checkOut: Date): Promise<boolean> {
+    const blockedDates = await PropertyAvailabilityModel.findOne({
+      property: propertyId,
+      $or: [
+        // Block starts before checkOut and ends after checkIn (overlap)
+        {
+          startDate: { $lt: checkOut },
+          endDate: { $gt: checkIn },
+        },
+      ],
+    });
+
+    return !!blockedDates;
   }
 }
 

@@ -21,6 +21,17 @@ export interface AvailabilityDocument extends mongoose.Document {
   updatedAt: Date;
 }
 
+// Property-level Availability - Block dates cho toàn bộ property (all sites)
+export interface PropertyAvailabilityDocument extends mongoose.Document {
+  property: mongoose.Types.ObjectId;
+  startDate: Date; // ngày bắt đầu block
+  endDate: Date; // ngày kết thúc block
+  reason?: string; // lý do block
+  createdBy: mongoose.Types.ObjectId; // host đã tạo block
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 const availabilitySchema = new mongoose.Schema<AvailabilityDocument>(
   {
     site: {
@@ -54,6 +65,38 @@ availabilitySchema.index({ site: 1, date: 1, isAvailable: 1 });
 export const AvailabilityModel = mongoose.model<AvailabilityDocument>(
   "Availability",
   availabilitySchema
+);
+
+// Property Availability Schema - Block dates for entire property
+const propertyAvailabilitySchema = new mongoose.Schema<PropertyAvailabilityDocument>(
+  {
+    property: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Property",
+      required: true,
+      index: true,
+    },
+    startDate: { type: Date, required: true, index: true },
+    endDate: { type: Date, required: true, index: true },
+    reason: { type: String, trim: true, maxlength: 500 },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Indexes for efficient date range queries
+propertyAvailabilitySchema.index({ property: 1, startDate: 1, endDate: 1 });
+propertyAvailabilitySchema.index({ property: 1, startDate: -1 }); // For sorting by date
+
+export const PropertyAvailabilityModel = mongoose.model<PropertyAvailabilityDocument>(
+  "PropertyAvailability",
+  propertyAvailabilitySchema
 );
 
 // Favorite model - Wishlist property/site của user

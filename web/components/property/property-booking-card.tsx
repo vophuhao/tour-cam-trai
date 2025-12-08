@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { usePropertyBookingState } from '@/hooks/usePropertyBookingState';
 import { getBlockedDates } from '@/lib/client-actions';
+import { getPropertyBlockedDates } from '@/lib/property-site-api';
 import { useAuthStore } from '@/store/auth.store';
 import type { Property, Site } from '@/types/property-site';
 import { useQuery } from '@tanstack/react-query';
-import { differenceInDays } from 'date-fns';
+import { addDays, differenceInDays, parseISO } from 'date-fns';
 import { Star } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -108,6 +109,31 @@ export function PropertyBookingCard({
     };
   }, []);
 
+  // Fetch property-level blocked dates for THIS property only
+  const { data: propertyBlockedDates = [] } = useQuery({
+    queryKey: ['property-blocked-dates', property._id],
+    queryFn: () => getPropertyBlockedDates(property._id),
+    enabled: !!property._id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Expand property-level date ranges into individual Date objects
+  const propertyDisabledDates = useMemo(() => {
+    const disabled: Date[] = [];
+    propertyBlockedDates.forEach(
+      (block: { startDate: string; endDate: string }) => {
+        const start = parseISO(block.startDate);
+        const end = parseISO(block.endDate);
+        let current = start;
+        while (current <= end) {
+          disabled.push(new Date(current));
+          current = addDays(current, 1);
+        }
+      },
+    );
+    return disabled;
+  }, [propertyBlockedDates]);
+
   // For designated: fetch blocked dates for each site and merge them
   const { data: siteAvailabilities } = useQuery({
     queryKey: ['site-blocked-dates', siteIdsForAvailability],
@@ -130,7 +156,13 @@ export function PropertyBookingCard({
 
   // Process blocked dates using useMemo
   const blockedDates = useMemo(() => {
-    if (!siteAvailabilities || siteAvailabilities.length === 0) return [];
+    // Start with site-level blocked dates
+    const siteBlocked: Date[] = [];
+
+    if (!siteAvailabilities || siteAvailabilities.length === 0) {
+      // If no site availabilities, only return property-level blocks
+      return propertyDisabledDates;
+    }
 
     if (isUndesignated) {
       // For UNDESIGNATED: Find the undesignated site(s) and merge their blocked dates
@@ -142,17 +174,20 @@ export function PropertyBookingCard({
         }
       });
 
-      if (undesignatedIndices.length === 0) return [];
+      if (undesignatedIndices.length === 0) {
+        return propertyDisabledDates;
+      }
 
       // If there's only one undesignated site, use its blocked dates directly
       if (undesignatedIndices.length === 1) {
         const result = siteAvailabilities[undesignatedIndices[0]];
         if (result?.data?.blockedDates) {
-          return result.data.blockedDates.map(
-            (dateStr: string) => new Date(dateStr),
-          );
+          result.data.blockedDates.forEach((dateStr: string) => {
+            siteBlocked.push(new Date(dateStr));
+          });
         }
-        return [];
+        // Merge property and site blocks
+        return [...siteBlocked, ...propertyDisabledDates];
       }
 
       // If multiple undesignated sites, block only when ALL are blocked
@@ -177,7 +212,12 @@ export function PropertyBookingCard({
         }
       });
 
-      return fullyBlockedDates.map(dateStr => new Date(dateStr));
+      fullyBlockedDates.forEach(dateStr => {
+        siteBlocked.push(new Date(dateStr));
+      });
+
+      // Merge property and site blocks
+      return [...siteBlocked, ...propertyDisabledDates];
     } else {
       // For DESIGNATED (all sites with capacity = 1):
       // Block dates only when ALL sites are blocked (no availability across all sites)
@@ -204,9 +244,14 @@ export function PropertyBookingCard({
         }
       });
 
-      return fullyBlockedDates.map(dateStr => new Date(dateStr));
+      fullyBlockedDates.forEach(dateStr => {
+        siteBlocked.push(new Date(dateStr));
+      });
+
+      // Merge property and site blocks
+      return [...siteBlocked, ...propertyDisabledDates];
     }
-  }, [siteAvailabilities, isUndesignated, sites]);
+  }, [siteAvailabilities, isUndesignated, sites, propertyDisabledDates]);
 
   // Calculate pricing range from available sites
   const prices = sites

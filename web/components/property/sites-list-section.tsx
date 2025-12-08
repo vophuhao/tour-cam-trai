@@ -11,9 +11,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePropertyBookingState } from '@/hooks/usePropertyBookingState';
 import { getBlockedDates } from '@/lib/client-actions';
+import { getPropertyBlockedDates } from '@/lib/property-site-api';
 import type { Property, Site } from '@/types/property-site';
 import { useQuery } from '@tanstack/react-query';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, parseISO } from 'date-fns';
 import useEmblaCarousel from 'embla-carousel-react';
 import {
   CalendarIcon,
@@ -280,81 +281,117 @@ export function SitesListSection({
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
+  // Fetch property-level blocked dates for THIS property only
+  const { data: propertyBlockedDates = [] } = useQuery({
+    queryKey: ['property-blocked-dates', property._id],
+    queryFn: () => getPropertyBlockedDates(property._id),
+    enabled: !!property._id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Convert property-level blocks to disabled dates
+  const propertyDisabledDates = useMemo(() => {
+    const dates: Date[] = [];
+    propertyBlockedDates.forEach(
+      (block: { startDate: string; endDate: string }) => {
+        const start = parseISO(block.startDate);
+        const end = parseISO(block.endDate);
+        const current = new Date(start);
+
+        while (current <= end) {
+          dates.push(new Date(current));
+          current.setDate(current.getDate() + 1);
+        }
+      },
+    );
+    return dates;
+  }, [propertyBlockedDates]);
+
   // Process blocked dates for calendar display (same logic as property-booking-card)
   const blockedDates = useMemo(() => {
-    if (!siteAvailabilities || siteAvailabilities.length === 0) return [];
+    const siteBlocked: Date[] = [];
 
-    if (isUndesignated) {
-      // For UNDESIGNATED: Find undesignated sites and merge their blocked dates
-      const undesignatedIndices: number[] = [];
-      sites.forEach((site, index) => {
-        if ((site.capacity.maxConcurrentBookings ?? 1) > 1) {
-          undesignatedIndices.push(index);
-        }
-      });
-
-      if (undesignatedIndices.length === 0) return [];
-
-      // If only one undesignated site, use its blocked dates directly
-      if (undesignatedIndices.length === 1) {
-        const result = siteAvailabilities[undesignatedIndices[0]];
-        if (result?.data?.blockedDates) {
-          return result.data.blockedDates.map(
-            (dateStr: string) => new Date(dateStr),
-          );
-        }
-        return [];
-      }
-
-      // If multiple undesignated sites, block only when ALL are blocked
-      const dateBlockedCount = new Map<string, number>();
-      undesignatedIndices.forEach(index => {
-        const result = siteAvailabilities[index];
-        if (result?.data?.blockedDates) {
-          result.data.blockedDates.forEach((dateStr: string) => {
-            dateBlockedCount.set(
-              dateStr,
-              (dateBlockedCount.get(dateStr) || 0) + 1,
-            );
-          });
-        }
-      });
-
-      const fullyBlockedDates: string[] = [];
-      dateBlockedCount.forEach((count, dateStr) => {
-        if (count === undesignatedIndices.length) {
-          fullyBlockedDates.push(dateStr);
-        }
-      });
-
-      return fullyBlockedDates.map(dateStr => new Date(dateStr));
-    } else {
-      // For DESIGNATED: Block dates only when ALL sites are blocked
-      const dateBlockedCount = new Map<string, number>();
-
-      siteAvailabilities.forEach(
-        (result: { data?: { blockedDates?: string[] } }) => {
-          if (result.data?.blockedDates) {
-            result.data.blockedDates.forEach((dateStr: string) => {
-              dateBlockedCount.set(
-                dateStr,
-                (dateBlockedCount.get(dateStr) || 0) + 1,
-              );
-            });
+    if (siteAvailabilities && siteAvailabilities.length > 0) {
+      if (isUndesignated) {
+        // For UNDESIGNATED: Find undesignated sites and merge their blocked dates
+        const undesignatedIndices: number[] = [];
+        sites.forEach((site, index) => {
+          if ((site.capacity.maxConcurrentBookings ?? 1) > 1) {
+            undesignatedIndices.push(index);
           }
-        },
-      );
+        });
 
-      const fullyBlockedDates: string[] = [];
-      dateBlockedCount.forEach((count, dateStr) => {
-        if (count === siteAvailabilities.length) {
-          fullyBlockedDates.push(dateStr);
+        if (undesignatedIndices.length > 0) {
+          // If only one undesignated site, use its blocked dates directly
+          if (undesignatedIndices.length === 1) {
+            const result = siteAvailabilities[undesignatedIndices[0]];
+            if (result?.data?.blockedDates) {
+              siteBlocked.push(
+                ...result.data.blockedDates.map(
+                  (dateStr: string) => new Date(dateStr),
+                ),
+              );
+            }
+          } else {
+            // If multiple undesignated sites, block only when ALL are blocked
+            const dateBlockedCount = new Map<string, number>();
+            undesignatedIndices.forEach(index => {
+              const result = siteAvailabilities[index];
+              if (result?.data?.blockedDates) {
+                result.data.blockedDates.forEach((dateStr: string) => {
+                  dateBlockedCount.set(
+                    dateStr,
+                    (dateBlockedCount.get(dateStr) || 0) + 1,
+                  );
+                });
+              }
+            });
+
+            const fullyBlockedDates: string[] = [];
+            dateBlockedCount.forEach((count, dateStr) => {
+              if (count === undesignatedIndices.length) {
+                fullyBlockedDates.push(dateStr);
+              }
+            });
+
+            siteBlocked.push(
+              ...fullyBlockedDates.map(dateStr => new Date(dateStr)),
+            );
+          }
         }
-      });
+      } else {
+        // For DESIGNATED: Block dates only when ALL sites are blocked
+        const dateBlockedCount = new Map<string, number>();
 
-      return fullyBlockedDates.map(dateStr => new Date(dateStr));
+        siteAvailabilities.forEach(
+          (result: { data?: { blockedDates?: string[] } }) => {
+            if (result.data?.blockedDates) {
+              result.data.blockedDates.forEach((dateStr: string) => {
+                dateBlockedCount.set(
+                  dateStr,
+                  (dateBlockedCount.get(dateStr) || 0) + 1,
+                );
+              });
+            }
+          },
+        );
+
+        const fullyBlockedDates: string[] = [];
+        dateBlockedCount.forEach((count, dateStr) => {
+          if (count === siteAvailabilities.length) {
+            fullyBlockedDates.push(dateStr);
+          }
+        });
+
+        siteBlocked.push(
+          ...fullyBlockedDates.map(dateStr => new Date(dateStr)),
+        );
+      }
     }
-  }, [siteAvailabilities, isUndesignated, sites]);
+
+    // Merge property-level and site-level blocked dates
+    return [...siteBlocked, ...propertyDisabledDates];
+  }, [siteAvailabilities, isUndesignated, sites, propertyDisabledDates]);
 
   // Separate query for checking site blocking in user's selected date range
   const selectedDateWindow = useMemo(() => {

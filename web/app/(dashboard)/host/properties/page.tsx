@@ -1,43 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
-import {
-  Plus,
-  MapPin,
-  Settings,
-  Eye,
-  Trash2,
-  Home,
-  TrendingUp,
-  DollarSign,
-  Calendar,
-  Search,
-  Filter,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { getMyProperties, deleteProperty } from "@/lib/client-actions";
-import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,34 +10,76 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { deleteProperty, getMyProperties } from '@/lib/client-actions';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Calendar,
+  Eye,
+  Filter,
+  Home,
+  MapPin,
+  Plus,
+  Search,
+  Settings,
+  Trash2,
+  TrendingUp,
+} from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 export default function PropertiesPage() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
 
-  const { data: properties, isLoading, refetch } = useQuery({
-    queryKey: ["my-properties"],
+  const {
+    data: properties,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['my-properties'],
     queryFn: async () => {
       const response = await getMyProperties();
       return response.data.properties;
     },
   });
-  console.log("Properties:", properties);
+  console.log('Properties:', properties);
   const handleDeleteProperty = async () => {
     if (!propertyToDelete) return;
 
     try {
       await deleteProperty(propertyToDelete);
-      toast.success("Xóa property thành công!");
+      toast.success('Xóa property thành công!');
       refetch();
       setDeleteDialogOpen(false);
       setPropertyToDelete(null);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Có lỗi xảy ra khi xóa property");
+      toast.error(
+        error.response?.data?.message || 'Có lỗi xảy ra khi xóa property',
+      );
     }
   };
 
@@ -83,22 +88,25 @@ export default function PropertiesPage() {
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
     const matchesStatus =
-      statusFilter === "all" || property.status === statusFilter;
+      statusFilter === 'all' || property.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const statusConfig = {
-    active: { label: "Đang hoạt động", color: "bg-green-100 text-green-800" },
-    inactive: { label: "Không hoạt động", color: "bg-gray-100 text-gray-800" },
-    pending_approval: { label: "Chờ duyệt", color: "bg-yellow-100 text-yellow-800" },
-    suspended: { label: "Tạm ngưng", color: "bg-red-100 text-red-800" },
+    active: { label: 'Đang hoạt động', color: 'bg-green-100 text-green-800' },
+    inactive: { label: 'Không hoạt động', color: 'bg-gray-100 text-gray-800' },
+    pending_approval: {
+      label: 'Chờ duyệt',
+      color: 'bg-yellow-100 text-yellow-800',
+    },
+    suspended: { label: 'Tạm ngưng', color: 'bg-red-100 text-red-800' },
   };
 
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent mx-auto" />
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
           <p className="mt-4 text-gray-600">Đang tải...</p>
         </div>
       </div>
@@ -106,22 +114,22 @@ export default function PropertiesPage() {
   }
 
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-screen">
       {/* Header */}
       <div className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Quản lý Properties
+                Quản lý Khu cắm trại
               </h1>
             </div>
             <Button
               className="bg-emerald-600 hover:bg-emerald-700"
-              onClick={() => router.push("/host/properties/new")}
+              onClick={() => router.push('/host/properties/new')}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Thêm Property mới
+              Thêm khu mới
             </Button>
           </div>
         </div>
@@ -130,15 +138,15 @@ export default function PropertiesPage() {
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Stats */}
         {properties && properties.length > 0 && (
-          <div className="grid gap-6 md:grid-cols-4 mb-8">
+          <div className="mb-8 grid gap-6 md:grid-cols-4">
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">
-                      Tổng Properties
+                      Tổng Khu cắm trại
                     </p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                    <p className="mt-1 text-2xl font-bold text-gray-900">
                       {properties.length}
                     </p>
                   </div>
@@ -156,9 +164,9 @@ export default function PropertiesPage() {
                     <p className="text-sm font-medium text-gray-600">
                       Đã xuất bản
                     </p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                    <p className="mt-1 text-2xl font-bold text-gray-900">
                       {
-                        properties.filter((p: any) => p.status === "published")
+                        properties.filter((p: any) => p.status === 'published')
                           .length
                       }
                     </p>
@@ -175,12 +183,13 @@ export default function PropertiesPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">
-                      Tổng Sites
+                      Tổng Địa điểm cắm trại
                     </p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                    <p className="mt-1 text-2xl font-bold text-gray-900">
                       {properties.reduce(
-                        (sum: number, p: any) => sum + (p.stats?.totalSites || 0),
-                        0
+                        (sum: number, p: any) =>
+                          sum + (p.stats?.totalSites || 0),
+                        0,
                       )}
                     </p>
                   </div>
@@ -198,11 +207,11 @@ export default function PropertiesPage() {
                     <p className="text-sm font-medium text-gray-600">
                       Tổng Bookings
                     </p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                    <p className="mt-1 text-2xl font-bold text-gray-900">
                       {properties.reduce(
                         (sum: number, p: any) =>
                           sum + (p.stats?.totalBookings || 0),
-                        0
+                        0,
                       )}
                     </p>
                   </div>
@@ -218,14 +227,14 @@ export default function PropertiesPage() {
         {/* Filters */}
         <Card className="mb-6">
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row">
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
                     placeholder="Tìm kiếm theo tên property..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={e => setSearchQuery(e.target.value)}
                     className="pl-10"
                   />
                 </div>
@@ -255,11 +264,11 @@ export default function PropertiesPage() {
             {filteredProperties.map((property: any) => (
               <Card
                 key={property._id}
-                className="overflow-hidden hover:shadow-lg transition-shadow"
+                className="overflow-hidden transition-shadow hover:shadow-lg"
               >
                 <div className="relative h-48">
                   <Image
-                    src={property.photos?.[0]?.url || "/placeholder.jpg"}
+                    src={property.photos?.[0]?.url || '/placeholder.jpg'}
                     alt={property.name}
                     fill
                     className="object-cover"
@@ -269,47 +278,45 @@ export default function PropertiesPage() {
                       className={
                         statusConfig[
                           property?.status as keyof typeof statusConfig
-                        ]?.color || "bg-gray-100 text-gray-800"
+                        ]?.color || 'bg-gray-100 text-gray-800'
                       }
                     >
-                      {
-                        statusConfig[
-                          property?.status as keyof typeof statusConfig
-                        ]?.label || "Unknown"
-                      }
+                      {statusConfig[
+                        property?.status as keyof typeof statusConfig
+                      ]?.label || 'Unknown'}
                     </Badge>
                   </div>
                 </div>
 
                 <CardContent className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  <h3 className="mb-2 text-lg font-semibold text-gray-900">
                     {property.name}
                   </h3>
 
-                  <div className="flex items-start gap-2 text-sm text-gray-600 mb-4">
-                    <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div className="mb-4 flex items-start gap-2 text-sm text-gray-600">
+                    <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span className="line-clamp-2">
                       {property.location.city}, {property.location.state}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-                    <div className="bg-gray-50 rounded-lg p-2">
+                  <div className="mb-4 grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg bg-gray-50 p-2">
                       <p className="text-xs text-gray-600">Sites</p>
                       <p className="text-sm font-semibold text-gray-900">
                         {property.stats?.totalSites || 0}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-2">
+                    <div className="rounded-lg bg-gray-50 p-2">
                       <p className="text-xs text-gray-600">Bookings</p>
                       <p className="text-sm font-semibold text-gray-900">
                         {property.stats?.totalBookings || 0}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-2">
+                    <div className="rounded-lg bg-gray-50 p-2">
                       <p className="text-xs text-gray-600">Rating</p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {property.stats?.averageRating?.toFixed(1) || "0.0"}
+                        {property.stats?.averageRating?.toFixed(1) || '0.0'}
                       </p>
                     </div>
                   </div>
@@ -345,7 +352,7 @@ export default function PropertiesPage() {
                         <DropdownMenuItem
                           onClick={() =>
                             router.push(
-                              `/host/properties/${property._id}/sites/new`
+                              `/host/properties/${property._id}/sites/new`,
                             )
                           }
                         >
@@ -372,21 +379,21 @@ export default function PropertiesPage() {
         ) : (
           <Card>
             <CardContent className="py-16 text-center">
-              <Home className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {searchQuery || statusFilter !== "all"
-                  ? "Không tìm thấy property nào"
-                  : "Chưa có property nào"}
+              <Home className="mx-auto mb-4 h-16 w-16 text-gray-400" />
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                {searchQuery || statusFilter !== 'all'
+                  ? 'Không tìm thấy property nào'
+                  : 'Chưa có property nào'}
               </h3>
-              <p className="text-sm text-gray-600 mb-6">
-                {searchQuery || statusFilter !== "all"
-                  ? "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm"
-                  : "Bắt đầu bằng cách tạo property đầu tiên của bạn"}
+              <p className="mb-6 text-sm text-gray-600">
+                {searchQuery || statusFilter !== 'all'
+                  ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm'
+                  : 'Bắt đầu bằng cách tạo property đầu tiên của bạn'}
               </p>
-              {!searchQuery && statusFilter === "all" && (
+              {!searchQuery && statusFilter === 'all' && (
                 <Button
                   className="bg-emerald-600 hover:bg-emerald-700"
-                  onClick={() => router.push("/host/properties/new")}
+                  onClick={() => router.push('/host/properties/new')}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Tạo Property mới

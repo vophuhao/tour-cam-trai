@@ -514,3 +514,14 @@ export interface AvailabilityCheck {
     reason: 'booked' | 'blocked' | 'maintenance';
   }>;
 }
+
+export interface PropertyBlockedDates {
+  _id: string;
+  property: string | { _id: string; name: string };
+  startDate: string;
+  endDate: string;
+  reason?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}

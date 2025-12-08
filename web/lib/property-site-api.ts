@@ -544,3 +544,45 @@ export async function getPersonalizedRecommendations(
   );
   return response.data || [];
 }
+
+// ==================== PROPERTY AVAILABILITY BLOCKING ====================
+
+/**
+ * Block dates for a property (host only)
+ */
+export async function blockPropertyDates(
+  propertyId: string,
+  startDate: string,
+  endDate: string,
+  reason?: string,
+) {
+  const response = await apiClient.post(
+    `/properties/${propertyId}/block-dates`,
+    {
+      startDate,
+      endDate,
+      reason,
+    },
+  );
+  return response.data;
+}
+
+/**
+ * Unblock dates for a property (host only)
+ */
+export async function unblockPropertyDates(blockId: string) {
+  const response = await apiClient.delete(
+    `/properties/blocked-dates/${blockId}`,
+  );
+  return response.data;
+}
+
+/**
+ * Get all blocked dates for a property
+ */
+export async function getPropertyBlockedDates(propertyId: string) {
+  const response = await apiClient.get(
+    `/properties/${propertyId}/blocked-dates`,
+  );
+  return response.data || [];
+}

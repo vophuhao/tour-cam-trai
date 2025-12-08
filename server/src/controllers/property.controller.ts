@@ -198,4 +198,49 @@ export default class PropertyController {
 
     return ResponseUtil.success(res, recommendations, "Lấy danh sách property gợi ý thành công");
   });
+
+  /**
+   * Block dates for property (host only)
+   * @route POST /api/properties/:id/block-dates
+   */
+  blockPropertyDates = catchErrors(async (req, res) => {
+    const { id } = req.params;
+    const hostId = mongoIdSchema.parse(req.userId);
+    const { startDate, endDate, reason } = req.body;
+
+    const blocked = await this.propertyService.blockPropertyDates(
+      id,
+      hostId,
+      new Date(startDate),
+      new Date(endDate),
+      reason
+    );
+
+    return ResponseUtil.created(res, blocked, "Block dates thành công");
+  });
+
+  /**
+   * Unblock dates for property (host only)
+   * @route DELETE /api/properties/blocked-dates/:blockId
+   */
+  unblockPropertyDates = catchErrors(async (req, res) => {
+    const { blockId } = req.params;
+    const hostId = mongoIdSchema.parse(req.userId);
+
+    await this.propertyService.unblockPropertyDates(blockId, hostId);
+
+    return ResponseUtil.success(res, null, "Unblock dates thành công");
+  });
+
+  /**
+   * Get blocked dates for property
+   * @route GET /api/properties/:id/blocked-dates
+   */
+  getPropertyBlockedDates = catchErrors(async (req, res) => {
+    const { id } = req.params;
+
+    const blockedDates = await this.propertyService.getPropertyBlockedDates(id);
+
+    return ResponseUtil.success(res, blockedDates, "Lấy danh sách blocked dates thành công");
+  });
 }
