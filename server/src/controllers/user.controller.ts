@@ -76,7 +76,7 @@ export default class UserController {
         { role: "host" },
       ],
     })
-      .select("username  avatar email")
+      .select("username avatarUrl email")
       .limit(10);
 
     return ResponseUtil.success(res, users, "Search results");

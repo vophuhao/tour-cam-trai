@@ -31,7 +31,7 @@ const AuthForm = ({ type }: { type: FormType }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   // Get redirect URL from query params (set by login-prompt-dialog)
   const redirectUrl = searchParams.get('redirect');
 
@@ -57,7 +57,8 @@ const AuthForm = ({ type }: { type: FormType }) => {
     if (type === 'sign-in' && result.success) {
       setAuthState(result.data || null);
       // Use redirect URL if provided, otherwise default to admin/home
-      const destination = redirectUrl || (result.data?.role === 'admin' ? '/admin' : '/');
+      const destination =
+        redirectUrl || (result.data?.role === 'admin' ? '/admin' : '/');
       router.push(destination);
       return;
     }
@@ -215,8 +216,8 @@ const AuthForm = ({ type }: { type: FormType }) => {
             </div>
 
             {/* Google Login Button */}
-            <GoogleLoginButton 
-              onAuthSuccess={user => setAuthState(user)} 
+            <GoogleLoginButton
+              onAuthSuccess={user => setAuthState(user)}
               redirectUrl={redirectUrl || undefined}
             />
           </form>

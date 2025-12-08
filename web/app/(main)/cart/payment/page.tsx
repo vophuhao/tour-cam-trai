@@ -51,11 +51,15 @@ export default function PaymentPage() {
   const [promoApplied, setPromoApplied] = useState<{ code: string; amount: number } | null>(null);
   const [orderNote, setOrderNote] = useState("");
 
+  // FIX: Tính giá đúng cho từng sản phẩm (deal hoặc price)
   const selectedItems = items.filter((it) => selectedIds.includes(it.product._id));
-  const itemsTotal = selectedItems.reduce(
-    (s: number, it) => s + (it.product.deal ?? it.product.price) * it.quantity,
-    0
-  );
+  
+  const itemsTotal = selectedItems.reduce((sum, it) => {
+    // Ưu tiên giá deal, nếu không có thì dùng price
+    const itemPrice = (it.product.deal && it.product.deal > 0) ? it.product.deal : it.product.price;
+    return sum + (itemPrice * it.quantity);
+  }, 0);
+
   const shippingFee = shipping === "express" ? 45000 : 25000;
   const promoDiscount = promoApplied ? promoApplied.amount : 0;
   const tax = Math.round((itemsTotal - promoDiscount) * 0.05);
@@ -93,13 +97,16 @@ export default function PaymentPage() {
       const addr = addresses[selectedAddressIndex!];
 
       const payload = {
-        items: selectedItems.map((it) => ({
-          product: it.product._id,
-          name: it.product.name,
-          totalPrice: it.product.deal ?? it.product.price,
-          quantity: it.quantity,
-          image: it.product.images?.[0] || "",
-        })),
+        items: selectedItems.map((it) => {
+          const itemPrice = (it.product.deal && it.product.deal > 0) ? it.product.deal : it.product.price;
+          return {
+            product: it.product._id,
+            name: it.product.name,
+            totalPrice: itemPrice,
+            quantity: it.quantity,
+            image: it.product.images?.[0] || "",
+          };
+        }),
         shippingAddress: {
           fullName: addr.fullName,
           phone: addr.phone,
@@ -366,7 +373,7 @@ export default function PaymentPage() {
             </div>
           </div>
 
-          {/* RIGHT */}
+          {/* RIGHT - ORDER SUMMARY */}
           <div className="lg:col-span-1">
             <div className="sticky top-24 bg-white rounded-lg shadow-sm border p-6">
               <div className="flex items-center gap-2 mb-4">
@@ -378,30 +385,36 @@ export default function PaymentPage() {
                 {selectedItems.length === 0 ? (
                   <div className="text-gray-500 text-sm py-4">Không có sản phẩm được chọn.</div>
                 ) : (
-                  selectedItems.map((it) => (
-                    <div key={it.product._id} className="flex items-center gap-3 py-3">
-                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                        {it.product.images?.[0] ? (
-                          <img
-                            src={it.product.images[0]}
-                            alt={it.product.name}
-                            className="object-cover w-full h-full"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gray-200" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{it.product.name}</div>
-                        <div className="text-xs text-gray-500">
-                          {it.quantity} × {formatCurrency(it.product.price)}
+                  selectedItems.map((it) => {
+                    // FIX: Hiển thị đúng giá (deal hoặc price)
+                    const itemPrice = (it.product.deal && it.product.deal > 0) ? it.product.deal : it.product.price;
+                    const itemTotal = itemPrice * it.quantity;
+                    
+                    return (
+                      <div key={it.product._id} className="flex items-center gap-3 py-3">
+                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                          {it.product.images?.[0] ? (
+                            <img
+                              src={it.product.images[0]}
+                              alt={it.product.name}
+                              className="object-cover w-full h-full"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{it.product.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {it.quantity} × {formatCurrency(itemPrice)}
+                          </div>
+                        </div>
+                        <div className="text-sm font-semibold">
+                          {formatCurrency(itemTotal)}
                         </div>
                       </div>
-                      <div className="text-sm font-semibold">
-                        {formatCurrency(it.product.price * it.quantity)}
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 

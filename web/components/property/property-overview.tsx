@@ -3,6 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useChatModal } from '@/store/chatstore';
 import type { Property } from '@/types/property-site';
 import { MapPin, Star, TreePine, Users } from 'lucide-react';
 
@@ -19,6 +20,18 @@ const propertyTypeLabels: Record<string, string> = {
 };
 
 export function PropertyOverview({ property }: PropertyOverviewProps) {
+  const { openChat } = useChatModal();
+
+  const handleContactHost = () => {
+    if (typeof property.host === 'object' && property.host) {
+      openChat(property.host._id, {
+        username: property.host.username,
+        avatarUrl: property.host.avatarUrl,
+        email: property.host.email,
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -54,9 +67,6 @@ export function PropertyOverview({ property }: PropertyOverviewProps) {
         <Badge variant="outline">
           {propertyTypeLabels[property.propertyType] || property.propertyType}
         </Badge>
-        {/* <Badge variant="secondary">
-          {property.stats.totalSites} vị trí cắm trại
-        </Badge> */}
       </div>
 
       {/* Host Info */}
@@ -73,7 +83,7 @@ export function PropertyOverview({ property }: PropertyOverviewProps) {
                 .toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div>
+          <div className="flex-1">
             <p className="font-semibold">
               Chủ đất:{' '}
               {property.host.username || property.host.email.split('@')[0]}
@@ -87,6 +97,12 @@ export function PropertyOverview({ property }: PropertyOverviewProps) {
               </p>
             )}
           </div>
+          <button
+            onClick={handleContactHost}
+            className="text-sm font-medium text-primary hover:underline cursor-pointer transition-colors hover:text-primary/80"
+          >
+            Liên hệ
+          </button>
         </div>
       )}
 

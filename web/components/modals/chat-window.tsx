@@ -30,7 +30,7 @@ export default function ChatWindow({ conversation, onBack }: ChatWindowProps) {
     const prevMessagesLenRef = useRef(0);
 
     const other = conversation.otherParticipant;
-    const otherAvatar = other?.avatar || other?.userId?.avatar;
+    const otherAvatar = other?.avatarUrl || other?.userId?.avatarUrl;
     const otherName = other?.name || other?.userId?.username || 'Người dùng';
 
     useEffect(() => {
