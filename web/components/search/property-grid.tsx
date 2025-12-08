@@ -1,8 +1,10 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Property } from '@/types/property-site';
+import { Eye } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -84,6 +86,12 @@ export function PropertyGrid({
     return `${price}`;
   };
 
+  const formatViews = (n: number) => {
+    if (n >= 1000000) return `${Math.floor(n / 1000000)}M`;
+    if (n >= 1000) return `${Math.floor(n / 1000)}k`;
+    return `${n}`;
+  };
+
   const getLandSizeDisplay = (property: Property) => {
     if (!property.landSize) return '101 acres';
     const { value, unit } = property.landSize;
@@ -106,7 +114,7 @@ export function PropertyGrid({
           {initialProperties.map(property => (
             <Card
               key={property._id}
-              className={`cursor-pointer overflow-hidden border-none shadow-md transition-all hover:shadow-lg ${
+              className={`relative cursor-pointer overflow-hidden border-none shadow-md transition-all hover:shadow-lg ${
                 selectedProperty?._id === property._id
                   ? 'ring-primary ring-2'
                   : ''
@@ -117,6 +125,20 @@ export function PropertyGrid({
             >
               <Link href={buildPropertyLink(property.slug || property._id)}>
                 <div className="relative h-48 w-full overflow-hidden rounded-lg">
+                  {/* View count badge (top-right) */}
+                  <div className="absolute top-3 right-3 z-20">
+                    <Badge
+                      variant="secondary"
+                      className="flex items-center gap-2 rounded-full px-2 py-1 text-xs shadow"
+                    >
+                      <Eye className="h-3 w-3 text-gray-700" />
+                      <span className="font-medium text-gray-700">
+                        {formatViews(
+                          property.stats?.viewCount ?? property.viewCount ?? 0,
+                        )}
+                      </span>
+                    </Badge>
+                  </div>
                   <Image
                     src={getCoverPhoto(property)}
                     alt={property.name}

@@ -1,12 +1,13 @@
 'use client';
 
+import LoginPromptDialog from '@/components/auth/login-prompt-dialog';
 import { DateRangePopover } from '@/components/search/date-range-popover';
 import { GuestPopover } from '@/components/search/guest-popover';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { usePropertyBookingState } from '@/hooks/usePropertyBookingState';
 import { getBlockedDates } from '@/lib/client-actions';
+import { useAuthStore } from '@/store/auth.store';
 import type { Property, Site } from '@/types/property-site';
 import { useQuery } from '@tanstack/react-query';
 import { differenceInDays } from 'date-fns';
@@ -45,6 +46,18 @@ export function PropertyBookingCard({
     return sites.some(site => (site.capacity.maxConcurrentBookings ?? 1) > 1);
   }, [sites]);
 
+  // Compute total number of bookable positions for the property.
+  // If a site has `maxConcurrentBookings > 1` it contributes that number,
+  // otherwise it contributes 1. This ensures the displayed "total sites"
+  // reflects concurrent slots for undesignated sites.
+  const computedTotalSites = useMemo(() => {
+    if (!sites || sites.length === 0) return property.stats?.totalSites ?? 0;
+    return sites.reduce((sum, s) => {
+      const concurrent = s.capacity?.maxConcurrentBookings ?? 1;
+      return sum + Math.max(1, concurrent);
+    }, 0);
+  }, [sites, property.stats]);
+
   // Check if property has only one site (for maximumNights check)
   const isSingleSiteProperty = sites.length === 1;
 
@@ -65,6 +78,8 @@ export function PropertyBookingCard({
       setAdults(newAdults);
     }
   }, [booking.guests]); // Only run when URL guests changes
+
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   // Sync total guests with URL when adults/children change
   const handleGuestsChange = (newAdults: number, newChildren: number) => {
@@ -306,6 +321,10 @@ export function PropertyBookingCard({
 
   return (
     <Card className="border-0 shadow-2xl">
+      <LoginPromptDialog
+        open={showLoginPrompt}
+        onOpenChange={setShowLoginPrompt}
+      />
       <CardHeader className="pb-4">
         <div className="flex items-baseline justify-between">
           <div>
@@ -338,10 +357,12 @@ export function PropertyBookingCard({
             </div>
           )}
         </div>
-        {property.stats && property.stats.totalSites > 0 && (
-          <Badge variant="secondary" className="mt-2 w-fit">
-            {property.stats.totalSites} vị trí cắm trại
-          </Badge>
+        {computedTotalSites > 0 && (
+          <span
+            className={`mt-2 w-fit text-xs ${computedTotalSites < 3 ? 'text-destructive' : ''} `}
+          >
+            Còn {computedTotalSites} vị trí cắm trại
+          </span>
         )}
       </CardHeader>
 
@@ -416,7 +437,17 @@ export function PropertyBookingCard({
                 exceedsMaxNights ? (
                   <span>Đổi ngày</span>
                 ) : (
-                  <Link href={buildUndesignatedCheckoutUrl()}>
+                  <Link
+                    href={buildUndesignatedCheckoutUrl()}
+                    onClick={e => {
+                      const isAuthenticated =
+                        useAuthStore.getState().isAuthenticated;
+                      if (!isAuthenticated) {
+                        e.preventDefault();
+                        setShowLoginPrompt(true);
+                      }
+                    }}
+                  >
                     Đặt chỗ ngay
                   </Link>
                 )

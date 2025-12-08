@@ -7,7 +7,7 @@ import { authFormSchema } from '@/validations/auth.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -29,7 +29,11 @@ export type FormType = 'sign-in' | 'sign-up';
 
 const AuthForm = ({ type }: { type: FormType }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Get redirect URL from query params (set by login-prompt-dialog)
+  const redirectUrl = searchParams.get('redirect');
 
   const formSchema = authFormSchema(type);
   const form = useForm<z.infer<typeof formSchema>>({
@@ -52,7 +56,9 @@ const AuthForm = ({ type }: { type: FormType }) => {
 
     if (type === 'sign-in' && result.success) {
       setAuthState(result.data || null);
-      router.push(result.data?.role === 'admin' ? '/admin' : '/');
+      // Use redirect URL if provided, otherwise default to admin/home
+      const destination = redirectUrl || (result.data?.role === 'admin' ? '/admin' : '/');
+      router.push(destination);
       return;
     }
 
@@ -209,7 +215,10 @@ const AuthForm = ({ type }: { type: FormType }) => {
             </div>
 
             {/* Google Login Button */}
-            <GoogleLoginButton onAuthSuccess={user => setAuthState(user)} />
+            <GoogleLoginButton 
+              onAuthSuccess={user => setAuthState(user)} 
+              redirectUrl={redirectUrl || undefined}
+            />
           </form>
         </Form>
 

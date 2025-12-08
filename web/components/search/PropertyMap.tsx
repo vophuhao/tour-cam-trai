@@ -87,7 +87,7 @@ export function PropertyMap({
       try {
         mapRef.current.flyTo({
           center: [searchCoordinates.lng, searchCoordinates.lat],
-          zoom: 10,
+          zoom: 8.5,
           duration: 2000,
         });
       } catch (error) {

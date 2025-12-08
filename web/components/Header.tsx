@@ -111,7 +111,7 @@ export default function Header() {
                       size="sm"
                     >
                       {/* <LayoutDashboard className="mr-2 h-4 w-4" /> */}
-                      Host
+                      Trang Host
                     </Button>
                   </Link>
                 )}
@@ -123,7 +123,7 @@ export default function Header() {
                       size="sm"
                     >
                       {/* <LayoutDashboard className="mr-2 h-4 w-4" /> */}
-                      Become Host
+                      Trở thành Host
                     </Button>
                   </Link>
                 )}

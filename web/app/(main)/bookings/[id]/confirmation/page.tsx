@@ -932,7 +932,7 @@ export default function ConfirmationPage() {
           <ReviewDialog
             open={isReviewDialogOpen}
             onOpenChange={setIsReviewDialogOpen}
-            bookingId={bookingId}
+            bookingId={booking._id}
             propertyId={property._id}
             siteId={site._id}
             propertyName={propertyName}

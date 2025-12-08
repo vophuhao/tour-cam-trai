@@ -16,8 +16,10 @@ interface GoogleUserInfo {
 
 const GoogleLoginButton = ({
   onAuthSuccess,
+  redirectUrl,
 }: {
   onAuthSuccess: (user: User | null) => void;
+  redirectUrl?: string;
 }) => {
   const router = useRouter();
 
@@ -50,7 +52,8 @@ const GoogleLoginButton = ({
 
         if (response.success) {
           onAuthSuccess(response.data || null);
-          router.push('/');
+          // Use redirect URL if provided, otherwise default to home
+          router.push(redirectUrl || '/');
         } else {
           toast.error('Đăng nhập thất bại');
           router.push('/sign-in');

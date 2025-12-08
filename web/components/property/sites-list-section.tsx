@@ -1,5 +1,8 @@
 'use client';
 
+import LoginPromptDialog from '@/components/auth/login-prompt-dialog';
+import { useAuthStore } from '@/store/auth.store';
+
 import { DateRangePopover } from '@/components/search/date-range-popover';
 import { GuestPopover } from '@/components/search/guest-popover';
 import { Badge } from '@/components/ui/badge';
@@ -78,6 +81,7 @@ export function SitesListSection({
   const [children, setChildren] = useState(0);
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const [guestPopoverOpen, setGuestPopoverOpen] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   // Ref for scrolling to date selector
   const dateRangeRef = useRef<HTMLDivElement>(null);
@@ -157,6 +161,7 @@ export function SitesListSection({
 
   // Handle "Đặt ngay" click when no dates selected
   const handleBookNowClick = (e: React.MouseEvent) => {
+    // If user hasn't selected dates, prompt them to pick dates
     if (!booking.dateRange?.from || !booking.dateRange?.to) {
       e.preventDefault();
       // Scroll to date selector
@@ -168,6 +173,15 @@ export function SitesListSection({
       setTimeout(() => {
         setDatePopoverOpen(true);
       }, 500);
+      return;
+    }
+
+    // If user is not authenticated, prevent navigation and open login dialog
+    const isAuthenticated = useAuthStore.getState().isAuthenticated;
+    if (!isAuthenticated) {
+      e.preventDefault();
+      setShowLoginPrompt(true);
+      return;
     }
   };
 
@@ -478,6 +492,10 @@ export function SitesListSection({
 
   return (
     <div className="relative" id="sites">
+      <LoginPromptDialog
+        open={showLoginPrompt}
+        onOpenChange={setShowLoginPrompt}
+      />
       {/* Sites List + Map Layout */}
       <div className="flex min-h-0 gap-0">
         {/* Sites List - Scrollable */}
@@ -818,6 +836,15 @@ export function SitesListSection({
                                           vehicles: '1',
                                         }).toString()
                                       }
+                                      onClick={e => {
+                                        const isAuthenticated =
+                                          useAuthStore.getState()
+                                            .isAuthenticated;
+                                        if (!isAuthenticated) {
+                                          e.preventDefault();
+                                          setShowLoginPrompt(true);
+                                        }
+                                      }}
                                     >
                                       Đặt
                                     </Link>
