@@ -663,10 +663,19 @@ export class BookingService {
   }
 
   async userCancelPayment(orderCode: string) {
+    console.log("User cancel payment for orderCode:", orderCode);
     const booking = await BookingModel.findOne({ payOSOrderCode: orderCode });
     appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
 
-    const bookingId = (booking._id as mongoose.Types.ObjectId).toString();
+    if (!booking.code)
+    {
+      console.log("No booking found for orderCode:", orderCode);
+      return {
+        success: false,
+        message: "No booking found for the provided order code",
+      };
+    }
+    const bookingId = booking.code.toString();
     // ❗ cancelBooking cần booking._id (ObjectId), không phải orderCode
     await this.cancelBooking(bookingId, booking.guest as mongoose.Types.ObjectId, {
       cancellationReason: "User cancelled payment",
