@@ -64,7 +64,7 @@ interface BookingData {
   numberOfVehicles?: number;
   nights: number;
   paymentStatus?: 'pending' | 'paid' | 'refunded' | 'failed';
-  paymentMethod?: string;
+  paymentMethod?: 'full' | 'deposit';
   guestMessage?: string;
   hostMessage?: string;
   payOSOrderCode?: string;
@@ -127,6 +127,8 @@ interface BookingData {
     serviceFee: number;
     tax: number;
     total: number;
+    depositAmount?: number;
+    depositPercentage?: number;
   };
 
   reviewed?: boolean;
@@ -160,6 +162,7 @@ export default function ConfirmationPage() {
     enabled: !!bookingId,
   });
   console.log('Booking data:', data);
+  
   // Cancel booking mutation
   const cancelMutation = useMutation({
     mutationFn: (cancellationReason: string) =>
@@ -319,6 +322,29 @@ export default function ConfirmationPage() {
     new Date(booking.checkIn) > new Date() &&
     booking.paymentStatus !== 'pending';
 
+  // Calculate payment amounts
+  const totalAmount = booking.pricing?.total || 0;
+  const depositPercentage = booking.pricing?.depositPercentage || 
+    site?.pricing?.depositAmount || 30;
+  const depositAmount = booking.pricing?.depositAmount || 
+    Math.round(totalAmount * (depositPercentage / 100));
+  const remainingAmount = totalAmount - depositAmount;
+
+  // Determine payment display text
+  const getPaymentMethodText = () => {
+    if (booking.paymentMethod === 'deposit') {
+      return `Đặt cọc ${depositPercentage}%`;
+    }
+    return 'Thanh toán đầy đủ';
+  };
+
+  const getPaymentAmountToPay = () => {
+    if (booking.paymentMethod === 'deposit') {
+      return depositAmount;
+    }
+    return totalAmount;
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Back Button */}
@@ -388,22 +414,34 @@ export default function ConfirmationPage() {
             {booking.paymentStatus === 'pending' && (
               <Card className="mb-6 border-2 border-orange-300 bg-gradient-to-r from-orange-50 to-yellow-50">
                 <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center">
                     <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-orange-500">
                       <AlertCircle className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center">
-                        <h3 className="mr-3 font-semibold text-gray-900">
-                          Chưa hoàn tất thanh toán
-                        </h3>
-                        <span className="text-2xl font-bold">
-                          {booking.pricing?.total} VND
-                        </span>
+                      
+                      <h3 className="font-semibold text-gray-900">
+                        {booking.paymentMethod === 'deposit' 
+                          ? `Chưa hoàn tất đặt cọc`
+                          : 'Chưa hoàn tất thanh toán '}
+                      </h3>
+                      <div className="mt-2 flex flex-col gap-1 text-sm">
+                        <p className="font-semibold text-gray-900">
+                          💳 Cần thanh toán ngay:{' '}
+                          <span className="text-lg text-orange-600">
+                            {getPaymentAmountToPay().toLocaleString('vi-VN')} ₫
+                          </span>
+                        </p>
+                        {booking.paymentMethod === 'deposit' && (
+                          <h4 className="text-xs text-gray-600">
+                            📅 Thanh toán khi nhận phòng:{' '}
+                            <span className="font-medium">
+                              {remainingAmount.toLocaleString('vi-VN')} ₫
+                            </span>{' '}
+                            ({100 - depositPercentage}%)
+                          </h4>
+                        )}
                       </div>
-                      <p className="text-sm text-gray-600">
-                        Vui lòng hoàn tất thanh toán để xác nhận booking của bạn
-                      </p>
                     </div>
                     <Button
                       size="lg"
@@ -437,9 +475,15 @@ export default function ConfirmationPage() {
                         Thanh toán thành công
                       </h3>
                       <p className="text-sm text-gray-600">
-                        Booking của bạn đã được xác nhận và thanh toán thành
-                        công
+                        {booking.paymentMethod === 'deposit' 
+                          ? `Đã thanh toán cọc ${depositPercentage}% (${depositAmount.toLocaleString('vi-VN')} ₫)`
+                          : `Đã thanh toán đầy đủ ${totalAmount.toLocaleString('vi-VN')} ₫`}
                       </p>
+                      {booking.paymentMethod === 'deposit' && (
+                        <p className="mt-1 text-xs text-gray-600">
+                          💰 Còn lại {remainingAmount.toLocaleString('vi-VN')} ₫ thanh toán khi nhận phòng
+                        </p>
+                      )}
                     </div>
                   </div>
                 </CardContent>

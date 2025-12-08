@@ -61,6 +61,7 @@ interface SiteDetails {
     vehicleFee?: number;
     additionalGuestFee?: number;
     depositAmount?: number;
+    weekendPrice?: number;
     currency: string;
   };
   capacity: {
@@ -224,9 +225,6 @@ export default function PaymentPage() {
   const totalAdditionalGuestFee =
     (bookingData.additionalGuestFee || 0) * additionalGuests;
 
-  // const serviceFee = Math.round(subtotal * 0.1); // 10% service fee
-  // const tax = Math.round((subtotal + serviceFee) * 0.08); // 8% tax
-
   // Calculate total
   const total =
     subtotal +
@@ -234,18 +232,20 @@ export default function PaymentPage() {
     totalPetFee +
     totalVehicleFee +
     totalAdditionalGuestFee;
-  // serviceFee +
-  // tax;
 
-  // Deposit calculation - use site's depositAmount or 30% of total
+  // FIX: Deposit calculation - calculate percentage from total
   const siteDepositAmount = bookingData.depositAmount || 0;
-  const depositAmount =
-    siteDepositAmount > 0 ? siteDepositAmount : Math.round(total * 0.3);
+  
+  // If depositAmount > 0, treat it as percentage, else default 30%
+  const depositPercentage = siteDepositAmount > 0 ? siteDepositAmount : 30;
+  
+  // Calculate actual deposit amount based on total
+  const depositAmount = Math.round(total * (depositPercentage / 100));
   const remainingAmount = total - depositAmount;
 
-  // Check if deposit option is available
-  const hasDepositOption = siteDepositAmount > 0;
-  console.log('Deposit Option Available:', hasDepositOption);
+  // Deposit option is always available
+  const hasDepositOption = true;
+
   const formatPrice = (price: number) =>
     new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -435,7 +435,7 @@ export default function PaymentPage() {
                         </div>
                       </label>
 
-                      {/* Deposit Payment - Only show if deposit is available */}
+                      {/* Deposit Payment */}
                       {hasDepositOption && (
                         <label
                           htmlFor="deposit"
@@ -454,26 +454,21 @@ export default function PaymentPage() {
                             <div className="flex items-center gap-2">
                               <Percent className="h-5 w-5 text-blue-600" />
                               <p className="font-semibold">
-                                Đặt cọc{' '}
-                                {siteDepositAmount > 0
-                                  ? formatPrice(siteDepositAmount)
-                                  : '30%'}
+                                Đặt cọc {depositPercentage}%
                               </p>
                               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
                                 Phổ biến
                               </span>
                             </div>
                             <p className="text-muted-foreground text-sm">
-                              {siteDepositAmount > 0
-                                ? `Đặt cọc ${formatPrice(depositAmount)}, trả phần còn lại khi nhận phòng`
-                                : `Đặt cọc ${formatPrice(depositAmount)} (30%), trả phần còn lại khi nhận phòng`}
+                              Đặt cọc {depositPercentage}% ({formatPrice(depositAmount)}), trả phần còn lại khi nhận phòng
                             </p>
                             <div className="mt-2 space-y-1 rounded-md bg-blue-100 px-3 py-2">
                               <p className="text-sm font-medium text-blue-800">
-                                💰 Đặt cọc ngay: {formatPrice(depositAmount)}
+                                💰 Đặt cọc ngay ({depositPercentage}%): {formatPrice(depositAmount)}
                               </p>
                               <p className="text-xs text-blue-700">
-                                📅 Trả khi nhận phòng:{' '}
+                                📅 Trả khi nhận phòng ({100 - depositPercentage}%):{' '}
                                 {formatPrice(remainingAmount)}
                               </p>
                             </div>
@@ -630,7 +625,7 @@ export default function PaymentPage() {
                         </div>
                       )}
                       <div className="flex justify-between text-sm font-medium">
-                        <span>Tổng tiền</span>
+                        <span>Tổng tiền phòng</span>
                         <span>{formatPrice(subtotal)}</span>
                       </div>
                       <Separator className="my-1" />
@@ -672,16 +667,6 @@ export default function PaymentPage() {
                     </div>
                   )}
 
-                  {/* <div className="flex justify-between text-sm">
-                    <span>Phí dịch vụ</span>
-                    <span>{formatPrice(serviceFee)}</span>
-                  </div>
-
-                  <div className="flex justify-between text-sm">
-                    <span>Thuế VAT</span>
-                    <span>{formatPrice(tax)}</span>
-                  </div> */}
-
                   <Separator />
 
                   <div className="flex justify-between font-semibold">
@@ -696,13 +681,12 @@ export default function PaymentPage() {
                       <div className="space-y-1 rounded-lg bg-blue-50 p-3">
                         <div className="flex justify-between text-sm font-medium text-blue-900">
                           <span>
-                            Thanh toán ngay{' '}
-                            {siteDepositAmount > 0 ? '(Cọc)' : '(30%)'}
+                            Thanh toán ngay ({depositPercentage}%)
                           </span>
                           <span>{formatPrice(depositAmount)}</span>
                         </div>
                         <div className="flex justify-between text-xs text-blue-700">
-                          <span>Thanh toán khi nhận phòng</span>
+                          <span>Thanh toán khi nhận phòng ({100 - depositPercentage}%)</span>
                           <span>{formatPrice(remainingAmount)}</span>
                         </div>
                       </div>
