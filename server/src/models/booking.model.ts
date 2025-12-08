@@ -22,11 +22,15 @@ export interface BookingDocument extends mongoose.Document {
   // Pricing Breakdown
   pricing: {
     basePrice: number; // giá cơ bản
+    weekendPrice?: number; // giá cuối tuần
     totalNights: number;
+    weekdayNights?: number;
+    weekendNights?: number;
     subtotal: number; // basePrice * nights
     cleaningFee: number;
     petFee: number;
     extraGuestFee: number;
+    vehicleFee?: number;
     serviceFee: number; // phí dịch vụ platform
     tax: number; // thuế
     total: number; // tổng cuối
@@ -63,9 +67,8 @@ export interface BookingDocument extends mongoose.Document {
   payOSCheckoutUrl?: String;
 
   fullnameGuest?: string;
-  phone ?: string;
-  email ?: string;
-  
+  phone?: string;
+  email?: string;
 
   // Methods
   confirm(): Promise<BookingDocument>;
@@ -102,11 +105,15 @@ const bookingSchema = new mongoose.Schema<BookingDocument>(
 
     pricing: {
       basePrice: { type: Number, required: true, min: 0 },
+      weekendPrice: { type: Number, min: 0 },
       totalNights: { type: Number, required: true, min: 1 },
+      weekdayNights: { type: Number, min: 0 },
+      weekendNights: { type: Number, min: 0 },
       subtotal: { type: Number, required: true, min: 0 },
       cleaningFee: { type: Number, default: 0, min: 0 },
       petFee: { type: Number, default: 0, min: 0 },
       extraGuestFee: { type: Number, default: 0, min: 0 },
+      vehicleFee: { type: Number, default: 0, min: 0 },
       serviceFee: { type: Number, default: 0, min: 0 },
       tax: { type: Number, default: 0, min: 0 },
       total: { type: Number, required: true, min: 0 },
@@ -148,7 +155,6 @@ const bookingSchema = new mongoose.Schema<BookingDocument>(
 
     reviewed: { type: Boolean, default: false },
     review: { type: mongoose.Schema.Types.ObjectId, ref: "Review" },
-    
   },
   {
     timestamps: true,

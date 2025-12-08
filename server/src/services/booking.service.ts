@@ -8,13 +8,13 @@ import {
   type BookingDocument,
 } from "@/models";
 import appAssert from "@/utils/app-assert";
+import { sendMail } from "@/utils/send-mail";
 import type {
   CancelBookingInput,
   CreateBookingInput,
   SearchBookingInput,
 } from "@/validators/booking.validator";
 import mongoose from "mongoose";
-import { sendMail } from "@/utils/send-mail";
 const { PayOS } = require("@payos/node");
 
 const payos = new PayOS({
@@ -111,7 +111,14 @@ export class BookingService {
     //  appAssert(isAvailable, ErrorFactory.conflict("Site không có sẵn trong thời gian này"));
 
     // Calculate pricing (from site)
-    const pricing = this.calculatePricing(site, nights, numberOfGuests, numberOfPets);
+    const pricing = this.calculatePricing(
+      site,
+      nights,
+      numberOfGuests,
+      numberOfPets,
+      checkInDate,
+      checkOutDate
+    );
 
     let payOSOrderCode: number | null = null;
     let payOSCheckoutUrl: string | null = null;
@@ -511,26 +518,61 @@ export class BookingService {
     site: any,
     nights: number,
     numberOfGuests: number,
-    numberOfPets: number
+    numberOfPets: number,
+    checkIn: Date,
+    checkOut: Date
   ): any {
-    const { basePrice, fees = {} } = site.pricing;
-    const { cleaningFee = 0, petFee = 0, extraGuestFee = 0 } = fees;
+    const {
+      basePrice,
+      weekendPrice = null,
+      cleaningFee = 0,
+      petFee = 0,
+      additionalGuestFee = 0,
+      vehicleFee = 0,
+    } = site.pricing;
 
-    const subtotal = basePrice * nights;
+    // Calculate weekend nights if weekendPrice is defined
+    let subtotal = basePrice * nights;
+    let weekdayNights = nights;
+    let weekendNights = 0;
+
+    if (weekendPrice !== null && weekendPrice > 0) {
+      // Count actual weekend nights (Friday & Saturday)
+      const currentDate = new Date(checkIn);
+      let weekendCount = 0;
+
+      while (currentDate < checkOut) {
+        const dayOfWeek = currentDate.getDay();
+        // 5 = Friday, 6 = Saturday
+        if (dayOfWeek === 5 || dayOfWeek === 6) {
+          weekendCount++;
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      weekendNights = weekendCount;
+      weekdayNights = nights - weekendNights;
+      subtotal = weekdayNights * basePrice + weekendNights * weekendPrice;
+    }
+
     const cleaning = cleaningFee;
     const pet = numberOfPets > 0 ? petFee * numberOfPets : 0;
     const extraGuest =
       numberOfGuests > site.capacity.maxGuests
-        ? extraGuestFee * (numberOfGuests - site.capacity.maxGuests) * nights
+        ? additionalGuestFee * (numberOfGuests - site.capacity.maxGuests)
         : 0;
 
     return {
       basePrice,
+      weekendPrice: weekendPrice || basePrice,
       totalNights: nights,
+      weekdayNights,
+      weekendNights,
       subtotal,
       cleaningFee: cleaning,
       petFee: pet,
       extraGuestFee: extraGuest,
+      vehicleFee: 0, // Not implemented yet
       serviceFee: 0, // will be calculated later
       tax: 0, // will be calculated later
       total: 0, // will be calculated by booking.calculateTotal()
@@ -624,26 +666,21 @@ export class BookingService {
 
     const bookingId = (booking._id as mongoose.Types.ObjectId).toString();
     // ❗ cancelBooking cần booking._id (ObjectId), không phải orderCode
-    await this.cancelBooking(
-      bookingId,
-      booking.guest as mongoose.Types.ObjectId,
-      {
-        cancellationReason: "User cancelled payment",
-      }
-    );
+    await this.cancelBooking(bookingId, booking.guest as mongoose.Types.ObjectId, {
+      cancellationReason: "User cancelled payment",
+    });
     await booking.deleteOne();
     return {
       success: true,
-      message: "Booking payment cancelled and booking removed"
+      message: "Booking payment cancelled and booking removed",
     };
   }
 
   /**
- * Auto cancel expired pending bookings and send reminder emails
- * - Send reminder email after 6 hours
- * - Auto cancel and delete after 24 hours
- */
-
+   * Auto cancel expired pending bookings and send reminder emails
+   * - Send reminder email after 6 hours
+   * - Auto cancel and delete after 24 hours
+   */
 
   async cancelExpiredPendingBookings() {
     const REMINDER_HOURS = 6;
@@ -666,16 +703,21 @@ export class BookingService {
     for (const booking of bookingsNeedReminder) {
       try {
         const guestEmail = booking.email || (booking.guest as any)?.email;
-        const guestName = booking.fullnameGuest || (booking.guest as any)?.fullName || (booking.guest as any)?.username || "Quý khách";
+        const guestName =
+          booking.fullnameGuest ||
+          (booking.guest as any)?.fullName ||
+          (booking.guest as any)?.username ||
+          "Quý khách";
         const propertyName = (booking.property as any)?.name || "Khu cắm trại";
         const siteName = (booking.site as any)?.name || "Site";
         const totalAmount = booking.pricing?.total || 0;
-        const checkoutUrl = booking.payOSCheckoutUrl || `${CLIENT_URL}/bookings/${booking.code}/confirmation`;
+        const checkoutUrl =
+          booking.payOSCheckoutUrl || `${CLIENT_URL}/bookings/${booking.code}/confirmation`;
 
         // Gửi email nhắc nhở thanh toán
         await sendMail({
           to: guestEmail,
-          subject: '⏰ Nhắc nhở hoàn tất thanh toán booking',
+          subject: "⏰ Nhắc nhở hoàn tất thanh toán booking",
           html: `
           <!DOCTYPE html>
           <html>
@@ -735,12 +777,12 @@ export class BookingService {
                   <h3 style="margin-top: 0; color: #f59e0b;">📋 Thông tin booking</h3>
                   <p><strong>Mã booking:</strong> ${booking.code}</p>
                   <p><strong>Địa điểm:</strong> ${siteName} - ${propertyName}</p>
-                  <p><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString('vi-VN')}</p>
-                  <p><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString('vi-VN')}</p>
+                  <p><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString("vi-VN")}</p>
+                  <p><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString("vi-VN")}</p>
                   <p><strong>Số đêm:</strong> ${booking.nights} đêm</p>
                   <p><strong>Số khách:</strong> ${booking.numberOfGuests} người</p>
                   <p style="font-size: 18px; color: #10b981; margin-top: 15px;">
-                    <strong>Tổng tiền:</strong> ${totalAmount.toLocaleString('vi-VN')} ₫
+                    <strong>Tổng tiền:</strong> ${totalAmount.toLocaleString("vi-VN")} ₫
                   </p>
                 </div>
                 
@@ -784,12 +826,11 @@ export class BookingService {
         });
 
         // Đánh dấu đã gửi reminder
-        await BookingModel.updateOne(
-          { _id: booking._id },
-          { $set: { reminderSent: true } }
-        );
+        await BookingModel.updateOne({ _id: booking._id }, { $set: { reminderSent: true } });
 
-        console.log(`📧 Đã gửi email nhắc nhở thanh toán: Booking ${booking.code} đến ${guestEmail}`);
+        console.log(
+          `📧 Đã gửi email nhắc nhở thanh toán: Booking ${booking.code} đến ${guestEmail}`
+        );
       } catch (err) {
         console.error(`❌ Lỗi gửi email nhắc nhở Booking ${booking.code}:`, err);
       }
@@ -814,20 +855,12 @@ export class BookingService {
         const siteId = booking.site.toString();
 
         // Unblock dates (giải phóng lịch)
-        await this.unblockDatesForBooking(
-          siteId,
-          booking.checkIn,
-          booking.checkOut
-        );
+        await this.unblockDatesForBooking(siteId, booking.checkIn, booking.checkOut);
 
         // Hủy booking (sử dụng logic existing)
-        await this.cancelBooking(
-          bookingId,
-          booking.guest as mongoose.Types.ObjectId,
-          {
-            cancellationReason: "Auto-cancelled: Payment timeout after 24 hours",
-          }
-        );
+        await this.cancelBooking(bookingId, booking.guest as mongoose.Types.ObjectId, {
+          cancellationReason: "Auto-cancelled: Payment timeout after 24 hours",
+        });
         await booking.save();
         await session.commitTransaction();
         session.endSession();
@@ -837,13 +870,17 @@ export class BookingService {
         // Gửi email thông báo hủy
         try {
           const guestEmail = booking.email || (booking.guest as any)?.email;
-          const guestName = booking.fullnameGuest || (booking.guest as any)?.fullName || (booking.guest as any)?.username || "Quý khách";
+          const guestName =
+            booking.fullnameGuest ||
+            (booking.guest as any)?.fullName ||
+            (booking.guest as any)?.username ||
+            "Quý khách";
           const propertyName = (booking.property as any)?.name || "Khu cắm trại";
           const siteName = (booking.site as any)?.name || "Site";
 
           await sendMail({
             to: guestEmail,
-            subject: '❌ Booking đã bị hủy do quá thời gian thanh toán',
+            subject: "❌ Booking đã bị hủy do quá thời gian thanh toán",
             html: `
             <!DOCTYPE html>
             <html>
@@ -902,8 +939,8 @@ export class BookingService {
                     <h3 style="margin-top: 0; color: #ef4444;">📋 Thông tin booking đã hủy</h3>
                     <p><strong>Mã booking:</strong> ${booking.code}</p>
                     <p><strong>Địa điểm:</strong> ${siteName} - ${propertyName}</p>
-                    <p><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString('vi-VN')}</p>
-                    <p><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString('vi-VN')}</p>
+                    <p><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString("vi-VN")}</p>
+                    <p><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString("vi-VN")}</p>
                     <p><strong>Lý do hủy:</strong> <span style="color: #ef4444;">Quá thời gian thanh toán (24 giờ)</span></p>
                   </div>
                   
@@ -946,7 +983,6 @@ export class BookingService {
         } catch (emailErr) {
           console.error(`❌ Lỗi gửi email thông báo hủy Booking ${booking.code}:`, emailErr);
         }
-
       } catch (err) {
         await session.abortTransaction();
         session.endSession();
@@ -959,5 +995,4 @@ export class BookingService {
       bookingsCancelled: expiredBookings.length,
     };
   }
-
 }

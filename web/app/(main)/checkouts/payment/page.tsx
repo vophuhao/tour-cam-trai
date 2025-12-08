@@ -14,13 +14,13 @@ import { useAuthStore } from '@/store/auth.store';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
+  Car,
   CreditCard,
   Dog,
   Loader2,
   MapPin,
   Percent,
   Users,
-  Car,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -74,7 +74,6 @@ interface SiteDetails {
   }>;
 }
 
-
 export default function PaymentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -114,7 +113,6 @@ export default function PaymentPage() {
     enabled: !!bookingData.siteId,
   });
 
-
   // Update booking data when site details are loaded
   useEffect(() => {
     if (siteDetails) {
@@ -131,7 +129,8 @@ export default function PaymentPage() {
     }
   }, [siteDetails]);
 
-  const isPropertySiteBooking = !!bookingData.siteId && !!bookingData.propertyId;
+  const isPropertySiteBooking =
+    !!bookingData.siteId && !!bookingData.propertyId;
   const displayName = isPropertySiteBooking
     ? bookingData.siteName
     : bookingData.campsiteName || 'Site Name';
@@ -141,44 +140,83 @@ export default function PaymentPage() {
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState('');
   const [guestMessage, setGuestMessage] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'deposit' | 'full'>('full');
+  const [paymentMethod, setPaymentMethod] = useState<'deposit' | 'full'>(
+    'full',
+  );
 
   // Calculate pricing with proper fees
   const nights = bookingData.nights;
-  const subtotal = bookingData.basePrice * nights;
-  
+
+  // Calculate weekend nights (Friday & Saturday)
+  const calculateWeekendNights = (checkIn: string, checkOut: string) => {
+    if (!checkIn || !checkOut) return 0;
+
+    const startDate = new Date(checkIn);
+    const endDate = new Date(checkOut);
+    let weekendCount = 0;
+    const currentDate = new Date(startDate);
+
+    while (currentDate < endDate) {
+      const dayOfWeek = currentDate.getDay();
+      // 5 = Friday, 6 = Saturday
+      if (dayOfWeek === 5 || dayOfWeek === 6) {
+        weekendCount++;
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return weekendCount;
+  };
+
+  const weekendNights = calculateWeekendNights(
+    bookingData.checkIn,
+    bookingData.checkOut,
+  );
+  const weekdayNights = nights - weekendNights;
+
+  // Get weekend price from site details
+  const weekendPrice =
+    siteDetails?.data.pricing.weekendPrice || bookingData.basePrice;
+  const hasWeekendPricing =
+    weekendPrice && weekendPrice !== bookingData.basePrice && weekendNights > 0;
+
+  // Calculate subtotal with weekend pricing
+  const subtotal = hasWeekendPricing
+    ? weekdayNights * bookingData.basePrice + weekendNights * weekendPrice
+    : bookingData.basePrice * nights;
+
   // Calculate fees based on site pricing
   const totalCleaningFee = bookingData.cleaningFee || 0;
   const totalPetFee = (bookingData.petFee || 0) * bookingData.pets;
   const totalVehicleFee = (bookingData.vehicleFee || 0) * bookingData.vehicles;
-  
+
   // Calculate additional guest fee (guests over base capacity)
   const baseGuestsIncluded = siteDetails?.data.capacity.maxGuests || 2;
   const additionalGuests = Math.max(0, bookingData.guests - baseGuestsIncluded);
-  const totalAdditionalGuestFee = (bookingData.additionalGuestFee || 0) * additionalGuests;
+  const totalAdditionalGuestFee =
+    (bookingData.additionalGuestFee || 0) * additionalGuests;
 
-  const serviceFee = Math.round(subtotal * 0.1); // 10% service fee
-  const tax = Math.round((subtotal + serviceFee) * 0.08); // 8% tax
+  // const serviceFee = Math.round(subtotal * 0.1); // 10% service fee
+  // const tax = Math.round((subtotal + serviceFee) * 0.08); // 8% tax
 
   // Calculate total
-  const total = 
+  const total =
     subtotal +
     totalCleaningFee +
     totalPetFee +
     totalVehicleFee +
-    totalAdditionalGuestFee +
-    serviceFee +
-    tax;
+    totalAdditionalGuestFee;
+  // serviceFee +
+  // tax;
 
   // Deposit calculation - use site's depositAmount or 30% of total
   const siteDepositAmount = bookingData.depositAmount || 0;
-  const depositAmount = siteDepositAmount > 0 
-    ? siteDepositAmount 
-    : Math.round(total * 0.3);
+  const depositAmount =
+    siteDepositAmount > 0 ? siteDepositAmount : Math.round(total * 0.3);
   const remainingAmount = total - depositAmount;
 
   // Check if deposit option is available
-  const hasDepositOption = siteDepositAmount > 0 ;
+  const hasDepositOption = siteDepositAmount > 0;
   console.log('Deposit Option Available:', hasDepositOption);
   const formatPrice = (price: number) =>
     new Intl.NumberFormat('vi-VN', {
@@ -342,13 +380,17 @@ export default function PaymentPage() {
                       {/* Full Payment */}
                       <label
                         htmlFor="full"
-                        className={`flex cursor-pointer items-start space-x-3 rounded-lg border-2 p-4 transition hover:bg-accent ${
+                        className={`hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border-2 p-4 transition ${
                           paymentMethod === 'full'
                             ? 'border-emerald-600 bg-emerald-50'
                             : 'border-gray-200'
                         }`}
                       >
-                        <RadioGroupItem value="full" id="full" className="mt-1" />
+                        <RadioGroupItem
+                          value="full"
+                          id="full"
+                          className="mt-1"
+                        />
                         <div className="flex-1 space-y-1">
                           <div className="flex items-center gap-2">
                             <CreditCard className="h-5 w-5 text-emerald-600" />
@@ -369,35 +411,42 @@ export default function PaymentPage() {
                       {hasDepositOption && (
                         <label
                           htmlFor="deposit"
-                          className={`flex cursor-pointer items-start space-x-3 rounded-lg border-2 p-4 transition hover:bg-accent ${
+                          className={`hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border-2 p-4 transition ${
                             paymentMethod === 'deposit'
                               ? 'border-blue-600 bg-blue-50'
                               : 'border-gray-200'
                           }`}
                         >
-                          <RadioGroupItem value="deposit" id="deposit" className="mt-1" />
+                          <RadioGroupItem
+                            value="deposit"
+                            id="deposit"
+                            className="mt-1"
+                          />
                           <div className="flex-1 space-y-1">
                             <div className="flex items-center gap-2">
                               <Percent className="h-5 w-5 text-blue-600" />
                               <p className="font-semibold">
-                                Đặt cọc {siteDepositAmount > 0 ? formatPrice(siteDepositAmount) : '30%'}
+                                Đặt cọc{' '}
+                                {siteDepositAmount > 0
+                                  ? formatPrice(siteDepositAmount)
+                                  : '30%'}
                               </p>
                               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
                                 Phổ biến
                               </span>
                             </div>
                             <p className="text-muted-foreground text-sm">
-                              {siteDepositAmount > 0 
+                              {siteDepositAmount > 0
                                 ? `Đặt cọc ${formatPrice(depositAmount)}, trả phần còn lại khi nhận phòng`
-                                : `Đặt cọc ${formatPrice(depositAmount)} (30%), trả phần còn lại khi nhận phòng`
-                              }
+                                : `Đặt cọc ${formatPrice(depositAmount)} (30%), trả phần còn lại khi nhận phòng`}
                             </p>
                             <div className="mt-2 space-y-1 rounded-md bg-blue-100 px-3 py-2">
                               <p className="text-sm font-medium text-blue-800">
                                 💰 Đặt cọc ngay: {formatPrice(depositAmount)}
                               </p>
                               <p className="text-xs text-blue-700">
-                                📅 Trả khi nhận phòng: {formatPrice(remainingAmount)}
+                                📅 Trả khi nhận phòng:{' '}
+                                {formatPrice(remainingAmount)}
                               </p>
                             </div>
                           </div>
@@ -409,8 +458,9 @@ export default function PaymentPage() {
                   {/* Payment Info */}
                   <div className="mt-4 rounded-lg bg-gray-50 p-4">
                     <p className="text-xs text-gray-600">
-                      ℹ️ Sau khi xác nhận, bạn sẽ được chuyển đến trang thanh toán an toàn qua PayOS. 
-                      Hỗ trợ các phương thức: Thẻ ATM, Ví điện tử (MoMo, ZaloPay), QR Code.
+                      ℹ️ Sau khi xác nhận, bạn sẽ được chuyển đến trang thanh
+                      toán an toàn qua PayOS. Hỗ trợ các phương thức: Thẻ ATM,
+                      Ví điện tử (MoMo, ZaloPay), QR Code.
                     </p>
                   </div>
                 </CardContent>
@@ -472,8 +522,10 @@ export default function PaymentPage() {
                     </p>
                     <p className="text-muted-foreground mt-1 text-xs">
                       {bookingData.nights} đêm • {bookingData.guests} khách
-                      {bookingData.pets > 0 && ` • ${bookingData.pets} thú cưng`}
-                      {bookingData.vehicles > 0 && ` • ${bookingData.vehicles} xe`}
+                      {bookingData.pets > 0 &&
+                        ` • ${bookingData.pets} thú cưng`}
+                      {bookingData.vehicles > 0 &&
+                        ` • ${bookingData.vehicles} xe`}
                     </p>
                   </div>
                 </div>
@@ -521,12 +573,48 @@ export default function PaymentPage() {
 
                 {/* Price Breakdown */}
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>
-                      {formatPrice(bookingData.basePrice)} × {nights} đêm
-                    </span>
-                    <span>{formatPrice(subtotal)}</span>
-                  </div>
+                  {/* Show weekend pricing breakdown if applicable */}
+                  {hasWeekendPricing ? (
+                    <>
+                      {weekdayNights > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span>
+                            {formatPrice(bookingData.basePrice)} ×{' '}
+                            {weekdayNights} đêm thường
+                          </span>
+                          <span>
+                            {formatPrice(weekdayNights * bookingData.basePrice)}
+                          </span>
+                        </div>
+                      )}
+                      {weekendNights > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="flex items-center gap-1">
+                            {formatPrice(weekendPrice)} × {weekendNights} đêm
+                            cuối tuần
+                            <span className="text-xs text-blue-600">
+                              (Thứ 6, 7)
+                            </span>
+                          </span>
+                          <span>
+                            {formatPrice(weekendNights * weekendPrice)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm font-medium">
+                        <span>Tổng tiền</span>
+                        <span>{formatPrice(subtotal)}</span>
+                      </div>
+                      <Separator className="my-1" />
+                    </>
+                  ) : (
+                    <div className="flex justify-between text-sm">
+                      <span>
+                        {formatPrice(bookingData.basePrice)} × {nights} đêm
+                      </span>
+                      <span>{formatPrice(subtotal)}</span>
+                    </div>
+                  )}
 
                   {totalCleaningFee > 0 && (
                     <div className="flex justify-between text-sm">
@@ -556,7 +644,7 @@ export default function PaymentPage() {
                     </div>
                   )}
 
-                  <div className="flex justify-between text-sm">
+                  {/* <div className="flex justify-between text-sm">
                     <span>Phí dịch vụ</span>
                     <span>{formatPrice(serviceFee)}</span>
                   </div>
@@ -564,7 +652,7 @@ export default function PaymentPage() {
                   <div className="flex justify-between text-sm">
                     <span>Thuế VAT</span>
                     <span>{formatPrice(tax)}</span>
-                  </div>
+                  </div> */}
 
                   <Separator />
 
@@ -579,7 +667,10 @@ export default function PaymentPage() {
                       <Separator className="my-2" />
                       <div className="space-y-1 rounded-lg bg-blue-50 p-3">
                         <div className="flex justify-between text-sm font-medium text-blue-900">
-                          <span>Thanh toán ngay {siteDepositAmount > 0 ? '(Cọc)' : '(30%)'}</span>
+                          <span>
+                            Thanh toán ngay{' '}
+                            {siteDepositAmount > 0 ? '(Cọc)' : '(30%)'}
+                          </span>
                           <span>{formatPrice(depositAmount)}</span>
                         </div>
                         <div className="flex justify-between text-xs text-blue-700">

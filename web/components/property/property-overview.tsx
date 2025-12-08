@@ -54,9 +54,9 @@ export function PropertyOverview({ property }: PropertyOverviewProps) {
         <Badge variant="outline">
           {propertyTypeLabels[property.propertyType] || property.propertyType}
         </Badge>
-        <Badge variant="secondary">
+        {/* <Badge variant="secondary">
           {property.stats.totalSites} vị trí cắm trại
-        </Badge>
+        </Badge> */}
       </div>
 
       {/* Host Info */}

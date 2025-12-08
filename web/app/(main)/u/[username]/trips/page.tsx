@@ -20,6 +20,7 @@ interface BookingData {
   _id: string;
   code?: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded';
+  paymentStatus: 'pending' | 'paid' | 'refunded' | 'failed';
   checkIn: string;
   checkOut: string;
   numberOfGuests: number;
@@ -95,6 +96,22 @@ export default function TripsPage() {
     return <Badge className={`${styles[status]}`}>{labels[status]}</Badge>;
   };
 
+  const getPaymentStatusBadge = (status: BookingData['paymentStatus']) => {
+    const styles: Record<BookingData['paymentStatus'], string> = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      paid: 'bg-emerald-100 text-emerald-800',
+      refunded: 'bg-gray-100 text-gray-800',
+      failed: 'bg-red-100 text-red-800',
+    };
+    const labels: Record<BookingData['paymentStatus'], string> = {
+      pending: 'Chưa thanh toán',
+      paid: 'Đã thanh toán',
+      refunded: 'Đã hoàn tiền',
+      failed: 'Thanh toán thất bại',
+    };
+    return <Badge className={`${styles[status]}`}>{labels[status]}</Badge>;
+  };
+
   if (!isOwnProfile) {
     return (
       <div className="py-12 text-center">
@@ -148,7 +165,12 @@ export default function TripsPage() {
         </div>
         <CardContent className="p-4">
           {/* Status Badge */}
-          <div className="mb-2">{getStatusBadge(booking.status)}</div>
+          <div className="flex gap-2">
+            <div className="mb-2">{getStatusBadge(booking.status)}</div>
+            <div className="mb-2">
+              {getPaymentStatusBadge(booking.paymentStatus)}
+            </div>
+          </div>
 
           {/* Site Name */}
           <h3 className="text-lg font-semibold">

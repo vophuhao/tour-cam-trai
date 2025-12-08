@@ -68,7 +68,7 @@ interface BookingData {
   hostMessage?: string;
   payOSOrderCode?: string;
   payOSCheckoutUrl?: string;
-  
+
   // New Property-Site architecture
   property?: Partial<Property>;
   site?: Partial<Site> & {
@@ -308,8 +308,10 @@ export default function ConfirmationPage() {
     '12:00';
 
   // Check if cancellable (only pending/confirmed bookings can be cancelled)
-  const isCancellable = ['pending', 'confirmed'].includes(booking.status) &&
-    new Date(booking.checkIn) > new Date() && booking.paymentStatus !== 'pending';
+  const isCancellable =
+    ['pending', 'confirmed'].includes(booking.status) &&
+    new Date(booking.checkIn) > new Date() &&
+    booking.paymentStatus !== 'pending';
 
   return (
     <div className="min-h-screen bg-white">
@@ -385,9 +387,14 @@ export default function ConfirmationPage() {
                       <AlertCircle className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">
-                        Chưa hoàn tất thanh toán
-                      </h3>
+                      <div className="flex items-center">
+                        <h3 className="mr-3 font-semibold text-gray-900">
+                          Chưa hoàn tất thanh toán
+                        </h3>
+                        <span className="text-2xl font-bold">
+                          {booking.pricing?.total} VND
+                        </span>
+                      </div>
                       <p className="text-sm text-gray-600">
                         Vui lòng hoàn tất thanh toán để xác nhận booking của bạn
                       </p>
@@ -424,9 +431,9 @@ export default function ConfirmationPage() {
                         Thanh toán thành công
                       </h3>
                       <p className="text-sm text-gray-600">
-                        Booking của bạn đã được xác nhận và thanh toán thành công
+                        Booking của bạn đã được xác nhận và thanh toán thành
+                        công
                       </p>
-                      
                     </div>
                   </div>
                 </CardContent>
@@ -711,9 +718,12 @@ export default function ConfirmationPage() {
               <div className="rounded-lg border border-red-200 bg-red-50 p-3">
                 <p className="text-sm text-red-900">
                   <strong>Chính sách hủy:</strong>{' '}
-                  {booking.property.cancellationPolicy.type === 'flexible' && 'Linh hoạt'}
-                  {booking.property.cancellationPolicy.type === 'moderate' && 'Trung bình'}
-                  {booking.property.cancellationPolicy.type === 'strict' && 'Nghiêm ngặt'}
+                  {booking.property.cancellationPolicy.type === 'flexible' &&
+                    'Linh hoạt'}
+                  {booking.property.cancellationPolicy.type === 'moderate' &&
+                    'Trung bình'}
+                  {booking.property.cancellationPolicy.type === 'strict' &&
+                    'Nghiêm ngặt'}
                 </p>
 
                 {booking.property.cancellationPolicy.description && (
@@ -723,10 +733,13 @@ export default function ConfirmationPage() {
                 )}
 
                 {booking.property.cancellationPolicy.refundRules &&
-                  booking.property.cancellationPolicy.refundRules.length > 0 && (
+                  booking.property.cancellationPolicy.refundRules.length >
+                    0 && (
                     <div className="mt-3 space-y-1 text-sm text-red-800">
                       {booking.property.cancellationPolicy.refundRules
-                        .sort((a, b) => b.daysBeforeCheckIn - a.daysBeforeCheckIn)
+                        .sort(
+                          (a, b) => b.daysBeforeCheckIn - a.daysBeforeCheckIn,
+                        )
                         .map((rule, idx) => (
                           <div key={idx} className="flex justify-between">
                             <span>
@@ -736,7 +749,9 @@ export default function ConfirmationPage() {
                                   ? 'Trước 1 ngày'
                                   : `Trước ${rule.daysBeforeCheckIn} ngày`}
                             </span>
-                            <span className="font-medium">Hoàn {rule.refundPercentage}%</span>
+                            <span className="font-medium">
+                              Hoàn {rule.refundPercentage}%
+                            </span>
                           </div>
                         ))}
                     </div>

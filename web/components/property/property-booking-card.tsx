@@ -26,7 +26,7 @@ interface PropertyBookingCardProps {
 export function PropertyBookingCard({
   property,
   sites,
-  initialGuests = 2,
+  initialGuests = 0,
   initialPets = 0,
   initialCheckIn,
   initialCheckOut,

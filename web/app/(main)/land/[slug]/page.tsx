@@ -114,7 +114,7 @@ export default async function PropertyPage({
     : [];
 
   // Parse search params for booking
-  const guests = parseInt(search.guests || '2');
+  const guests = parseInt(search.guests || '0');
   const pets = parseInt(search.pets || '0');
 
   return (

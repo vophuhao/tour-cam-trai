@@ -39,7 +39,7 @@ export function PropertySearchHeader() {
     return undefined;
   });
   const [guests, setGuests] = useState(
-    parseInt(searchParams.get('guests') || '2'),
+    parseInt(searchParams.get('guests') || '0'),
   );
   const [childrenCount, setChildrenCount] = useState(0);
   const [pets, setPets] = useState(parseInt(searchParams.get('pets') || '0'));

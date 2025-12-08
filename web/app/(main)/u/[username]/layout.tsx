@@ -222,7 +222,7 @@ export default function UserProfileLayout({
               </Card>
 
               {/* Balance Card */}
-              {isOwnProfile && (
+              {/* {isOwnProfile && (
                 <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 shadow-md">
                   <CardContent className="p-4">
                     <div className="flex flex-col gap-2">
@@ -246,7 +246,7 @@ export default function UserProfileLayout({
                     </div>
                   </CardContent>
                 </Card>
-              )}
+              )} */}
             </div>
           </div>
 

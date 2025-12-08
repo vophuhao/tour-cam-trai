@@ -10,8 +10,7 @@ import { usePropertyBookingState } from '@/hooks/usePropertyBookingState';
 import { getBlockedDates } from '@/lib/client-actions';
 import type { Property, Site } from '@/types/property-site';
 import { useQuery } from '@tanstack/react-query';
-import { differenceInDays, format } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { differenceInDays } from 'date-fns';
 import useEmblaCarousel from 'embla-carousel-react';
 import {
   CalendarIcon,
@@ -20,7 +19,6 @@ import {
   ChevronRight,
   Dog,
   Flame,
-  MapPin,
   TreePine,
   Users,
   Utensils,
@@ -201,13 +199,19 @@ export function SitesListSection({
 
   // Accommodation type labels
   const typeLabels: Record<string, string> = {
-    tent: 'Tent',
-    rv: 'RV',
-    cabin: 'Cabin',
-    glamping: 'Glamping',
-    yurt: 'Yurt',
-    treehouse: 'Treehouse',
-    vehicle: 'Vehicle',
+    tent: 'Lều',
+    rv: 'Xe RV / nhà di động',
+    cabin: 'Nhà gỗ',
+    yurt: 'Nhà lều Mông Cổ (Yurt)',
+    treehouse: 'Nhà trên cây',
+    tiny_home: 'Nhà tí hon',
+    safari_tent: 'Lều safari',
+    bell_tent: 'Lều chuông (Bell tent)',
+    glamping_pod: 'Nhà glamping (Glamping pod)',
+    dome: 'Nhà mái vòm',
+    airstream: 'Xe kéo Airstream',
+    vintage_trailer: 'Xe kéo cổ (Vintage trailer)',
+    van: 'Xe van cắm trại',
   };
 
   // Get max capacity from sites
@@ -461,6 +465,17 @@ export function SitesListSection({
 
   const accommodationTypes = Object.keys(groupedSites);
 
+  // Compute visible site count for a group.
+  // If a site is "undesignated" (can have multiple concurrent bookings),
+  // count its `maxConcurrentBookings` instead of 1 so the displayed total
+  // reflects the actual number of available bookable positions.
+  const getSiteCount = (sitesGroup: Site[]) => {
+    return sitesGroup.reduce((sum, s) => {
+      const concurrent = s.capacity?.maxConcurrentBookings ?? 1;
+      return sum + Math.max(1, concurrent);
+    }, 0);
+  };
+
   return (
     <div className="relative" id="sites">
       {/* Sites List + Map Layout */}
@@ -469,24 +484,9 @@ export function SitesListSection({
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto scroll-smooth pr-4 lg:pr-6">
             {/* Select a site header */}
-            <div className="mb-6">
-              <h2 className="text-xl font-bold sm:text-2xl">Chọn 1 vị trí</h2>
-              {filteredSites.length > 0 && (
-                <p className="mt-1 text-sm text-gray-600">
-                  Còn {filteredSites.length} vị trí
-                  {booking.dateRange?.from && booking.dateRange?.to && (
-                    <>
-                      {' '}
-                      cho{' '}
-                      {format(booking.dateRange.from, 'MMMM d', {
-                        locale: vi,
-                      })}{' '}
-                      – {format(booking.dateRange.to, 'd', { locale: vi })}
-                    </>
-                  )}
-                </p>
-              )}
-            </div>
+            <h2 className="mb-6 text-xl font-bold sm:text-2xl">
+              Chọn vị trí cắm trại
+            </h2>
 
             {/* Date & Guest Selectors Row */}
             <div
@@ -537,10 +537,23 @@ export function SitesListSection({
                   childrenText: children => `${children} trẻ em`,
                 }}
               />
+
+              <Button
+                variant={instantBook ? 'default' : 'outline'}
+                size="sm"
+                className={`h-9 rounded-full transition-all ${
+                  instantBook
+                    ? 'bg-orange-600 hover:bg-orange-700'
+                    : 'border-gray-300 hover:border-orange-500 hover:bg-orange-50'
+                }`}
+                onClick={() => setInstantBook(!instantBook)}
+              >
+                ⚡ Đặt ngay
+              </Button>
             </div>
 
             {/* Filter Buttons Row */}
-            <div className="mb-6 flex flex-wrap items-center gap-2">
+            {/* <div className="mb-6 flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -569,19 +582,7 @@ export function SitesListSection({
                 <Dog className="mr-1 h-4 w-4" />
                 Cho phép thú cưng
               </Button>
-              <Button
-                variant={instantBook ? 'default' : 'outline'}
-                size="sm"
-                className={`h-9 rounded-full transition-all ${
-                  instantBook
-                    ? 'bg-orange-600 hover:bg-orange-700'
-                    : 'border-gray-300 hover:border-orange-500 hover:bg-orange-50'
-                }`}
-                onClick={() => setInstantBook(!instantBook)}
-              >
-                ⚡ Đặt ngay
-              </Button>
-            </div>
+            </div> */}
 
             {/* Sites content */}
             {accommodationTypes.map(type => {
@@ -591,10 +592,10 @@ export function SitesListSection({
                   {/* Group Header */}
                   <div className="mb-4">
                     <h3 className="text-xl font-bold">
-                      {typeLabels[type] || type} sites
+                      {typeLabels[type] || type}
                     </h3>
                     <p className="text-sm text-gray-600">
-                      {sitesInGroup.length} vị trí hiện có
+                      {getSiteCount(sitesInGroup)} vị trí hiện có
                     </p>
                   </div>
 
@@ -818,10 +819,10 @@ export function SitesListSection({
                                         }).toString()
                                       }
                                     >
-                                      Đặt ngay
+                                      Đặt
                                     </Link>
                                   ) : (
-                                    <span>Đặt ngay</span>
+                                    <span>Đặt</span>
                                   )}
                                 </Button>
                               </div>
@@ -837,7 +838,7 @@ export function SitesListSection({
 
             {/* No Results */}
             {accommodationTypes.length === 0 && (
-              <div className="py-12 text-center">
+              <div className="mt-20 py-12 text-center">
                 <p className="text-gray-500">Không có vị trí nào phù hợp</p>
               </div>
             )}
