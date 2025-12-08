@@ -3,6 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useChatModal } from '@/store/chatstore';
 import type { Property } from '@/types/property-site';
 import { MapPin, Star, TreePine, Users } from 'lucide-react';
 
@@ -19,6 +20,14 @@ const propertyTypeLabels: Record<string, string> = {
 };
 
 export function PropertyOverview({ property }: PropertyOverviewProps) {
+  const { openChat } = useChatModal();
+
+  const handleContactHost = () => {
+    if (typeof property.host === 'object' ) {
+      openChat(property.host._id);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -87,6 +96,12 @@ export function PropertyOverview({ property }: PropertyOverviewProps) {
               </p>
             )}
           </div>
+          <button
+            onClick={handleContactHost}
+            className="ml-auto text-sm font-medium text-primary hover:underline cursor-pointer transition-colors hover:text-primary/80"
+          >
+            Liên hệ
+          </button>
         </div>
       )}
 

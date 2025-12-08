@@ -4,6 +4,7 @@
 import { getUserConversations, searchUsers } from '@/lib/client-actions';
 import { useSocket } from '@/provider/socketProvider';
 import { useAuthStore } from '@/store/auth.store';
+import { useChatModal } from '@/store/chatstore';
 import { useCallback, useEffect, useState } from 'react';
 import ChatWindow from './chat-window';
 
@@ -12,6 +13,8 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5555';
 export default function ConversationsList() {
   const { user } = useAuthStore();
   const { socket } = useSocket();
+  const { isOpen: isChatModalOpen, targetUserId, closeChat } = useChatModal();
+  
   const [open, setOpen] = useState(false);
   const [conversations, setConversations] = useState<any[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<any>(null);
@@ -35,6 +38,15 @@ export default function ConversationsList() {
       setLoading(false);
     }
   }, [user]);
+
+  // Handle external chat trigger from PropertyOverview
+  useEffect(() => {
+    if (isChatModalOpen && targetUserId) {
+      setOpen(true);
+      startChatWithUser(targetUserId);
+      closeChat();
+    }
+  }, [isChatModalOpen, targetUserId, closeChat]);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -187,22 +199,43 @@ export default function ConversationsList() {
       {open && (
         <div
           id="conversations-panel"
-          className="fixed right-6 bottom-24 z-50 flex h-[600px] w-96 flex-col overflow-hidden rounded-lg bg-white shadow-2xl"
+          className="fixed right-6 bottom-24 flex h-[600px] w-96 flex-col overflow-hidden rounded-lg bg-white shadow-2xl z-100"
         >
           {!selectedConversation ? (
             <>
               {/* Header */}
-              <div className="border-b border-gray-200 bg-white px-5 py-4">
+              <div className=" bg-white px-5 py-4">
                 <h2 className="text-lg font-semibold text-gray-900">
                   Tin nhắn
                 </h2>
                 <p className="mt-0.5 text-sm text-gray-500">
                   {conversations.length} cuộc trò chuyện
                 </p>
+                <div className="absolute top-3 right-3">
+                  <button
+                    onClick={() => { setOpen(false); setSelectedConversation(null); }}
+                    className="text-gray-400 hover:text-gray-600"
+                  > 
+                    <span className="sr-only">Đóng</span>
+                    <svg
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               {/* Search */}
-              <div className="border-b border-gray-200 px-4 py-3">
+              <div className=" px-4 py-3">
                 <div className="relative">
                   <input
                     type="text"
@@ -249,9 +282,9 @@ export default function ConversationsList() {
                         className="flex w-full items-center gap-3 border-b border-gray-100 px-4 py-3 text-left transition-colors hover:bg-gray-50"
                       >
                         <div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-full bg-gray-200">
-                          {searchUser.avatar ? (
+                          {searchUser.avatarUrl ? (
                             <img
-                              src={searchUser.avatar}
+                              src={searchUser.avatarUrl}
                               alt={searchUser.username}
                               className="h-full w-full object-cover"
                             />
@@ -296,7 +329,7 @@ export default function ConversationsList() {
                     {!loading &&
                       conversations.map(conv => {
                         const other = conv.otherParticipant;
-                        const avatar = other?.avatar || other?.userId?.avatar;
+                        const avatar = other?.avatarUrl || other?.userId?.avatarUrl;
                         const name =
                           other?.name ||
                           other?.userId?.username ||

@@ -144,20 +144,27 @@ export default function EditPropertyPage() {
   };
 
   const removeExistingPhoto = (index: number) => {
-    const newPhotos = formData.existingPhotos.filter((_: any, i: number) => i !== index);
-    updateFormData("existingPhotos", newPhotos);
+    const existingPhotos = Array.isArray(formData.existingPhotos) ? formData.existingPhotos : [];
+    const newPhotos = existingPhotos.filter((_: any, i: number) => i !== index);
+    setFormData((prev: any) => ({
+      ...prev,
+      existingPhotos: newPhotos,
+    }));
     toast.success("Đã xóa ảnh");
   };
 
   const setExistingPhotoCover = (index: number) => {
-    const updatedPhotos = formData.existingPhotos.map((photo: any, i: number) => ({
+    const existingPhotos = Array.isArray(formData.existingPhotos) ? formData.existingPhotos : [];
+    const updatedPhotos = existingPhotos.map((photo: any, i: number) => ({
       ...photo,
       isCover: i === index,
     }));
-    updateFormData("existingPhotos", updatedPhotos);
+    setFormData((prev: any) => ({
+      ...prev,
+      existingPhotos: updatedPhotos,
+    }));
     toast.success("Đã đặt ảnh làm ảnh bìa");
   };
-
   const uploadAllPhotos = async (files: File[]) => {
     const uploaded: any[] = [];
     for (let i = 0; i < files.length; i++) {
@@ -203,22 +210,25 @@ export default function EditPropertyPage() {
 
       // 1. Upload new photos
       let uploadedPhotos: any[] = [];
-      if (formData.photos && formData.photos.length > 0) {
-        toast.info(`Đang upload ${formData.photos.length} ảnh mới...`);
-        uploadedPhotos = await uploadAllPhotos(formData.photos);
+      const newPhotos = Array.isArray(formData.photos) ? formData.photos : [];
+      if (newPhotos.length > 0) {
+        toast.info(`Đang upload ${newPhotos.length} ảnh mới...`);
+        uploadedPhotos = await uploadAllPhotos(newPhotos);
         if (uploadedPhotos.length > 0) {
           toast.success(`Đã upload ${uploadedPhotos.length} ảnh mới!`);
         }
       }
 
       // 2. Combine existing + new
-      const allPhotos = [...formData.existingPhotos, ...uploadedPhotos];
+      const existingPhotos = Array.isArray(formData.existingPhotos) ? formData.existingPhotos : [];
+      const allPhotos = [...existingPhotos, ...uploadedPhotos];
+
       if (allPhotos.length === 0) {
         toast.error("Vui lòng thêm ít nhất 1 ảnh!");
         return;
       }
 
-      const validPhotos = allPhotos.filter((p: any) => p.url && p.url.trim() !== "");
+      const validPhotos = allPhotos.filter((p: any) => p?.url && p.url.trim() !== "");
       if (validPhotos.length === 0) {
         toast.error("Không có ảnh hợp lệ!");
         return;
@@ -310,6 +320,81 @@ export default function EditPropertyPage() {
           />
         );
       case 2:
+        const existingPhotos = Array.isArray(formData.existingPhotos) ? formData.existingPhotos : [];
+        const newPhotos = Array.isArray(formData.photos) ? formData.photos : [];
+
+        return (
+          <div className="space-y-6">
+            {/* Existing Photos */}
+            {existingPhotos.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Ảnh hiện tại</h3>
+                  <Badge variant="secondary">{existingPhotos.length} ảnh</Badge>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+                  {existingPhotos.map((photo: any, index: number) => (
+                    <div key={`existing-${index}`} className="relative group rounded-lg overflow-hidden border-2 hover:border-emerald-500 transition-colors">
+                      <div className="relative aspect-square bg-gray-100">
+                        <Image src={photo.url} alt={photo.caption || `Photo ${index + 1}`} fill className="object-cover" unoptimized />
+
+                        {photo.isCover && (
+                          <Badge className="absolute top-2 left-2 bg-emerald-600 gap-1 z-10">
+                            <Star className="h-3 w-3 fill-white" />
+                            Ảnh bìa
+                          </Badge>
+                        )}
+
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          {!photo.isCover && (
+                            <Button type="button" size="sm" variant="secondary" onClick={() => setExistingPhotoCover(index)} className="text-xs">
+                              <Star className="h-3 w-3 mr-1" />
+                              Đặt bìa
+                            </Button>
+                          )}
+                          <Button type="button" size="sm" variant="destructive" onClick={() => removeExistingPhoto(index)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {photo.caption && <div className="p-2 bg-white border-t text-xs text-gray-600 truncate">{photo.caption}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Divider */}
+            {existingPhotos.length > 0 && (
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-white px-3 text-sm text-gray-500">Thêm ảnh mới</span>
+                </div>
+              </div>
+            )}
+
+            {/* Add New Photos */}
+            <div>
+              {existingPhotos.length === 0 && <h3 className="text-lg font-semibold text-gray-900 mb-4">Thêm ảnh property</h3>}
+              <PropertyPhotos data={newPhotos} onChange={(files: File[]) => setFormData((prev: any) => ({ ...prev, photos: files }))} />
+            </div>
+
+            {/* Total Photos Count */}
+            {(existingPhotos.length > 0 || newPhotos.length > 0) && (
+              <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                <p className="text-sm text-emerald-800">
+                  📸 Tổng số ảnh: <strong>{existingPhotos.length + newPhotos.length}</strong>
+                  {existingPhotos.length > 0 && ` (${existingPhotos.length} ảnh hiện tại)`}
+                  {newPhotos.length > 0 && ` + ${newPhotos.length} ảnh mới`}
+                </p>
+              </div>
+            )}
+          </div>
+        );
         return (
           <div className="space-y-6">
             {/* Existing Photos */}

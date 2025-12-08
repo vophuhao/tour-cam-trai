@@ -112,6 +112,7 @@ export function PropertyReviewsSection({
 
   const recommendPercentage =
     rating.average >= 4 ? 95 : rating.average >= 3 ? 75 : 60;
+  console.log('Recommend Percentage:', reviews);
 
   return (
     <div className="space-y-6" id="reviews">
@@ -165,15 +166,15 @@ export function PropertyReviewsSection({
           <div key={review._id} className="space-y-3">
             <div className="flex items-start gap-4">
               <Avatar>
-                <AvatarImage src={review.guest.avatarUrl} />
+                <AvatarImage src={review.guest?.avatarUrl} />
                 <AvatarFallback>
-                  {review.guest.username.charAt(0).toUpperCase()}
+                  {review.guest?.username.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-semibold">{review.guest.username}</p>
+                    <p className="font-semibold">{review.guest?.username}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     <Star className="ml-1 h-3 w-3 fill-yellow-400 text-yellow-400" />

@@ -1,3 +1,4 @@
+
 import { Types } from "mongoose";
 import { getIO } from "@/socket";
 import UserModel from "@/models/user.model";
@@ -29,6 +30,8 @@ export default class DirectMessageService {
       UserModel.findById(user1Id),
       UserModel.findById(user2Id),
     ]);
+    const userO= await UserModel.findById(user1Id)
+    const userT=  await UserModel.findById(user2Id)
 
     if (!user1 || !user2) {
       throw ErrorFactory.resourceNotFound("User");
@@ -48,13 +51,13 @@ export default class DirectMessageService {
             userId: user1Id,
             role: "user",
             name: (user1 as any).username || (user1 as any).full_name,
-            avatar: (user1 as any).avatar,
+            avatarUrl: userO?.avatarUrl,
           },
           {
             userId: user2Id,
             role: "host",
             name: (user2 as any).username || (user2 as any).full_name,
-            avatar: (user2 as any).avatar,
+            avatarUrl: userT?.avatarUrl,
           },
         ],
         campsiteRef: context?.campsiteId ? new Types.ObjectId(context.campsiteId) : null,
@@ -232,7 +235,7 @@ export default class DirectMessageService {
       .sort({ lastMessageAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate("participants.userId", "username avatar")
+      .populate("participants.userId", "username avatarUrl")
       .populate("campsiteRef", "name images")
       .populate("bookingRef", "code status");
 
