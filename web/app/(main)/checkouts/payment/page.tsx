@@ -106,6 +106,34 @@ export default function PaymentPage() {
 
   const [bookingData, setBookingData] = useState(initialBookingData);
 
+  // Sync booking data with URL params when they change (e.g., user clicks back and selects different site)
+  useEffect(() => {
+    const newBookingData: BookingSummaryData = {
+      siteId: searchParams.get('siteId') || undefined,
+      propertyId: searchParams.get('propertyId') || undefined,
+      siteName: searchParams.get('name') || undefined,
+      campsiteId: searchParams.get('campsiteId') || undefined,
+      campsiteName: searchParams.get('name') || undefined,
+      location: searchParams.get('location') || '',
+      image: searchParams.get('image') || '',
+      checkIn: searchParams.get('checkIn') || '',
+      checkOut: searchParams.get('checkOut') || '',
+      basePrice: Number(searchParams.get('basePrice')) || 0,
+      nights: Number(searchParams.get('nights')) || 1,
+      cleaningFee: Number(searchParams.get('cleaningFee')) || 0,
+      petFee: Number(searchParams.get('petFee')) || 0,
+      vehicleFee: Number(searchParams.get('vehicleFee')) || 0,
+      additionalGuestFee: Number(searchParams.get('additionalGuestFee')) || 0,
+      total: Number(searchParams.get('total')) || 0,
+      currency: searchParams.get('currency') || 'VND',
+      guests: Number(searchParams.get('guests')) || 1,
+      pets: Number(searchParams.get('pets')) || 0,
+      vehicles: Number(searchParams.get('vehicles')) || 1,
+      depositAmount: Number(searchParams.get('depositAmount')) || 0,
+    };
+    setBookingData(newBookingData);
+  }, [searchParams]);
+
   // Fetch site details if siteId exists
   const { data: siteDetails, isLoading: isSiteLoading } = useQuery({
     queryKey: ['site', bookingData.siteId],
