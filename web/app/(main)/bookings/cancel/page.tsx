@@ -9,7 +9,6 @@ export default function PaymentCancelPage() {
   const router = useRouter();
    const searchParams = useSearchParams();
   const orderCode = searchParams.get("orderCode");
-  console.log('Booking ID from params:', orderCode);
   useEffect(() => {
     // Call API to cancel payment and remove booking
     const cancelPayment = async () => {

@@ -153,6 +153,7 @@ export default class BookingController {
 
   userCancelPayment = catchErrors(async (req, res) => {
     const { id } = req.params;
+    console.log("BookingController: userCancelPayment called with id:", id);
     const result = await this.bookingService.userCancelPayment(id || "");
     return ResponseUtil.success(res, result, "Hủy thanh toán booking thành công");
   });

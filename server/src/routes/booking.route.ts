@@ -9,21 +9,24 @@ const bookingRoutes = Router();
 const bookingService = container.resolve<BookingService>(TOKENS.BookingService);
 const bookingController = new BookingController(bookingService);
 
-// Booking management
+// Webhook (MUST be first - no auth)
+bookingRoutes.post("/payos/webhook", bookingController.handlePayOSWebhook);
+
+// Fixed routes BEFORE param routes
 bookingRoutes.post("/", authenticate, bookingController.createBooking);
 bookingRoutes.get("/", authenticate, bookingController.searchBookings);
-bookingRoutes.get("/:id", authenticate, bookingController.getBooking);
 bookingRoutes.get("/my/list", authenticate, bookingController.getMyBookings);
-// Booking actions
+
+// Specific action routes (use POST with specific path segment)
+bookingRoutes.post("/:id/cancel-payment", authenticate, bookingController.userCancelPayment);
 bookingRoutes.post("/:id/confirm", authenticate, bookingController.confirmBooking);
 bookingRoutes.post("/:id/cancel", authenticate, bookingController.cancelBooking);
 bookingRoutes.post("/:id/complete", authenticate, bookingController.completeBooking);
 bookingRoutes.post("/:id/refund", authenticate, bookingController.refundBooking);
-// Booking by code
 bookingRoutes.post("/:code/code", authenticate, bookingController.getBookingByCode);
-bookingRoutes.post("/payos/webhook", bookingController.handlePayOSWebhook);
-bookingRoutes.post("/:id/cancel-payment", authenticate, bookingController.userCancelPayment);
-// Payment (admin only)
 bookingRoutes.patch("/:id/payment", authenticate, requireAdmin, bookingController.updatePayment);
+
+// Generic GET by ID (LAST)
+bookingRoutes.get("/:id", authenticate, bookingController.getBooking);
 
 export default bookingRoutes;
