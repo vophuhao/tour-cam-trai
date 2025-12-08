@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProductBySlug } from '@/hooks/useProduct';
 import { addToCart, getProductsByCategoryName } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
+import { useCartStore } from '@/store/cart.store';
 import {
   AlertCircle,
   ChevronLeft,
@@ -53,6 +54,8 @@ export default function ProductDetailPage() {
   const [selectedVariant, setSelectedVariant] = useState<number>(0);
   const [ListProduct, setListProduct] = useState<Product[]>([]);
   const { user } = useAuthStore();
+  const { selectItem } = useCartStore();
+
   useEffect(() => {
     const fetchProducts = async () => {
       const categoryName = data?.data.category?.name || '';
@@ -63,7 +66,6 @@ export default function ProductDetailPage() {
       try {
         const res = await getProductsByCategoryName(categoryName, 1, 8);
         if (res.success) {
-          // Ensure res.data is an array and cast to Product[] for the state setter
           const products = Array.isArray(res.data) ? (res.data as Product[]) : [];
           setListProduct(products);
         }
@@ -73,9 +75,6 @@ export default function ProductDetailPage() {
     };
     fetchProducts();
   }, [data?.data.category?.name]);
-
-
-
 
   const product = useMemo(() => {
     if (data?.success && data.data) {
@@ -159,13 +158,8 @@ export default function ProductDetailPage() {
       </div>
     );
   }
-  // In ProductDetailPage component
-  const handleAddToCart = async () => {
 
-  
-    // if( 
-    //   !user
-    // ) return router.push('/sign-in');
+  const handleAddToCart = async () => {
     if (!product?._id) return;
 
     try {
@@ -175,8 +169,6 @@ export default function ProductDetailPage() {
       });
 
       toast.success('Đã thêm vào giỏ hàng');
-
-      // Emit event AFTER successful API call
       window.dispatchEvent(new CustomEvent('cart:added'));
     } catch (error) {
       console.error('Add to cart error:', error);
@@ -184,12 +176,34 @@ export default function ProductDetailPage() {
     }
   };
 
+  const handleBuyNow = async () => {
+    if (!product?._id) return;
+
+    try {
+      // Add to cart first
+      await addToCart({
+        productId: product._id,
+        quantity,
+      });
+
+      // Emit event to update cart
+      window.dispatchEvent(new CustomEvent('cart:added'));
+
+      // Select the item in cart store
+      selectItem(product._id);
+
+      // Navigate to payment page
+      router.push('/cart/payment');
+      
+      toast.success('Chuyển đến trang thanh toán');
+    } catch (error) {
+      console.error('Buy now error:', error);
+      toast.error('Có lỗi khi xử lý đơn hàng');
+    }
+  };
+
   const images = product.images || [];
-  const priceFinal = product.deal
-    ? Math.round(product.price * (1 - product.deal / 100))
-    : product.price;
-  const hasDiscount = product.deal && product.deal > 0;
-  console.log(product)
+
   return (
     <div className="container mx-auto max-w-7xl p-6">
       {/* Breadcrumb */}
@@ -209,8 +223,6 @@ export default function ProductDetailPage() {
             {product.category?.name || 'Sản phẩm'}
           </Badge>
         </div>
-
-
       </div>
 
       <div className="grid gap-8 lg:grid-cols-12">
@@ -269,10 +281,11 @@ export default function ProductDetailPage() {
                     <button
                       key={i}
                       onClick={() => setSelectedImageIndex(i)}
-                      className={`shrink-0 overflow-hidden rounded-lg border-2 transition-all ${i === selectedImageIndex
-                        ? 'border-primary ring-primary/20 ring-2'
-                        : 'hover:border-primary/50 border-transparent'
-                        }`}
+                      className={`shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
+                        i === selectedImageIndex
+                          ? 'border-primary ring-primary/20 ring-2'
+                          : 'hover:border-primary/50 border-transparent'
+                      }`}
                     >
                       <Image
                         src={src}
@@ -316,7 +329,7 @@ export default function ProductDetailPage() {
                 </CardHeader>
                 <CardContent>
                   {product.specifications &&
-                    product.specifications.length > 0 ? (
+                  product.specifications.length > 0 ? (
                     <Table>
                       <TableBody>
                         {product.specifications.map((spec, i) => (
@@ -532,10 +545,14 @@ export default function ProductDetailPage() {
                       <span className="text-lg font-semibold">−</span>
                     </button>
                     <div className="flex h-10 w-16 items-center justify-center bg-white">
-                      <span className="text-base font-semibold text-gray-900">{quantity}</span>
+                      <span className="text-base font-semibold text-gray-900">
+                        {quantity}
+                      </span>
                     </div>
                     <button
-                      onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
+                      onClick={() =>
+                        setQuantity(q => Math.min(product.stock, q + 1))
+                      }
                       className="flex h-10 w-10 items-center justify-center bg-gray-50 text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200"
                       aria-label="Tăng số lượng"
                       disabled={quantity >= product.stock}
@@ -554,7 +571,7 @@ export default function ProductDetailPage() {
                 <div className="space-y-2">
                   <Button
                     onClick={handleAddToCart}
-                    className="w-full"
+                    className="w-full cursor-pointer"
                     size="lg"
                     disabled={product.stock === 0}
                   >
@@ -562,8 +579,9 @@ export default function ProductDetailPage() {
                     Thêm vào giỏ
                   </Button>
                   <Button
+                    onClick={handleBuyNow}
                     variant="outline"
-                    className="w-full"
+                    className="w-full cursor-pointer"
                     size="lg"
                     disabled={product.stock === 0}
                   >
@@ -629,7 +647,9 @@ export default function ProductDetailPage() {
       </div>
 
       <div className="mt-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Đánh giá sản phẩm</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+          Đánh giá sản phẩm
+        </h2>
         <ProductReviewsSection productId={product._id} />
       </div>
 

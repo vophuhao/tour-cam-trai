@@ -1,7 +1,5 @@
-// ...existing code...
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-
 
 type CartState = {
   items: CartItem[];
@@ -12,10 +10,10 @@ type CartState = {
   updateQuantity: (id: string, qty: number) => void;
   toggleSelect: (id: string) => void;
   toggleSelectAll: () => void;
+  selectItem: (id: string) => void; // NEW: select only one item
   clearSelected: () => void;
   clearAll: () => void;
 };
-
 
 export const useCartStore = create<CartState>()(
   persist(
@@ -60,12 +58,20 @@ export const useCartStore = create<CartState>()(
           const selectedAll = state.selectedIds.length === allIds.length;
           return { selectedIds: selectedAll ? [] : allIds };
         }),
+      // NEW: Select only one specific item (for "Buy Now" flow)
+      selectItem: (id: string) =>
+        set((state) => {
+          const itemExists = state.items.some((i) => i.product._id === id);
+          return {
+            selectedIds: itemExists ? [id] : state.selectedIds,
+          };
+        }),
       clearSelected: () => set({ selectedIds: [] }),
       clearAll: () => set({ items: [], selectedIds: [] }),
     }),
     {
       name: "cart-storage", // key in localStorage
-      partialize: (state) => ({ items: state.items, selectedIds: state.selectedIds  }),
+      partialize: (state) => ({ items: state.items, selectedIds: state.selectedIds }),
     }
   )
 );
