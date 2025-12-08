@@ -19,7 +19,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from '@/components/ui/alert';
-import { getBookingByCode, refundBooking } from '@/lib/client-actions';
+import { cancelBooking, getBookingByCode, refundBooking } from '@/lib/client-actions';
 import type { Property, Site } from '@/types/property-site';
 import { format, differenceInDays } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -154,7 +154,9 @@ export default function BookingDetailPage() {
     try {
       setLoading(true);
       const res = await getBookingByCode(code);
-      setBooking(res.data ?? null);
+      setBooking(res.data || [] as any);
+      
+    
     } catch (error) {
       console.error('Error fetching booking:', error);
       toast.error('Không thể tải thông tin booking');
@@ -230,19 +232,12 @@ export default function BookingDetailPage() {
 
     try {
       setCancelling(true);
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/bookings/${booking?._id}/cancel`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({ cancellationReason: cancelReason }),
-        },
-      );
+      const data = {
+        cancellationReason: cancelReason.trim(),
+      }
+      const res = await cancelBooking(booking?._id || '', data);
 
-      if (!res.ok) throw new Error('Không thể hủy booking');
+      if (!res.success) throw new Error('Không thể hủy booking');
 
       toast.success('Đã hủy booking thành công');
       setCancelDialogOpen(false);
@@ -1509,7 +1504,7 @@ export default function BookingDetailPage() {
                   {exporting ? 'Đang xuất...' : 'Xuất hóa đơn PDF'}
                 </Button>
 
-                {(booking.status === 'pending' || booking.status === 'confirmed') && (
+                {(booking.status === 'pending' && booking.paymentStatus === 'pending') && (
                   <Button
                     variant="destructive"
                     className="w-full"

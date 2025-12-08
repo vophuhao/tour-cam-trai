@@ -333,7 +333,7 @@ export async function cancelBooking(
   bookingId: string,
   data: {
     cancellationReason: string;
-    cancellInformation: {
+    cancellInformation?: {
       fullnameGuest: string;
       bankCode: string;
       bankType: string;
@@ -343,6 +343,8 @@ export async function cancelBooking(
 ): Promise<ApiResponse<Booking>> {
   return apiClient.post(`/bookings/${bookingId}/cancel`, data);
 }
+
+
 
 export async function completeBooking(
   bookingId: string,

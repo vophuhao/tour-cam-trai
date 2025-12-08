@@ -155,7 +155,6 @@ export default function BookingsPage() {
             setActionDialog({ open: true, type, booking });
         }
     }
-
     // Hàm xử lý cancel với lý do
     async function executeCancelWithReason() {
         try {
