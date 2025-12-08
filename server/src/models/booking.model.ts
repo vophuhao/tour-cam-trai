@@ -54,7 +54,11 @@ export interface BookingDocument extends mongoose.Document {
   cancelledAt?: Date;
   cancellationReason?: string;
   refundAmount?: number;
-
+  cancellInformation ?: {
+    fullnameGuest?: string | undefined;
+    bankCode?: string | undefined;
+    bankType?: string | undefined;
+  };
   // Review
   reviewed: boolean;
   review?: mongoose.Types.ObjectId; // ref Review
@@ -151,6 +155,11 @@ const bookingSchema = new mongoose.Schema<BookingDocument>(
     cancelledBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     cancelledAt: { type: Date },
     cancellationReason: { type: String, maxlength: 500 },
+    cancellInformation :{
+      fullnameGuest: { type: String, maxlength: 200 },
+      bankCode: { type: String, maxlength: 20 },
+      bankType: { type: String, maxlength: 100 },
+    },
     refundAmount: { type: Number, min: 0 },
 
     reviewed: { type: Boolean, default: false },

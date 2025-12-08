@@ -333,10 +333,18 @@ export async function cancelBooking(
   bookingId: string,
   data: {
     cancellationReason: string;
+    cancellInformation?: {
+      fullnameGuest: string;
+      bankCode: string;
+      bankType: string;
+    };
   },
+
 ): Promise<ApiResponse<Booking>> {
   return apiClient.post(`/bookings/${bookingId}/cancel`, data);
 }
+
+
 
 export async function completeBooking(
   bookingId: string,
@@ -344,9 +352,16 @@ export async function completeBooking(
   return apiClient.post(`/bookings/${bookingId}/complete`);
 }
 
+export async function refundBooking(
+  bookingId: string,
+): Promise<ApiResponse<Booking>> {
+  return apiClient.post(`/bookings/${bookingId}/refund`);
+}
+
 export async function getAllAmenities(): Promise<ApiResponse<Amenity[]>> {
   return apiClient.get('/amenities');
 }
+
 
 // Deprecated: Activity model removed from backend
 // export async function getAllActivities(): Promise<ApiResponse<Activity[]>> {

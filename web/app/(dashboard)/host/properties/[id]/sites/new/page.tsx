@@ -10,8 +10,9 @@ import { SiteAmenitiesRules } from "@/components/host/site/site-amenities-rules"
 import { SiteLocation } from "@/components/host/site/site-location";
 import { SitePhotos } from "@/components/host/site/site-photos";
 import { SiteBookingSettings } from "@/components/host/site/site-booking-settings";
-import { createSite, getPropertyById } from "@/lib/property-site-api";
+import { createSite, getPropertyById, getSitesByProperty } from "@/lib/property-site-api";
 import { uploadMedia } from "@/lib/client-actions";
+import { useQuery } from "@tanstack/react-query";
 
 const STEPS = [
     { id: "details", title: "Thông tin & Giá" },
@@ -22,10 +23,19 @@ const STEPS = [
 ];
 
 export default function NewSitePage() {
+    
+
     const params = useParams() as any;
     const router = useRouter();
     const propertyId = params?.id ?? params?.propertyId;
-
+    const { data: sitesData } = useQuery({
+        queryKey: ['property-sites', propertyId],
+        queryFn: async () => {
+            const response = await getSitesByProperty(propertyId);
+            return response.data;
+        },
+        enabled: !!propertyId,
+    });
     const defaultForm = {
         basic: { name: "", slug: "", description: "" },
         accommodationType: "tent",
@@ -236,10 +246,10 @@ export default function NewSitePage() {
                                     <button
                                         onClick={() => setStep(idx)}
                                         className={`h-10 w-10 rounded-full grid place-items-center text-sm font-medium transition-all ${step === idx
-                                                ? "bg-emerald-600 text-white shadow-lg scale-110"
-                                                : step > idx
-                                                    ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-300"
-                                                    : "bg-gray-100 text-gray-700 border-2 border-gray-200"
+                                            ? "bg-emerald-600 text-white shadow-lg scale-110"
+                                            : step > idx
+                                                ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-300"
+                                                : "bg-gray-100 text-gray-700 border-2 border-gray-200"
                                             }`}
                                     >
                                         {step > idx ? <Check className="h-5 w-5" /> : s.icon}
@@ -300,6 +310,7 @@ export default function NewSitePage() {
                         data={form.siteLocation}
                         propertyLocation={propertyLocation}
                         onChange={(d: any) => update({ siteLocation: { ...(form.siteLocation ?? {}), ...(d ?? {}) } })}
+                        existingSites={sitesData?.sites || []}
                     />
                 )}
 
