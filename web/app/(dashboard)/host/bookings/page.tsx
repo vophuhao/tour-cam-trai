@@ -247,7 +247,7 @@ export default function BookingsPage() {
         return;
       }
 
-      const result = await cancelBooking(booking._id, {
+      const result = await cancelBooking(booking.code, {
         cancellationReason: reason.trim(),
         cancellInformation: {
           fullnameGuest: '', // Add appropriate value
@@ -257,7 +257,7 @@ export default function BookingsPage() {
       });
 
       if (result?.success) {
-        toast.success('Đã từ chối booking!');
+        toast.success('Đã hủy booking!');
         setCancelDialog({ open: false, booking: null, reason: '' });
         await fetchBookings();
       } else {

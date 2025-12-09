@@ -724,12 +724,11 @@ export class BookingService {
         const totalAmount = booking.pricing?.total || 0;
         const checkoutUrl =
           booking.payOSCheckoutUrl || `${CLIENT_URL}/bookings/${booking.code}/confirmation`;
-
-        // Gửi email nhắc nhở thanh toán
-        await sendMail({
-          to: guestEmail,
-          subject: "⏰ Nhắc nhở hoàn tất thanh toán booking",
-          html: `
+        if (!booking.isSentMail) {
+          await sendMail({
+            to: guestEmail,
+            subject: "⏰ Nhắc nhở hoàn tất thanh toán booking",
+            html: `
           <!DOCTYPE html>
           <html>
           <head>
@@ -834,11 +833,12 @@ export class BookingService {
           </body>
           </html>
         `,
-        });
-
+          });
+          booking.isSentMail = true;
+          await booking.save();
+        }
         // Đánh dấu đã gửi reminder
         await BookingModel.updateOne({ _id: booking._id }, { $set: { reminderSent: true } });
-
         console.log(
           `📧 Đã gửi email nhắc nhở thanh toán: Booking ${booking.code} đến ${guestEmail}`
         );
@@ -846,7 +846,6 @@ export class BookingService {
         console.error(`❌ Lỗi gửi email nhắc nhở Booking ${booking.code}:`, err);
       }
     }
-
     // 2) TÌM VÀ HỦY BOOKING QUÁ HẠN 24 GIỜ
     const expiredBookings = await BookingModel.find({
       paymentStatus: "pending",
