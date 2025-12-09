@@ -1,3 +1,4 @@
+
 import { CLIENT_URL, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY, PAYOS_CLIENT_ID } from "@/constants";
 import { ErrorFactory } from "@/errors";
 import {
@@ -667,8 +668,7 @@ export class BookingService {
     const booking = await BookingModel.findOne({ payOSOrderCode: orderCode });
     appAssert(booking, ErrorFactory.resourceNotFound("Booking"));
 
-    if (!booking.code)
-    {
+    if (!booking.code) {
       console.log("No booking found for orderCode:", orderCode);
       return {
         success: false,
@@ -1005,5 +1005,179 @@ export class BookingService {
       remindersSent: bookingsNeedReminder.length,
       bookingsCancelled: expiredBookings.length,
     };
+  }
+
+  /**
+ * Auto complete bookings after checkout date and send completion emails
+ */
+  async autoCompleteBooking() {
+    try {
+      const now = new Date();
+
+      // Find all confirmed bookings where checkout date has passed
+      const bookingsToComplete = await BookingModel.find({
+        status: 'confirmed',
+        paymentStatus: 'paid',
+        checkOut: { $lt: now }
+      })
+        .populate('guest', 'username email fullName')
+        .populate('site', 'name')
+        .populate('property', 'name');
+
+      if (bookingsToComplete.length === 0) {
+        console.log('✅ Không có booking nào cần hoàn thành');
+        return { completed: 0 };
+      }
+
+      let completedCount = 0;
+
+      for (const booking of bookingsToComplete) {
+        try {
+          // Update booking status to completed
+          booking.status = 'completed';
+          await booking.save();
+
+          // Unblock dates when booking is completed
+          await this.unblockDatesForBooking(
+            booking.site.toString(),
+            booking.checkIn,
+            booking.checkOut
+          );
+
+          completedCount++;
+          console.log(`✅ Đã hoàn thành booking: ${booking.code}`);
+
+          // Send completion email to guest
+          try {
+            const guestEmail = booking.email || (booking.guest as any)?.email;
+            const guestName =
+              booking.fullnameGuest ||
+              (booking.guest as any)?.fullName ||
+              (booking.guest as any)?.username ||
+              'Quý khách';
+            const propertyName = (booking.property as any)?.name || 'Khu cắm trại';
+            const siteName = (booking.site as any)?.name || 'Site';
+
+            await sendMail({
+              to: guestEmail,
+              subject: '🎉 Chuyến đi của bạn đã hoàn thành - Cảm ơn bạn!',
+              html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { 
+                  background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+                  color: white; 
+                  padding: 30px; 
+                  text-align: center; 
+                  border-radius: 10px 10px 0 0; 
+                }
+                .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+                .button { 
+                  display: inline-block; 
+                  background: #3b82f6; 
+                  color: white !important; 
+                  padding: 15px 40px; 
+                  text-decoration: none; 
+                  border-radius: 8px; 
+                  margin: 20px 0;
+                  font-weight: bold;
+                }
+                .info-box { 
+                  background: white; 
+                  padding: 20px; 
+                  border-left: 4px solid #10b981; 
+                  margin: 20px 0; 
+                  border-radius: 5px; 
+                }
+                .tips-box { 
+                  background: #dbeafe; 
+                  padding: 20px; 
+                  border-left: 4px solid #3b82f6; 
+                  margin: 20px 0; 
+                  border-radius: 5px; 
+                }
+                .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1>🎉 Chuyến đi đã hoàn thành!</h1>
+                  <p style="font-size: 16px; margin: 10px 0;">Cảm ơn bạn đã tin tưởng HipCamp</p>
+                </div>
+                
+                <div class="content">
+                  <p>Xin chào <strong>${guestName}</strong>,</p>
+                  
+                  <p>Chuyến đi của bạn tại <strong>${siteName} - ${propertyName}</strong> đã hoàn thành. Chúng tôi hy vọng bạn đã có những trải nghiệm tuyệt vời!</p>
+                  
+                  <div class="info-box">
+                    <h3 style="margin-top: 0; color: #10b981;">📋 Thông tin chuyến đi</h3>
+                    <p><strong>Mã booking:</strong> ${booking.code}</p>
+                    <p><strong>Địa điểm:</strong> ${siteName} - ${propertyName}</p>
+                    <p><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString('vi-VN')}</p>
+                    <p><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString('vi-VN')}</p>
+                    <p><strong>Số đêm:</strong> ${booking.nights} đêm</p>
+                    <p><strong>Số khách:</strong> ${booking.numberOfGuests} người</p>
+                  </div>
+                  
+                  <div class="tips-box">
+                    <h3 style="margin-top: 0; color: #3b82f6;">⭐ Chia sẻ trải nghiệm của bạn</h3>
+                    <p>Đánh giá của bạn sẽ giúp những khách hàng khác có thêm thông tin để lựa chọn địa điểm phù hợp!</p>
+                    <ul>
+                      <li>Viết review về chuyến đi</li>
+                      <li>Đánh giá dịch vụ và tiện nghi</li>
+                      <li>Chia sẻ hình ảnh đẹp</li>
+                      <li>Giúp cộng đồng camping Việt Nam phát triển</li>
+                    </ul>
+                  </div>
+                  
+                  <div style="text-align: center;">
+                    <a href="${CLIENT_URL}/bookings/${booking.code}/review" class="button" style="color: white;">
+                      ⭐ Viết đánh giá
+                    </a>
+                  </div>
+                  
+                  <p style="margin-top: 30px;">
+                    Cảm ơn bạn đã lựa chọn HipCamp. Chúng tôi mong được phục vụ bạn trong những chuyến đi tiếp theo!
+                  </p>
+                  
+                  <p style="margin-top: 20px;">
+                    Trân trọng,<br>
+                    <strong>Đội ngũ HipCamp</strong>
+                  </p>
+                </div>
+                
+                <div class="footer">
+                  <p>© ${new Date().getFullYear()} HipCamp. All rights reserved.</p>
+                  <p>Liên hệ hỗ trợ: support@hipcamp.vn | Hotline: 1900-xxxx</p>
+                </div>
+              </div>
+            </body>
+            </html>
+            `,
+            });
+
+            console.log(`📧 Đã gửi email hoàn thành booking: ${booking.code} đến ${guestEmail}`);
+          } catch (emailErr) {
+            console.error(`❌ Lỗi gửi email hoàn thành Booking ${booking.code}:`, emailErr);
+          }
+        } catch (err) {
+          console.error(`❌ Lỗi khi hoàn thành booking ${booking.code}:`, err);
+        }
+      }
+
+      return {
+        completed: completedCount,
+        total: bookingsToComplete.length,
+      };
+    } catch (error) {
+      console.error('❌ Lỗi trong autoCompleteBooking:', error);
+      throw error;
+    }
   }
 }

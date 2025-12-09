@@ -157,4 +157,5 @@ export default class BookingController {
     const result = await this.bookingService.userCancelPayment(id || "");
     return ResponseUtil.success(res, result, "Hủy thanh toán booking thành công");
   });
+  
 }

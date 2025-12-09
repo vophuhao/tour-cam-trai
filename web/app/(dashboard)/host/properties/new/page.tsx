@@ -303,7 +303,7 @@ export default function NewPropertyPage() {
                 </>
               ) : (
                 <>
-                  <Check className="h-4 w-4" />
+                  
                   Hoàn thành
                 </>
               )}

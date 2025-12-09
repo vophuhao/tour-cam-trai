@@ -62,15 +62,15 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 const PAYMENT_STATUS_LABELS: Record<string, { label: string; color: string }> =
-  {
-    pending: {
-      label: 'Chờ thanh toán',
-      color: 'bg-yellow-100 text-yellow-800',
-    },
-    paid: { label: 'Đã thanh toán', color: 'bg-green-100 text-green-800' },
-    refunded: { label: 'Đã hoàn tiền', color: 'bg-purple-100 text-purple-800' },
-    failed: { label: 'Thất bại', color: 'bg-red-100 text-red-800' },
-  };
+{
+  pending: {
+    label: 'Chờ thanh toán',
+    color: 'bg-yellow-100 text-yellow-800',
+  },
+  paid: { label: 'Đã thanh toán', color: 'bg-green-100 text-green-800' },
+  refunded: { label: 'Đã hoàn tiền', color: 'bg-purple-100 text-purple-800' },
+  failed: { label: 'Thất bại', color: 'bg-red-100 text-red-800' },
+};
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -688,27 +688,22 @@ export default function BookingsPage() {
 
                         {/* Actions */}
                         <div className="mt-4 flex gap-2">
-                          {booking.status === 'pending' && (
-                            <>
-                              <Button
-                                size="sm"
-                                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                                onClick={() => handleAction('confirm', booking)}
-                              >
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Xác nhận
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="flex-1 text-red-600 hover:bg-red-50"
-                                onClick={() => handleAction('cancel', booking)}
-                              >
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Từ chối
-                              </Button>
-                            </>
-                          )}
+                          {(booking.paymentStatus === "pending" ||
+                            (new Date() >= new Date(booking.checkIn) &&
+                              new Date() <= new Date(booking.checkOut))) && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="flex-1 text-red-600 hover:bg-red-50"
+                                  onClick={() => handleAction("cancel", booking)}
+                                >
+                                  <XCircle className="mr-2 h-4 w-4" />
+                                  Hủy
+                                </Button>
+                              </>
+                            )}
+
 
                           {booking.status === 'confirmed' &&
                             new Date(booking.checkOut) < new Date() && (
