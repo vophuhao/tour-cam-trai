@@ -51,7 +51,7 @@ cron.schedule("*/10 * * * *", async () => {
   console.log("?? Cron: ki?m tra don c?n h?y...");
   await orderService.cancelExpiredOrders();
 });
-  cron.schedule("0 * * * *", async () => {
+cron.schedule("0 * * * *", async () => {
     console.log("🔄 Running booking cleanup job...");
     try {
       const result = await bookingService.cancelExpiredPendingBookings();
@@ -60,7 +60,9 @@ cron.schedule("*/10 * * * *", async () => {
       console.error("❌ Booking cleanup job failed:", err);
     }
   });
-
+cron.schedule("*/15 * * * *", async () => {
+  await bookingService.autoCompleteBooking();
+});
 // health check
 app.get("/", (_, res) => {
   return res.status(OK).json({

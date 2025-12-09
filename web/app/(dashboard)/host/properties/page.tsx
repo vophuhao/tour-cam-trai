@@ -95,12 +95,8 @@ export default function PropertiesPage() {
   const statusConfig = {
     active: { label: 'Đang hoạt động', color: 'bg-green-100 text-green-800' },
     inactive: { label: 'Không hoạt động', color: 'bg-gray-100 text-gray-800' },
-    pending_approval: {
-      label: 'Chờ duyệt',
-      color: 'bg-yellow-100 text-yellow-800',
-    },
-    suspended: { label: 'Tạm ngưng', color: 'bg-red-100 text-red-800' },
   };
+
 
   if (isLoading) {
     return (
@@ -276,14 +272,14 @@ export default function PropertiesPage() {
                   <div className="absolute top-3 right-3">
                     <Badge
                       className={
-                        statusConfig[
-                          property?.status as keyof typeof statusConfig
-                        ]?.color || 'bg-gray-100 text-gray-800'
+                        property?.isActive
+                          ? statusConfig.active.color
+                          : statusConfig.inactive.color
                       }
                     >
-                      {statusConfig[
-                        property?.status as keyof typeof statusConfig
-                      ]?.label || 'Unknown'}
+                      {property?.isActive
+                        ? statusConfig.active.label
+                        : statusConfig.inactive.label}
                     </Badge>
                   </div>
                 </div>

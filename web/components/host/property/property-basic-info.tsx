@@ -218,43 +218,17 @@ export function PropertyBasicInfo({ data, onChange }: PropertyBasicInfoProps) {
 
         {/* Right - status & flags */}
         <div className="space-y-4">
-          <div className="bg-white border rounded-lg p-4">
-            <Label>Trạng thái hiển thị</Label>
-            <Select
-              value={data.status || "active"}
-              onValueChange={(value) => onChange({ ...data, status: value })}
-            >
-              <SelectTrigger className="mt-2">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Đang hoạt động</SelectItem>
-                <SelectItem value="inactive">Không hoạt động</SelectItem>
-                <SelectItem value="pending_approval">Chờ duyệt</SelectItem>
-                <SelectItem value="suspended">Bị khoá</SelectItem>
-              </SelectContent>
-            </Select>
-
+          <div className="bg-white border rounded-lg p-2">
             <div className="mt-4 space-y-2">
               <label className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Cho phép hiển thị (isActive)</span>
+                <span className="text-lg font-bold text-gray-700 ">Hiển thị</span>
                 <input
                   type="checkbox"
                   checked={!!data.isActive}
                   onChange={(e) => onChange({ ...data, isActive: e.target.checked })}
                   className="h-4 w-4 rounded border-gray-300"
                 />
-              </label>
-
-              <label className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Nổi bật (isFeatured)</span>
-                <input
-                  type="checkbox"
-                  checked={!!data.isFeatured}
-                  onChange={(e) => onChange({ ...data, isFeatured: e.target.checked })}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-              </label>
+              </label>        
             </div>
           </div>
 

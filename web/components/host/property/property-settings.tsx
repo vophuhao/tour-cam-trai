@@ -59,70 +59,11 @@ export function PropertySettings({ data, onChange }: PropertySettingsProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Cài đặt Property</h3>
-        <p className="text-sm text-gray-500 mb-6">Cấu hình các tùy chọn hoạt động của property</p>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-4">Cài đặt Property</h1>
+       
       </div>
 
       <div className="space-y-6">
-        {/* Status & Visibility */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Trạng thái & Hiển thị</CardTitle>
-            <CardDescription>Kiểm soát cách property hiển thị với khách</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="status">Trạng thái</Label>
-              <Select
-                value={data.status}
-                onValueChange={(value: any) => onChange({ status: value })}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Bản nháp</SelectItem>
-                  <SelectItem value="published">Đã xuất bản</SelectItem>
-                  <SelectItem value="suspended">Tạm ngưng</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-gray-500 mt-1">Chỉ property "Đã xuất bản" mới hiển thị với khách</p>
-            </div>
-
-            <div>
-              <Label htmlFor="visibility">Chế độ hiển thị</Label>
-              <Select
-                value={data.visibility}
-                onValueChange={(value: any) => onChange({ visibility: value })}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="public">
-                    <div>
-                      <div className="font-semibold">Công khai</div>
-                      <div className="text-xs text-gray-500">Hiển thị trong kết quả tìm kiếm</div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="unlisted">
-                    <div>
-                      <div className="font-semibold">Không liệt kê</div>
-                      <div className="text-xs text-gray-500">Chỉ truy cập qua link trực tiếp</div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="private">
-                    <div>
-                      <div className="font-semibold">Riêng tư</div>
-                      <div className="text-xs text-gray-500">Chỉ bạn có thể xem</div>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Booking Settings (mapped to model.settings) */}
         <Card>
           <CardHeader>
@@ -180,12 +121,7 @@ export function PropertySettings({ data, onChange }: PropertySettingsProps) {
                     })
                   }
                 />
-                <div>
-                  <Label htmlFor="allowWholePropertyBooking" className="font-normal">
-                    Cho phép đặt cả property
-                  </Label>
-                  <p className="text-xs text-gray-500">Cho phép khách đặt toàn bộ property (nếu có nhiều site)</p>
-                </div>
+              
               </div>
             </div>
 
