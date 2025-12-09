@@ -688,14 +688,14 @@ export default function BookingsPage() {
 
                         {/* Actions */}
                         <div className="mt-4 flex gap-2">
-                          {(booking.paymentStatus === "pending" ||
-                            (new Date() >= new Date(booking.checkIn) &&
-                              new Date() <= new Date(booking.checkOut))) && (
+                          {( booking.status !== 'cancelled' && ( booking.paymentStatus === "pending" ||  
+                            (new Date() >= new Date(booking.checkIn) && 
+                              new Date() <= new Date(booking.checkOut))) ) && (
                               <>
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="flex-1 text-red-600 hover:bg-red-50"
+                                  className="flex-1 text-red-600 hover:bg-red-50 cursor-pointer"
                                   onClick={() => handleAction("cancel", booking)}
                                 >
                                   <XCircle className="mr-2 h-4 w-4" />
@@ -705,7 +705,7 @@ export default function BookingsPage() {
                             )}
 
 
-                          {booking.status === 'confirmed' &&
+                          {/* {booking.status === 'confirmed' &&
                             new Date(booking.checkOut) < new Date() && (
                               <Button
                                 size="sm"
@@ -717,7 +717,7 @@ export default function BookingsPage() {
                                 <CheckCircle className="mr-2 h-4 w-4" />
                                 Đánh dấu hoàn thành
                               </Button>
-                            )}
+                            )} */}
 
                           <Button
                             onClick={() =>
@@ -727,7 +727,7 @@ export default function BookingsPage() {
                             }
                             size="sm"
                             variant="outline"
-                            className="flex-1"
+                            className="flex-1 cursor-pointer"
                           >
                             <Eye className="mr-2 h-4 w-4" />
                             Xem chi tiết
