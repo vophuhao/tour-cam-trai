@@ -143,7 +143,7 @@ favoriteSchema.pre("validate", function (next) {
 
 // Indexes
 favoriteSchema.index({ user: 1, property: 1 }, { unique: true, sparse: true }); // user can favorite property once
-favoriteSchema.index({ user: 1, site: 1 }, { unique: true, sparse: true }); // user can favorite site once
+// favoriteSchema.index({ user: 1, site: 1 }, { unique: true, sparse: true }); // user can favorite site once
 favoriteSchema.index({ user: 1, createdAt: -1 }); // list favorites của user
 
 export const FavoriteModel = mongoose.model<FavoriteDocument>("Favorite", favoriteSchema);
