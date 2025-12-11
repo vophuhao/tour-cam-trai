@@ -349,13 +349,14 @@ export class SiteService {
 
     // For bookings, only block dates when capacity is FULL
     if (maxConcurrent === 1) {
-      // Designated site (capacity = 1): Block all booked dates
+      // Designated site (capacity = 1): Block all booked dates INCLUDING checkout day
       bookings.forEach((booking) => {
         const bookingStart = new Date(booking.checkIn);
         const bookingEnd = new Date(booking.checkOut);
         const currentDate = new Date(bookingStart);
 
-        while (currentDate < bookingEnd) {
+        // Include checkout day by using <= instead of <
+        while (currentDate <= bookingEnd) {
           if (currentDate >= start && currentDate <= end) {
             allBlockedDates.add(currentDate.toISOString());
           }
@@ -372,7 +373,8 @@ export class SiteService {
         const bookingEnd = new Date(booking.checkOut);
         const currentDate = new Date(bookingStart);
 
-        while (currentDate < bookingEnd) {
+        // Include checkout day by using <= instead of <
+        while (currentDate <= bookingEnd) {
           if (currentDate >= start && currentDate <= end) {
             const dateKey = currentDate.toISOString();
             dateBookingCount.set(dateKey, (dateBookingCount.get(dateKey) || 0) + 1);

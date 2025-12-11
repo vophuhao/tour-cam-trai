@@ -235,10 +235,10 @@ export default function PaymentPage() {
 
   // FIX: Deposit calculation - calculate percentage from total
   const siteDepositAmount = bookingData.depositAmount || 0;
-  
+
   // If depositAmount > 0, treat it as percentage, else default 30%
   const depositPercentage = siteDepositAmount > 0 ? siteDepositAmount : 30;
-  
+
   // Calculate actual deposit amount based on total
   const depositAmount = Math.round(total * (depositPercentage / 100));
   const remainingAmount = total - depositAmount;
@@ -297,6 +297,34 @@ export default function PaymentPage() {
       }
     },
   });
+
+  // Helper to extract meaningful error messages (Axios or Error)
+  const extractErrorMessage = (err: unknown) => {
+    if (!err) return 'Có lỗi xảy ra. Vui lòng thử lại.';
+    // Try to safely inspect known shapes
+    if (typeof err === 'object' && err !== null) {
+      const obj = err as Record<string, unknown>;
+      const response = obj['response'] as Record<string, unknown> | undefined;
+      if (response && response['data']) {
+        const data = response['data'] as Record<string, unknown> | string;
+        if (typeof data === 'string') return data;
+        if (typeof data === 'object' && data !== null) {
+          const d = data as Record<string, unknown>;
+          if (typeof d['message'] === 'string') return d['message'] as string;
+          const errObj = d['error'] as Record<string, unknown> | undefined;
+          if (errObj && typeof errObj['message'] === 'string')
+            return errObj['message'] as string;
+        }
+      }
+      if (typeof obj['message'] === 'string') return obj['message'] as string;
+    }
+    if (typeof err === 'string') return err;
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return 'Có lỗi xảy ra. Vui lòng thử lại.';
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -461,15 +489,18 @@ export default function PaymentPage() {
                               </span>
                             </div>
                             <p className="text-muted-foreground text-sm">
-                              Đặt cọc {depositPercentage}% ({formatPrice(depositAmount)}), trả phần còn lại khi nhận phòng
+                              Đặt cọc {depositPercentage}% (
+                              {formatPrice(depositAmount)}), trả phần còn lại
+                              khi nhận phòng
                             </p>
                             <div className="mt-2 space-y-1 rounded-md bg-blue-100 px-3 py-2">
                               <p className="text-sm font-medium text-blue-800">
-                                💰 Đặt cọc ngay ({depositPercentage}%): {formatPrice(depositAmount)}
+                                💰 Đặt cọc ngay ({depositPercentage}%):{' '}
+                                {formatPrice(depositAmount)}
                               </p>
                               <p className="text-xs text-blue-700">
-                                📅 Trả khi nhận phòng ({100 - depositPercentage}%):{' '}
-                                {formatPrice(remainingAmount)}
+                                📅 Trả khi nhận phòng ({100 - depositPercentage}
+                                %): {formatPrice(remainingAmount)}
                               </p>
                             </div>
                           </div>
@@ -493,9 +524,7 @@ export default function PaymentPage() {
               {bookingMutation.isError && (
                 <Alert variant="destructive">
                   <AlertDescription>
-                    {bookingMutation.error instanceof Error
-                      ? bookingMutation.error.message
-                      : 'Có lỗi xảy ra. Vui lòng thử lại.'}
+                    {extractErrorMessage(bookingMutation.error)}
                   </AlertDescription>
                 </Alert>
               )}
@@ -680,13 +709,14 @@ export default function PaymentPage() {
                       <Separator className="my-2" />
                       <div className="space-y-1 rounded-lg bg-blue-50 p-3">
                         <div className="flex justify-between text-sm font-medium text-blue-900">
-                          <span>
-                            Thanh toán ngay ({depositPercentage}%)
-                          </span>
+                          <span>Thanh toán ngay ({depositPercentage}%)</span>
                           <span>{formatPrice(depositAmount)}</span>
                         </div>
                         <div className="flex justify-between text-xs text-blue-700">
-                          <span>Thanh toán khi nhận phòng ({100 - depositPercentage}%)</span>
+                          <span>
+                            Thanh toán khi nhận phòng ({100 - depositPercentage}
+                            %)
+                          </span>
                           <span>{formatPrice(remainingAmount)}</span>
                         </div>
                       </div>

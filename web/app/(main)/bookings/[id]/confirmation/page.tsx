@@ -162,7 +162,7 @@ export default function ConfirmationPage() {
     enabled: !!bookingId,
   });
   console.log('Booking data:', data);
-  
+
   // Cancel booking mutation
   const cancelMutation = useMutation({
     mutationFn: (cancellationReason: string) =>
@@ -324,9 +324,10 @@ export default function ConfirmationPage() {
 
   // Calculate payment amounts
   const totalAmount = booking.pricing?.total || 0;
-  const depositPercentage = booking.pricing?.depositPercentage || 
-    site?.pricing?.depositAmount || 30;
-  const depositAmount = booking.pricing?.depositAmount || 
+  const depositPercentage =
+    booking.pricing?.depositPercentage || site?.pricing?.depositAmount || 30;
+  const depositAmount =
+    booking.pricing?.depositAmount ||
     Math.round(totalAmount * (depositPercentage / 100));
   const remainingAmount = totalAmount - depositAmount;
 
@@ -419,9 +420,8 @@ export default function ConfirmationPage() {
                       <AlertCircle className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      
                       <h3 className="font-semibold text-gray-900">
-                        {booking.paymentMethod === 'deposit' 
+                        {booking.paymentMethod === 'deposit'
                           ? `Chưa hoàn tất đặt cọc`
                           : 'Chưa hoàn tất thanh toán '}
                       </h3>
@@ -475,13 +475,14 @@ export default function ConfirmationPage() {
                         Thanh toán thành công
                       </h3>
                       <p className="text-sm text-gray-600">
-                        {booking.paymentMethod === 'deposit' 
+                        {booking.paymentMethod === 'deposit'
                           ? `Đã thanh toán cọc ${depositPercentage}% (${depositAmount.toLocaleString('vi-VN')} ₫)`
                           : `Đã thanh toán đầy đủ ${totalAmount.toLocaleString('vi-VN')} ₫`}
                       </p>
                       {booking.paymentMethod === 'deposit' && (
                         <p className="mt-1 text-xs text-gray-600">
-                          💰 Còn lại {remainingAmount.toLocaleString('vi-VN')} ₫ thanh toán khi nhận phòng
+                          💰 Còn lại {remainingAmount.toLocaleString('vi-VN')} ₫
+                          thanh toán khi nhận phòng
                         </p>
                       )}
                     </div>
@@ -502,6 +503,18 @@ export default function ConfirmationPage() {
 
             {/* Action Buttons */}
             <div className="mb-8 flex flex-col gap-3 sm:flex-row">
+              {/* View Site / Property Page */}
+              <Button
+                variant="outline"
+                className="flex-1 border-gray-200 hover:bg-gray-50"
+                onClick={() => {
+                  router.push(`/land/${property?.slug || property?._id}`);
+                }}
+              >
+                <MapPin className="mr-2 h-4 w-4" />
+                Xem trang địa điểm
+              </Button>
+
               {/* Show Complete Trip button for confirmed bookings after checkout */}
               {booking.status === 'confirmed' &&
                 new Date(booking.checkOut) < new Date() &&

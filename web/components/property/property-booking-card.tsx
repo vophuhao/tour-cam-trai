@@ -154,6 +154,24 @@ export function PropertyBookingCard({
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
+  // Calculate date restrictions based on property settings
+  const dateRestrictions = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // minimumAdvanceNotice: hours before check-in (default 24h)
+    const advanceNoticeHours = property.settings?.minimumAdvanceNotice ?? 24;
+    const earliestCheckIn = new Date(today);
+    earliestCheckIn.setHours(earliestCheckIn.getHours() + advanceNoticeHours);
+
+    // bookingWindow: days in advance that bookings are allowed (default 365)
+    const bookingWindowDays = property.settings?.bookingWindow ?? 365;
+    const latestCheckIn = new Date(today);
+    latestCheckIn.setDate(latestCheckIn.getDate() + bookingWindowDays);
+
+    return { earliestCheckIn, latestCheckIn };
+  }, [property.settings]);
+
   // Process blocked dates using useMemo
   const blockedDates = useMemo(() => {
     // Start with site-level blocked dates
@@ -252,6 +270,33 @@ export function PropertyBookingCard({
       return [...siteBlocked, ...propertyDisabledDates];
     }
   }, [siteAvailabilities, isUndesignated, sites, propertyDisabledDates]);
+
+  // Combine blocked dates with advance notice and booking window restrictions
+  const allDisabledDates = useMemo(() => {
+    const disabled = [...blockedDates];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Disable dates before earliest check-in (advance notice)
+    const current = new Date(today);
+    while (current < dateRestrictions.earliestCheckIn) {
+      disabled.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+
+    // Disable dates after latest check-in (booking window)
+    const futureDate = new Date(dateRestrictions.latestCheckIn);
+    futureDate.setDate(futureDate.getDate() + 1);
+    const farFuture = new Date(today);
+    farFuture.setFullYear(farFuture.getFullYear() + 2); // 2 years ahead
+
+    while (futureDate < farFuture) {
+      disabled.push(new Date(futureDate));
+      futureDate.setDate(futureDate.getDate() + 1);
+    }
+
+    return disabled;
+  }, [blockedDates, dateRestrictions]);
 
   // Calculate pricing range from available sites
   const prices = sites
@@ -418,13 +463,31 @@ export function PropertyBookingCard({
           <DateRangePopover
             dateRange={booking.dateRange}
             onDateChange={booking.setDateRange}
-            disabledDates={blockedDates}
+            disabledDates={allDisabledDates}
             open={datePopoverOpen}
             onOpenChange={setDatePopoverOpen}
             placeholder="Chọn ngày"
             buttonClassName="w-full"
             align="start"
           />
+          {/* Booking restrictions info */}
+          <div className="text-muted-foreground space-y-0.5 text-xs">
+            {property.settings?.minimumAdvanceNotice &&
+              property.settings.minimumAdvanceNotice > 0 && (
+                <p>
+                  📅 Đặt trước tối thiểu:{' '}
+                  {property.settings.minimumAdvanceNotice < 24
+                    ? `${property.settings.minimumAdvanceNotice} giờ`
+                    : `${Math.round(property.settings.minimumAdvanceNotice / 24)} ngày`}
+                </p>
+              )}
+            {property.settings?.bookingWindow &&
+              property.settings.bookingWindow < 365 && (
+                <p>
+                  🗓️ Đặt tối đa: {property.settings.bookingWindow} ngày trước
+                </p>
+              )}
+          </div>
         </div>
 
         {/* Guests Popover */}
