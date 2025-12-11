@@ -1,9 +1,8 @@
-
-import { Types } from "mongoose";
-import { getIO } from "@/socket";
-import UserModel from "@/models/user.model";
-import { Message, Conversation, ConversationDocument } from "@/models/directMessage.model";
 import { ErrorFactory } from "@/errors";
+import { Conversation, ConversationDocument, Message } from "@/models/directMessage.model";
+import UserModel from "@/models/user.model";
+import { getIO } from "@/socket";
+import { Types } from "mongoose";
 
 type SendMessagePayload = {
   message: string;
@@ -30,8 +29,8 @@ export default class DirectMessageService {
       UserModel.findById(user1Id),
       UserModel.findById(user2Id),
     ]);
-    const userO= await UserModel.findById(user1Id)
-    const userT=  await UserModel.findById(user2Id)
+    const userO = await UserModel.findById(user1Id);
+    const userT = await UserModel.findById(user2Id);
 
     if (!user1 || !user2) {
       throw ErrorFactory.resourceNotFound("User");
@@ -72,12 +71,14 @@ export default class DirectMessageService {
   /**
    * Gửi message
    */
-  async sendMessage(
-    conversationId: string,
-    senderId: string,
-    messageData: SendMessagePayload
-  ) {
-    const { message, messageType = "text", attachments = [], bookingRef = null, campsiteRef = null } = messageData;
+  async sendMessage(conversationId: string, senderId: string, messageData: SendMessagePayload) {
+    const {
+      message,
+      messageType = "text",
+      attachments = [],
+      bookingRef = null,
+      campsiteRef = null,
+    } = messageData;
 
     const convId = new Types.ObjectId(conversationId);
     const senderIdObj = new Types.ObjectId(senderId);
@@ -129,9 +130,9 @@ export default class DirectMessageService {
     try {
       const io = getIO();
       const roomName = `conversation:${conversationId}`;
-      
+
       io.to(roomName).emit("new_message", newMessage);
-      
+
       // Thông báo cho các participants
       conversation.participants.forEach((p) => {
         io.to(`user:${p.userId.toString()}`).emit("conversation_updated", {
@@ -171,7 +172,7 @@ export default class DirectMessageService {
       .skip(skip)
       .limit(limit)
       .populate("bookingRef", "code checkIn checkOut pricing")
-      .populate("campsiteRef", "name images pricing")
+      .populate("siteRef", "name photos pricing")
       .populate("senderId", "username avatar");
 
     const total = await Message.countDocuments({ conversationId: convId, isDeleted: false });
@@ -236,7 +237,7 @@ export default class DirectMessageService {
       .skip(skip)
       .limit(limit)
       .populate("participants.userId", "username avatarUrl")
-      .populate("campsiteRef", "name images")
+      .populate("siteRef", "name photos")
       .populate("bookingRef", "code status");
 
     const total = await Conversation.countDocuments({
