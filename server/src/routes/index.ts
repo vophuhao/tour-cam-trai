@@ -15,7 +15,7 @@ export { default as orderRoutes } from "./order.route";
 // Hipcamp-style routes
 export { amenityRoutes } from "./amenity.route";
 export { default as bookingRoutes } from "./booking.route";
-export { default as campsiteRoutes } from "./campsite.route";
+export { default as favoriteRoutes } from "./favorite.route";
 export { default as propertyRoutes } from "./property.route";
 export { default as reviewRoutes } from "./review.route";
 export { default as siteRoutes } from "./site.route";

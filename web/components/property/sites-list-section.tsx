@@ -207,10 +207,31 @@ export function SitesListSection({
       } else if (maximumNights && nights > maximumNights) {
         map.set(site._id, `Tối đa ${maximumNights} đêm`);
       }
+
+      // Check advance notice requirement
+      // const advanceNoticeHours = property.settings?.minimumAdvanceNotice ?? 24;
+      // const now = new Date();
+      // const checkInTime = new Date(booking.dateRange.from);
+      // const hoursDiff =
+      //   (checkInTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      // if (hoursDiff < advanceNoticeHours) {
+      //   const daysNotice = Math.ceil(advanceNoticeHours / 24);
+      //   map.set(site._id, `Cần đặt trước ${daysNotice} ngày`);
+      // }
+
+      // // Check booking window
+      // const bookingWindowDays = property.settings?.bookingWindow ?? 365;
+      // const daysDiff =
+      //   (checkInTime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+
+      // if (daysDiff > bookingWindowDays) {
+      //   map.set(site._id, `Chỉ đặt trong ${bookingWindowDays} ngày`);
+      // }
     });
 
     return map;
-  }, [sites, booking.dateRange, nights]);
+  }, [sites, booking.dateRange, nights, property.settings]);
 
   // Accommodation type labels
   const typeLabels: Record<string, string> = {
@@ -307,6 +328,24 @@ export function SitesListSection({
     return dates;
   }, [propertyBlockedDates]);
 
+  // Calculate date restrictions based on property settings
+  const dateRestrictions = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // minimumAdvanceNotice: hours before check-in (default 24h)
+    const advanceNoticeHours = property.settings?.minimumAdvanceNotice ?? 24;
+    const earliestCheckIn = new Date(today);
+    earliestCheckIn.setHours(earliestCheckIn.getHours() + advanceNoticeHours);
+
+    // bookingWindow: days in advance that bookings are allowed (default 365)
+    const bookingWindowDays = property.settings?.bookingWindow ?? 365;
+    const latestCheckIn = new Date(today);
+    latestCheckIn.setDate(latestCheckIn.getDate() + bookingWindowDays);
+
+    return { earliestCheckIn, latestCheckIn };
+  }, [property.settings]);
+
   // Process blocked dates for calendar display (same logic as property-booking-card)
   const blockedDates = useMemo(() => {
     const siteBlocked: Date[] = [];
@@ -392,6 +431,33 @@ export function SitesListSection({
     // Merge property-level and site-level blocked dates
     return [...siteBlocked, ...propertyDisabledDates];
   }, [siteAvailabilities, isUndesignated, sites, propertyDisabledDates]);
+
+  // Combine blocked dates with advance notice and booking window restrictions
+  const allDisabledDates = useMemo(() => {
+    const disabled = [...blockedDates];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Disable dates before earliest check-in (advance notice)
+    const current = new Date(today);
+    while (current < dateRestrictions.earliestCheckIn) {
+      disabled.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+
+    // Disable dates after latest check-in (booking window)
+    const futureDate = new Date(dateRestrictions.latestCheckIn);
+    futureDate.setDate(futureDate.getDate() + 1);
+    const farFuture = new Date(today);
+    farFuture.setFullYear(farFuture.getFullYear() + 2); // 2 years ahead
+
+    while (futureDate < farFuture) {
+      disabled.push(new Date(futureDate));
+      futureDate.setDate(futureDate.getDate() + 1);
+    }
+
+    return disabled;
+  }, [blockedDates, dateRestrictions]);
 
   // Separate query for checking site blocking in user's selected date range
   const selectedDateWindow = useMemo(() => {
@@ -552,7 +618,7 @@ export function SitesListSection({
               <DateRangePopover
                 dateRange={booking.dateRange}
                 onDateChange={booking.setDateRange}
-                disabledDates={blockedDates}
+                disabledDates={allDisabledDates}
                 open={datePopoverOpen}
                 onOpenChange={setDatePopoverOpen}
                 placeholder="Chọn ngày"

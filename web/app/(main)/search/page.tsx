@@ -169,7 +169,8 @@ async function PropertySearchContent({ searchParams }: SearchPageProps) {
   // Fetch data on server
   const response = await fetchProperties(normalizedParams);
   const properties = response.properties;
-  const totalResults = response.pagination.total;
+  const activeProperties = properties.filter(p => p.isActive);
+  const totalResults = activeProperties.length;
 
   // Extract search coordinates if available
   const searchCoordinates =
@@ -180,7 +181,7 @@ async function PropertySearchContent({ searchParams }: SearchPageProps) {
   return (
     <div className="w-full">
       <PropertyGrid
-        initialProperties={properties}
+        initialProperties={activeProperties}
         totalResults={totalResults}
         searchCoordinates={searchCoordinates}
       />

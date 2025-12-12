@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { FavoriteItem } from '@/store/favorite.store';
 import type { Booking } from '@/types/property-site';
 import apiClient from './api-client';
 
@@ -68,7 +69,12 @@ export const searchUsers = async (
 export const getUserStats = async (
   username: string,
 ): Promise<
-  ApiResponse<{ bookings: number; orders: number; reviews: number }>
+  ApiResponse<{
+    bookings: number;
+    orders: number;
+    reviews: number;
+    saves?: number;
+  }>
 > => apiClient.get(`/users/${username}/stats`);
 
 export const getUserReviews = async (username: string): Promise<ApiResponse> =>
@@ -192,93 +198,6 @@ export async function getProductsByCategoryName(
   );
 }
 
-// ================== REVIEW API ==================
-export async function getCampsiteReviews(
-  campsiteId: string,
-  page: number = 1,
-  limit: number = 10,
-): Promise<PaginatedResponse<any>> {
-  return apiClient.get(`/campsites/${campsiteId}/reviews`, {
-    params: { page, limit },
-  });
-}
-
-export async function getCampsiteReviewStats(campsiteId: string): Promise<
-  ApiResponse<{
-    totalReviews: number;
-    averageRating: number;
-    breakdown: Record<string, number>;
-    distribution: Record<number, number>;
-  }>
-> {
-  return apiClient.get(`/campsites/${campsiteId}/reviews/stats`);
-}
-
-// ================== CAMPSITE API ==================
-export async function searchCampsites(
-  params?: SearchCampsiteParams,
-): Promise<PaginatedResponse<Campsite>> {
-  const queryString = new URLSearchParams(
-    Object.entries(params || {}).reduce(
-      (acc, [key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          if (Array.isArray(value)) {
-            acc[key] = value.join(',');
-          } else {
-            acc[key] = String(value);
-          }
-        }
-        return acc;
-      },
-      {} as Record<string, string>,
-    ),
-  ).toString();
-
-  return apiClient.get(`/campsites${queryString ? `?${queryString}` : ''}`);
-}
-
-export async function getCampsite(
-  idOrSlug: string,
-): Promise<ApiResponse<Campsite>> {
-  return apiClient.get(`/campsites/${idOrSlug}`);
-}
-
-export async function createCampsite(
-  data: any,
-): Promise<ApiResponse<Campsite>> {
-  return apiClient.post('/campsites', data);
-}
-
-export async function updateCampsite(
-  id: string,
-  data: any,
-): Promise<ApiResponse<Campsite>> {
-  return apiClient.patch(`/campsites/${id}`, data);
-}
-
-export async function deleteCampsite(id: string): Promise<ApiResponse> {
-  return apiClient.delete(`/campsites/${id}`);
-}
-
-export async function getMyCampsites(): Promise<ApiResponse<Campsite[]>> {
-  return apiClient.get('/campsites/my/list');
-}
-
-export async function checkCampsiteAvailability(
-  id: string,
-  checkIn: string,
-  checkOut: string,
-): Promise<ApiResponse<{ isAvailable: boolean }>> {
-  return apiClient.get(
-    `/campsites/${id}/availability?checkIn=${checkIn}&checkOut=${checkOut}`,
-  );
-}
-
-// ================== ORDER API ==================
-export async function getAllOrders(): Promise<ApiResponse<Order[]>> {
-  return apiClient.get('/orders');
-}
-
 // ================== BOOKING API ==================
 export async function createBooking(data: {
   // NEW: Property-Site architecture (site is required)
@@ -339,12 +258,9 @@ export async function cancelBooking(
       bankType: string;
     };
   },
-
 ): Promise<ApiResponse<Booking>> {
   return apiClient.post(`/bookings/${bookingId}/cancel`, data);
 }
-
-
 
 export async function completeBooking(
   bookingId: string,
@@ -361,7 +277,6 @@ export async function refundBooking(
 export async function getAllAmenities(): Promise<ApiResponse<Amenity[]>> {
   return apiClient.get('/amenities');
 }
-
 
 // Deprecated: Activity model removed from backend
 // export async function getAllActivities(): Promise<ApiResponse<Activity[]>> {
@@ -569,7 +484,94 @@ export const getDashboardStats = async (type: string) => {
   return apiClient.get(`/dashboard/${type}`);
 };
 
-
-export const userCancelPayment = async (bookingId: string): Promise<ApiResponse> => {
+export const userCancelPayment = async (
+  bookingId: string,
+): Promise<ApiResponse> => {
   return apiClient.post(`/bookings/${bookingId}/cancel-payment`);
+};
+
+// ================== FAVORITE API ==================
+
+/**
+ * Add property to favorites
+ */
+export async function addPropertyToFavorites(
+  propertyId: string,
+  notes?: string,
+): Promise<ApiResponse<FavoriteItem>> {
+  return apiClient.post('/favorites', { property: propertyId, notes });
+}
+
+/**
+ * Add site to favorites
+ */
+export async function addSiteToFavorites(
+  siteId: string,
+  notes?: string,
+): Promise<ApiResponse<FavoriteItem>> {
+  return apiClient.post('/favorites', { site: siteId, notes });
+}
+
+/**
+ * Remove favorite by ID
+ */
+export async function removeFavorite(favoriteId: string): Promise<ApiResponse> {
+  return apiClient.delete(`/favorites/${favoriteId}`);
+}
+
+/**
+ * Remove property from favorites
+ */
+export async function removePropertyFromFavorites(
+  propertyId: string,
+): Promise<ApiResponse> {
+  return apiClient.delete(`/favorites/property/${propertyId}`);
+}
+
+/**
+ * Remove site from favorites
+ */
+export async function removeSiteFromFavorites(
+  siteId: string,
+): Promise<ApiResponse> {
+  return apiClient.delete(`/favorites/site/${siteId}`);
+}
+
+/**
+ * Get user's favorites with pagination
+ */
+export async function getUserFavorites(params?: {
+  type?: 'property' | 'site' | 'all';
+  page?: number;
+  limit?: number;
+}): Promise<PaginatedResponse<FavoriteItem>> {
+  return apiClient.get('/favorites', { params });
+}
+
+/**
+ * Check if property is favorited
+ */
+export async function isPropertyFavorited(
+  propertyId: string,
+): Promise<ApiResponse<{ isFavorited: boolean }>> {
+  return apiClient.get(`/favorites/check/property/${propertyId}`);
+}
+
+/**
+ * Check if site is favorited
+ */
+export async function isSiteFavorited(
+  siteId: string,
+): Promise<ApiResponse<{ isFavorited: boolean }>> {
+  return apiClient.get(`/favorites/check/site/${siteId}`);
+}
+
+/**
+ * Update favorite notes
+ */
+export async function updateFavoriteNotes(
+  favoriteId: string,
+  notes?: string,
+): Promise<ApiResponse<FavoriteItem>> {
+  return apiClient.patch(`/favorites/${favoriteId}/notes`, { notes });
 }

@@ -7,7 +7,6 @@ export const TOKENS = {
   AddressService: Symbol("AddressService"),
   OrderService: Symbol("OrderService"),
   CartService: Symbol("CartService"),
-  CampsiteService: Symbol("CampsiteService"),
   BookingService: Symbol("BookingService"),
   LocationService: Symbol("LocationService"),
   RatingService: Symbol("RatingService"),

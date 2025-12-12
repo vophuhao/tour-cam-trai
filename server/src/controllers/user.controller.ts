@@ -1,5 +1,5 @@
 import { catchErrors, ErrorFactory } from "@/errors";
-import { BookingModel, OrderModel, ReviewModel } from "@/models";
+import { BookingModel, FavoriteModel, OrderModel, ReviewModel } from "@/models";
 import HostModel from "@/models/host.modal";
 import { ResponseUtil, sendMail } from "@/utils";
 import UserModel from "../models/user.model";
@@ -292,12 +292,16 @@ export default class UserController {
     // Count reviews written by user
     const reviewsCount = await ReviewModel.countDocuments({ guest: user._id, isPublished: true });
 
+    // Count favorites (saved items) for the profile
+    const favoritesCount = await FavoriteModel.countDocuments({ user: user._id });
+
     return ResponseUtil.success(
       res,
       {
         bookings: bookingsCount,
         orders: ordersCount,
         reviews: reviewsCount,
+        saves: favoritesCount,
       },
       "Lấy thống kê user thành công"
     );

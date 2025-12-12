@@ -1,4 +1,4 @@
-import { LocationSection } from '@/components/campsite/location-section';
+import { LocationSection } from '@/components/property/location-section';
 import { NearbyAttractionsSection } from '@/components/property/nearby-attractions-section';
 import { PropertyBookingCard } from '@/components/property/property-booking-card';
 import { PropertyGallery } from '@/components/property/property-gallery';

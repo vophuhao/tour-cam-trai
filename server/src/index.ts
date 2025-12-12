@@ -13,6 +13,7 @@ import {
   authRoutes,
   bookingRoutes,
   categoryRoutes,
+  favoriteRoutes,
   mediaRoutes,
   orderRoutes,
   productRoutes,
@@ -52,14 +53,16 @@ cron.schedule("*/10 * * * *", async () => {
   await orderService.cancelExpiredOrders();
 });
 cron.schedule("0 * * * *", async () => {
-    console.log("🔄 Running booking cleanup job...");
-    try {
-      const result = await bookingService.cancelExpiredPendingBookings();
-      console.log(`✅ Cleanup completed: ${result.remindersSent} reminders, ${result.bookingsCancelled} cancelled`);
-    } catch (err) {
-      console.error("❌ Booking cleanup job failed:", err);
-    }
-  });
+  console.log("🔄 Running booking cleanup job...");
+  try {
+    const result = await bookingService.cancelExpiredPendingBookings();
+    console.log(
+      `✅ Cleanup completed: ${result.remindersSent} reminders, ${result.bookingsCancelled} cancelled`
+    );
+  } catch (err) {
+    console.error("❌ Booking cleanup job failed:", err);
+  }
+});
 cron.schedule("*/15 * * * *", async () => {
   try {
 
@@ -93,6 +96,7 @@ app.use("/rating", ratingRoutes);
 app.use("/bookings", bookingRoutes);
 app.use("/reviews", reviewRoutes);
 app.use("/amenities", amenityRoutes);
+app.use("/favorites", authenticate, favoriteRoutes);
 app.use("/properties", propertyRoutes);
 app.use("/sites", siteRoutes);
 app.use("/payos/webhook", payosRoutes);

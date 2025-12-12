@@ -23,7 +23,6 @@ export {
   type PropertyAvailabilityDocument,
 } from "./availability.model";
 export { BookingModel, type BookingDocument } from "./booking.model";
-export { CampsiteModel, type CampsiteDocument } from "./campsite.model";
 export { PropertyModel, type PropertyDocument } from "./property.model";
 export { ReviewModel, type ReviewDocument } from "./review.model";
 export { SiteModel, type SiteDocument } from "./site.model";

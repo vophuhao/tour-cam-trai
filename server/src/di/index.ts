@@ -4,7 +4,6 @@ import {
   AuthService,
   BookingService,
   // Hipcamp-style services
-  CampsiteService,
   CartService,
   CategoryService,
   OrderService,
@@ -43,7 +42,6 @@ container.register(
 );
 
 // Register Hipcamp-style services
-container.register(TOKENS.CampsiteService, () => new CampsiteService(), { singleton: true });
 container.register(TOKENS.BookingService, () => new BookingService(), { singleton: true });
 container.register(TOKENS.ReviewService, () => new ReviewService(), { singleton: true });
 container.register(TOKENS.AmenityService, () => new AmenityService(), { singleton: true });

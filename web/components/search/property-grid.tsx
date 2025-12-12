@@ -1,5 +1,6 @@
 'use client';
 
+import { FavoriteButton } from '@/components/property/FavoriteButton';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -125,6 +126,14 @@ export function PropertyGrid({
             >
               <Link href={buildPropertyLink(property.slug || property._id)}>
                 <div className="relative h-48 w-full overflow-hidden rounded-lg">
+                  {/* Favorite button (top-left) */}
+                  <div className="absolute top-3 left-3 z-20">
+                    <FavoriteButton
+                      propertyId={property._id}
+                      className="bg-white/90 backdrop-blur-sm hover:bg-white"
+                    />
+                  </div>
+
                   {/* View count badge (top-right) */}
                   <div className="absolute top-3 right-3 z-20">
                     <Badge

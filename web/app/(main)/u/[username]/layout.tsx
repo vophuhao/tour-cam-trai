@@ -59,7 +59,7 @@ export default function UserProfileLayout({
 
   const profile = data?.data as UserProfile | undefined;
   const stats = statsData?.data as
-    | { bookings: number; orders: number; reviews: number }
+    | { bookings: number; orders: number; reviews: number; saves?: number }
     | undefined;
   const isOwnProfile = currentUser?.username === username;
 
@@ -268,7 +268,7 @@ export default function UserProfileLayout({
                   </div>
                   <div className="mt-1 text-xs">Chuyến đi</div>
                 </Link>
-                {/* <Link
+                <Link
                   href={`/u/${username}/saves`}
                   className={`rounded-lg px-2 py-3 text-center transition-all ${
                     activeTab === 'saves'
@@ -276,9 +276,9 @@ export default function UserProfileLayout({
                       : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'
                   }`}
                 >
-                  <div className="text-lg font-bold">0</div>
+                  <div className="text-lg font-bold">{stats?.saves ?? 0}</div>
                   <div className="mt-1 text-xs">Đã lưu</div>
-                </Link> */}
+                </Link>
                 {isOwnProfile && (
                   <Link
                     href={`/u/${username}/orders`}

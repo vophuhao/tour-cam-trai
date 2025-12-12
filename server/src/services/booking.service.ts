@@ -1,4 +1,3 @@
-
 import { CLIENT_URL, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY, PAYOS_CLIENT_ID } from "@/constants";
 import { ErrorFactory } from "@/errors";
 import {
@@ -499,8 +498,28 @@ export class BookingService {
 
     if (blockedDates > 0) return false;
 
-    // Check overlapping bookings
-    const overlappingBooking = await BookingModel.findOne({
+    // Determine concurrency rules for this site (designated vs undesignated)
+    const site = await SiteModel.findById(siteId).select("capacity");
+    const maxConcurrent = (site && site.capacity && site.capacity.maxConcurrentBookings) || 1;
+
+    // For designated sites (maxConcurrent === 1) any overlapping booking blocks the slot
+    if (maxConcurrent === 1) {
+      const overlappingBooking = await BookingModel.findOne({
+        site: siteId,
+        status: { $in: ["pending", "confirmed"] },
+        $or: [
+          {
+            checkIn: { $lt: checkOutDate },
+            checkOut: { $gt: checkInDate },
+          },
+        ],
+      });
+
+      return !overlappingBooking;
+    }
+
+    // For undesignated sites (maxConcurrent > 1) allow bookings up to the concurrency limit
+    const overlappingCount = await BookingModel.countDocuments({
       site: siteId,
       status: { $in: ["pending", "confirmed"] },
       $or: [
@@ -511,7 +530,7 @@ export class BookingService {
       ],
     });
 
-    return !overlappingBooking;
+    return overlappingCount < maxConcurrent;
   }
 
   /**
@@ -1007,24 +1026,24 @@ export class BookingService {
   }
 
   /**
- * Auto complete bookings after checkout date and send completion emails
- */
+   * Auto complete bookings after checkout date and send completion emails
+   */
   async autoCompleteBooking() {
     try {
       const now = new Date();
 
       // Find all confirmed bookings where checkout date has passed
       const bookingsToComplete = await BookingModel.find({
-        status: 'confirmed',
-        paymentStatus: 'paid',
-        checkOut: { $lt: now }
+        status: "confirmed",
+        paymentStatus: "paid",
+        checkOut: { $lt: now },
       })
-        .populate('guest', 'username email fullName')
-        .populate('site', 'name')
-        .populate('property', 'name');
+        .populate("guest", "username email fullName")
+        .populate("site", "name")
+        .populate("property", "name");
 
       if (bookingsToComplete.length === 0) {
-        console.log('✅ Không có booking nào cần hoàn thành');
+        console.log("✅ Không có booking nào cần hoàn thành");
         return { completed: 0 };
       }
 
@@ -1033,7 +1052,7 @@ export class BookingService {
       for (const booking of bookingsToComplete) {
         try {
           // Update booking status to completed
-          booking.status = 'completed';
+          booking.status = "completed";
           await booking.save();
 
           // Unblock dates when booking is completed
@@ -1053,13 +1072,13 @@ export class BookingService {
               booking.fullnameGuest ||
               (booking.guest as any)?.fullName ||
               (booking.guest as any)?.username ||
-              'Quý khách';
-            const propertyName = (booking.property as any)?.name || 'Khu cắm trại';
-            const siteName = (booking.site as any)?.name || 'Site';
+              "Quý khách";
+            const propertyName = (booking.property as any)?.name || "Khu cắm trại";
+            const siteName = (booking.site as any)?.name || "Site";
 
             await sendMail({
               to: guestEmail,
-              subject: '🎉 Chuyến đi của bạn đã hoàn thành - Cảm ơn bạn!',
+              subject: "🎉 Chuyến đi của bạn đã hoàn thành - Cảm ơn bạn!",
               html: `
             <!DOCTYPE html>
             <html>
@@ -1118,8 +1137,8 @@ export class BookingService {
                     <h3 style="margin-top: 0; color: #10b981;">📋 Thông tin chuyến đi</h3>
                     <p><strong>Mã booking:</strong> ${booking.code}</p>
                     <p><strong>Địa điểm:</strong> ${siteName} - ${propertyName}</p>
-                    <p><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString('vi-VN')}</p>
-                    <p><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString('vi-VN')}</p>
+                    <p><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString("vi-VN")}</p>
+                    <p><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString("vi-VN")}</p>
                     <p><strong>Số đêm:</strong> ${booking.nights} đêm</p>
                     <p><strong>Số khách:</strong> ${booking.numberOfGuests} người</p>
                   </div>
@@ -1175,7 +1194,7 @@ export class BookingService {
         total: bookingsToComplete.length,
       };
     } catch (error) {
-      console.error('❌ Lỗi trong autoCompleteBooking:', error);
+      console.error("❌ Lỗi trong autoCompleteBooking:", error);
       throw error;
     }
   }
