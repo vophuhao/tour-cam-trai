@@ -65,7 +65,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       icon: BarChart,
      
     },
-    { name: 'Liên hệ', href: '/admin/contact', icon: Settings },
+    { name: 'Đánh giá', href: '/admin/ratings', icon: Settings },
     { name: 'Đăng xuất', icon: LogOut, action: handleLogout },
   ];
 

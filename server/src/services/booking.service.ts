@@ -108,8 +108,8 @@ export class BookingService {
     }
 
     // Check availability in calendar
-    //  const isAvailable = await this.checkAvailability(siteId, checkIn, checkOut);
-    //  appAssert(isAvailable, ErrorFactory.conflict("Site không có sẵn trong thời gian này"));
+    const isAvailable = await this.checkAvailability(siteId, checkIn, checkOut);
+    appAssert(isAvailable, ErrorFactory.conflict("Site không có sẵn trong thời gian này"));
 
     // Calculate pricing (from site)
     const pricing = this.calculatePricing(

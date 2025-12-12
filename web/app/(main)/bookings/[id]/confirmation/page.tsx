@@ -318,8 +318,7 @@ export default function ConfirmationPage() {
 
   // Check if cancellable (only pending/confirmed bookings can be cancelled)
   const isCancellable =
-    ['pending', 'confirmed'].includes(booking.status) &&
-    new Date(booking.checkIn) > new Date() &&
+    ['pending', 'confirmed'].includes(booking.status) && new Date(booking.checkIn) > new Date() &&
     booking.paymentStatus !== 'pending';
 
   // Calculate payment amounts

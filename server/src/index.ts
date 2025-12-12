@@ -61,7 +61,14 @@ cron.schedule("0 * * * *", async () => {
     }
   });
 cron.schedule("*/15 * * * *", async () => {
-  await bookingService.autoCompleteBooking();
+  try {
+
+     const result =   await bookingService.autoCompleteBooking();
+    console.log(`✅ ${result} bookings auto-completed.`);
+  } catch (err) {
+    console.error("❌ L?i khi g?i nh?c nh?:", err);
+  }
+ 
 });
 // health check
 app.get("/", (_, res) => {
