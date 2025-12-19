@@ -9,7 +9,7 @@ type SendMessagePayload = {
   messageType?: "text" | "image" | "file" | "booking" | "campsite";
   attachments?: Array<{ url: string; type: string; name?: string; size?: number }>;
   bookingRef?: string | null;
-  campsiteRef?: string | null;
+  siteRef?: string | null;
 };
 
 export default class DirectMessageService {
@@ -59,7 +59,7 @@ export default class DirectMessageService {
             avatarUrl: userT?.avatarUrl,
           },
         ],
-        campsiteRef: context?.campsiteId ? new Types.ObjectId(context.campsiteId) : null,
+        siteRef: context?.campsiteId ? new Types.ObjectId(context.campsiteId) : null,
         bookingRef: context?.bookingId ? new Types.ObjectId(context.bookingId) : null,
         createdBy: user1Id,
       });
@@ -77,7 +77,7 @@ export default class DirectMessageService {
       messageType = "text",
       attachments = [],
       bookingRef = null,
-      campsiteRef = null,
+      siteRef = null,
     } = messageData;
 
     const convId = new Types.ObjectId(conversationId);
@@ -103,7 +103,7 @@ export default class DirectMessageService {
       messageType,
       attachments,
       bookingRef: bookingRef ? new Types.ObjectId(bookingRef) : null,
-      campsiteRef: campsiteRef ? new Types.ObjectId(campsiteRef) : null,
+      siteRef: siteRef ? new Types.ObjectId(siteRef) : null,
     });
 
     // Cập nhật conversation
@@ -123,7 +123,7 @@ export default class DirectMessageService {
     await newMessage.populate([
       { path: "senderId", select: "username avatar _id" },
       { path: "bookingRef", select: "code checkIn checkOut pricing" },
-      { path: "campsiteRef", select: "name images pricing" },
+      { path: "siteRef", select: "name images pricing" },
     ]);
 
     // Emit socket events

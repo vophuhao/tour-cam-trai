@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -45,7 +46,7 @@ type Order = {
   payOSCheckoutUrl?: string;
   createdAt?: string;
   updatedAt?: string;
-  history?: { status: string; date: string; note?: string }[];
+  history?: { status: string; date: string; note?: string, images?: string[] }[];
 };
 
 const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
@@ -55,7 +56,7 @@ const statusConfig: Record<string, { label: string; color: string; bgColor: stri
   delivered: { label: "Đã giao", color: "text-green-700", bgColor: "bg-green-100" },
   completed: { label: "Hoàn thành", color: "text-purple-700", bgColor: "bg-purple-100" },
   cancelled: { label: "Đã hủy", color: "text-red-700", bgColor: "bg-red-100" },
-  cancel_request: { label: "Yêu cầu hủy", color: "text-orange-700", bgColor: "bg-orange-100" },
+  cancel_request: { label: "Yêu cầu trả hàng", color: "text-orange-700", bgColor: "bg-orange-100" },
 };
 
 const statusOrder = ["processing", "confirmed", "shipping", "delivered"];
@@ -74,7 +75,7 @@ export default function OrderDetail(): JSX.Element {
       setIsLoading(true);
       const res = await getOrderById(orderId);
       if (res?.success) {
-        setOrder(res.data);
+        setOrder(res.data || null);
       } else {
         toast.error("Không thể tải đơn hàng");
         router.back();
@@ -131,7 +132,7 @@ export default function OrderDetail(): JSX.Element {
       confirmed: "shipping",
       shipping: "delivered",
       delivered: "completed",
-      cancel_request: "cancelled",
+      
     };
     return current ? flow[current] : undefined;
   };
@@ -142,7 +143,8 @@ export default function OrderDetail(): JSX.Element {
       confirmed: "Bắt đầu giao hàng",
       shipping: "Đã giao hàng",
       delivered: "Hoàn thành",
-      cancel_request: "Xác nhận hủy",
+      cancel_request: "Xác nhận trả hàng",
+      cancelled : "Đơn đã hủy"
     };
     return current ? labels[current] : "Cập nhật";
   };
@@ -246,6 +248,7 @@ export default function OrderDetail(): JSX.Element {
       : undefined;
 
   const statusHistory = getStatusHistory();
+  const historyImages = order.history?.flatMap(h => h.images ?? []) ?? [];
 
   return (
     <main className="bg-gray-50 min-h-screen">
@@ -278,16 +281,32 @@ export default function OrderDetail(): JSX.Element {
                   </div>
                 </div>
               )}
+              {historyImages.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-semibold text-gray-800 mb-2">Hình ảnh liên quan:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {historyImages.map((image, index) => (
+                      <img
+                        key={index}
+                        src={image}
+                        alt={`Hình ảnh liên quan ${index + 1}`}
+                        className="w-24 h-24 object-cover rounded"
+                        onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder-product.jpg"; }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
 
-              {!["delivered", "cancelled", "completed"].includes(order.orderStatus ?? "") && (
+              {!["delivered", "cancelled", "completed", "cancel_request"].includes(order.orderStatus ?? "") && (
                 <div className="flex items-center gap-2">
                   {getNextStatus(order.orderStatus) && (
                     <button
                       onClick={() => handleUpdateStatus(getNextStatus(order.orderStatus)!)}
                       disabled={isUpdating}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition text-sm whitespace-nowrap"
+                      className="bg-primary cursor-pointer text-white px-4 py-2 rounded-lg hover:bg-primary-dark disabled:bg-gray-400 transition text-sm whitespace-nowrap"
                     >
-                      {isUpdating ? "⏳ Đang cập nhật..." : `✓ ${getNextLabel(order.orderStatus)}`}
+                      {isUpdating ? "⏳ Đang cập nhật..." : ` ${getNextLabel(order.orderStatus)}`}
                     </button>
                   )}
                 </div>

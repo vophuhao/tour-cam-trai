@@ -15,6 +15,7 @@ export const TOKENS = {
   DirectMessageService: Symbol("DirectMessageService"),
   PropertyService: Symbol("PropertyService"),
   SiteService: Symbol("SiteService"),
+  NotificationService: Symbol("NotificationService"),
 } as const;
 
 export type TokenMap = typeof TOKENS;

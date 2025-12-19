@@ -145,7 +145,7 @@ export default class DirectMessageController {
 
     const count = await this.messageService.getUnreadCount(userId.toString());
 
-    return ResponseUtil.success(res, { count }, "Unread count");
+    return ResponseUtil.success(res, { unreadCount: count }, "Unread count");
   });
 }
 

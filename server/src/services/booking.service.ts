@@ -1,4 +1,5 @@
 import { CLIENT_URL, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY, PAYOS_CLIENT_ID } from "@/constants";
+import { container, TOKENS } from "@/di";
 import { ErrorFactory } from "@/errors";
 import {
   AvailabilityModel,
@@ -14,6 +15,7 @@ import type {
   CreateBookingInput,
   SearchBookingInput,
 } from "@/validators/booking.validator";
+import NotificationService from "./notification.service";
 import mongoose from "mongoose";
 const { PayOS } = require("@payos/node");
 
@@ -188,6 +190,34 @@ export class BookingService {
       await booking.confirm();
     }
 
+    // Send notification to host about new booking
+    try {
+      const notificationService = container.resolve<NotificationService>(TOKENS.NotificationService);
+      const UserModel = (await import("@/models/user.model")).default;
+      const guest = await UserModel.findById(guestId);
+
+      await notificationService.createNewBookingForHost(
+        property.host.toString(),
+        booking._id!.toString(),
+        booking.code!,
+        guest?.username || fullnameGuest || "Khách",
+        property.name,
+        property._id!.toString()
+      );
+
+      // If instant book, also notify guest
+      if (site!.bookingSettings.instantBook) {
+        await notificationService.createBookingNotification(
+          guestId,
+          booking._id!.toString(),
+          booking.code!,
+          "booking_confirmed"
+        );
+      }
+    } catch (error) {
+      console.error("Failed to send booking notification:", error);
+    }
+
     return booking;
   }
 
@@ -298,6 +328,21 @@ export class BookingService {
     }
 
     await booking.confirm();
+
+    // Send notification to guest
+    try {
+      const notificationService = container.resolve<NotificationService>(TOKENS.NotificationService);
+      await notificationService.createBookingNotification(
+        booking.guest.toString(),
+        bookingId,
+        booking.code!,
+        "booking_confirmed",
+        hostMessage
+      );
+    } catch (error) {
+      console.error("Failed to send booking confirmation notification:", error);
+    }
+
     return booking;
   }
 
@@ -330,6 +375,37 @@ export class BookingService {
 
     // Unblock dates when booking is cancelled
     await this.unblockDatesForBooking(booking.site.toString(), booking.checkIn, booking.checkOut);
+
+    // Send notification
+    try {
+      const notificationService = container.resolve<NotificationService>(TOKENS.NotificationService);
+      const UserModel = (await import("@/models/user.model")).default;
+      const property = await PropertyModel.findById(booking.property);
+
+      if (isGuest) {
+        // Guest cancelled -> notify host
+        const guest = await UserModel.findById(userId);
+        await notificationService.createGuestCancelledForHost(
+          booking.host.toString(),
+          bookingId,
+          booking.code!,
+          guest?.username || "Khách",
+          property?.name || "Property",
+          input.cancellationReason
+        );
+      } else {
+        // Host cancelled -> notify guest
+        await notificationService.createBookingNotification(
+          booking.guest.toString(),
+          bookingId,
+          booking.code!,
+          "booking_cancelled",
+          `Booking đã bị hủy bởi host${input.cancellationReason ? `: ${input.cancellationReason}` : ""}`
+        );
+      }
+    } catch (error) {
+      console.error("Failed to send cancellation notification:", error);
+    }
 
     return booking;
   }
@@ -1064,6 +1140,41 @@ export class BookingService {
 
           completedCount++;
           console.log(`✅ Đã hoàn thành booking: ${booking.code}`);
+
+          // Send notification to guest and host
+          try {
+            const notificationService = container.resolve<NotificationService>(TOKENS.NotificationService);
+            const propertyName = (booking.property as any)?.name || "Property";
+            const guestName = booking.fullnameGuest || (booking.guest as any)?.username || "Khách";
+
+            // Notify guest - booking completed
+            await notificationService.createNotification({
+              recipient: booking.guest.toString(),
+              type: "system",
+              title: "Chuyến đi đã hoàn thành",
+              message: `Chuyến đi tại ${propertyName} đã hoàn thành. Hãy chia sẻ trải nghiệm của bạn!`,
+              booking: booking._id!.toString(),
+              link: `/bookings/${booking.code}/review`,
+              actionType: "view_booking",
+              priority: "medium",
+              role: "guest",
+              metadata: {
+                bookingCode: booking.code,
+                propertyName,
+              },
+            });
+
+            // Notify host - guest checked out
+            await notificationService.createGuestCheckedOutForHost(
+              booking.host.toString(),
+              booking._id!.toString(),
+              booking.code!,
+              guestName,
+              propertyName
+            );
+          } catch (notifError) {
+            console.error(`Failed to send completion notification for ${booking.code}:`, notifError);
+          }
 
           // Send completion email to guest
           try {

@@ -13,6 +13,9 @@ const messageRouter = Router();
 // Tất cả routes yêu cầu authentication
 messageRouter.use(authenticate);
 
+// Unread count - PHẢI ĐẶT TRƯỚC các route có :conversationId
+messageRouter.get("/unread-count", messageController.getUnreadCount);
+
 // Conversations
 messageRouter.post("/conversations", messageController.getOrCreateConversation);
 messageRouter.get("/conversations", messageController.getUserConversations);
@@ -23,8 +26,5 @@ messageRouter.put("/:conversationId/archive", messageController.archiveConversat
 messageRouter.post("/:conversationId", messageController.sendMessage);
 messageRouter.get("/:conversationId", messageController.getMessages);
 messageRouter.put("/:conversationId/read", messageController.markAsRead);
-
-// Unread count
-messageRouter.get("/unread-count", messageController.getUnreadCount);
 
 export default messageRouter;

@@ -3,8 +3,10 @@
 import { logout } from '@/lib/client-actions';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
+import { useUnreadCount } from '@/hooks/useNotification';
 import {
   BarChart,
+  Bell,
   Home,
   LogOut,
   Package,
@@ -18,6 +20,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 type MenuItem = {
   name: string;
@@ -37,6 +40,8 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const router = useRouter();
   const [hovered, setHovered] = useState<string | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const { data: unreadData } = useUnreadCount();
+  const unreadCount = unreadData?.unreadCount || 0;
 
   const handleLogout = async () => {
     const response = await logout();
@@ -65,6 +70,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       icon: BarChart,
      
     },
+    { name: 'Thông báo', href: '/admin/notifications', icon: Bell },
     { name: 'Đánh giá', href: '/admin/ratings', icon: Settings },
     { name: 'Đăng xuất', icon: LogOut, action: handleLogout },
   ];
@@ -115,7 +121,17 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
 
           const mainContent = (
             <div className="flex items-center gap-3 w-full">
-              <Icon className="h-5 w-5 flex-shrink-0" />
+              <div className="relative flex-shrink-0">
+                <Icon className="h-5 w-5" />
+                {item.name === 'Thông báo' && unreadCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center p-0 text-[10px]"
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Badge>
+                )}
+              </div>
               {!collapsed && <span className="flex-1">{item.name}</span>}
               {!collapsed && hasSubmenu && (
                 <span className="flex-shrink-0">

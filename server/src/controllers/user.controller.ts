@@ -4,6 +4,7 @@ import HostModel from "@/models/host.modal";
 import { ResponseUtil, sendMail } from "@/utils";
 import UserModel from "../models/user.model";
 import appAssert from "../utils/app-assert";
+import { NotificationService } from "@/services";
 
 export default class UserController {
   getUserHandler = catchErrors(async (req, res) => {
@@ -93,6 +94,27 @@ export default class UserController {
     const data = req.body;
     data.user = userId;
     await HostModel.create(data);
+
+    // Send notification to all admins
+    try {
+      const { container, TOKENS } = await import("@/di");
+      const NotificationService = (await import("@/services/notification.service")).default;
+      const notificationService = container.resolve<NotificationService>(TOKENS.NotificationService);
+      const user = await UserModel.findById(userId);
+      const admins = await UserModel.find({ role: "admin" });
+      
+      for (const admin of admins) {
+        await notificationService.createNewHostRequestForAdmin(
+          admin._id!.toString(),
+          userId!.toString(),
+          user?.username || "User",
+          user?.email || data.gmail
+        );
+      }
+    } catch (error) {
+      console.error("Failed to send host request notification to admin:", error);
+    }
+
     return ResponseUtil.success(res, null, "Đăng ký trở thành host thành công");
   });
 

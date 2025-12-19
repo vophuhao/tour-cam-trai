@@ -6,6 +6,7 @@ import {
   // Hipcamp-style services
   CartService,
   CategoryService,
+  NotificationService,
   OrderService,
   ProductService,
   PropertyService,
@@ -31,6 +32,7 @@ container.register(TOKENS.RatingService, () => new RatingService(), { singleton:
 container.register(TOKENS.DirectMessageService, () => new DirectMessageService(), {
   singleton: true,
 });
+container.register(TOKENS.NotificationService, () => new NotificationService(), { singleton: true });
 container.register(TOKENS.VerificationService, () => new VerificationService(), {
   singleton: true,
 });

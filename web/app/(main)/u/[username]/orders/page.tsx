@@ -4,7 +4,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createRating, getOrdersByUser, updateOrderStatus } from "@/lib/api";
+import { createRating, getOrdersByUser, updateOrderStatus, submitReturnRequest } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,10 +21,25 @@ import {
   Eye,
   RotateCcw,
   Tent,
+  Upload,
+  X,
+  Image as ImageIcon,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import RatingModal from "@/components/modals/RatingModal";
 import { toast } from "sonner";
+import { uploadMedia } from "@/lib/client-actions";
 
 const TABS = [
   { key: "all", label: "Tất cả", icon: ShoppingBag, color: "text-gray-600" },
@@ -34,6 +49,7 @@ const TABS = [
   { key: "shipping", label: "Vận chuyển", icon: Truck, color: "text-purple-600" },
   { key: "delivered", label: "Đã giao", icon: CheckCircle2, color: "text-teal-600" },
   { key: "completed", label: "Hoàn thành", icon: CheckCircle2, color: "text-emerald-600" },
+  { key: "cancel_request", label: "Yêu cầu trả hàng", icon: RotateCcw, color: "text-yellow-600" },
   { key: "cancelled", label: "Đã hủy", icon: XCircle, color: "text-red-600" },
 ];
 
@@ -44,6 +60,7 @@ const STATUS_CONFIG = {
   shipping: { label: "Đang giao", color: "bg-purple-100 text-purple-700 border-purple-200" },
   delivered: { label: "Đã giao", color: "bg-teal-100 text-teal-700 border-teal-200" },
   completed: { label: "Hoàn thành", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  cancel_request: { label: "Yêu cầu trả hàng", color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
   cancelled: { label: "Đã hủy", color: "bg-red-100 text-red-700 border-red-200" },
 };
 
@@ -51,6 +68,10 @@ export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState<string>("all");
   const [openModal, setOpenModal] = useState<boolean>(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [openReturnDialog, setOpenReturnDialog] = useState<boolean>(false);
+  const [returnReason, setReturnReason] = useState<string>("");
+  const [returnImages, setReturnImages] = useState<File[]>([]);
+  const [uploadingReturn, setUploadingReturn] = useState<boolean>(false);
 
   const queryClient = useQueryClient();
 
@@ -97,6 +118,28 @@ export default function OrdersPage() {
     },
   });
 
+  // Mutation cho return request
+  const returnRequestMutation = useMutation({
+    mutationFn: async ({ orderId, reason, images }: { orderId: string; reason: string; images: string[] }) => {
+      return submitReturnRequest(orderId, {
+        note: reason,
+        images: images,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Yêu cầu trả hàng đã được gửi!");
+      setOpenReturnDialog(false);
+      setReturnReason("");
+      setReturnImages([]);
+      setSelectedOrder(null);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Có lỗi xảy ra khi gửi yêu cầu");
+      console.error("Error submitting return request", error);
+    },
+  });
+
   const handleSubmitRating = async (data: any): Promise<void> => {
     try {
       await ratingMutation.mutateAsync(data);
@@ -122,6 +165,66 @@ export default function OrdersPage() {
 
   const handleViewDetail = (orderId: string) => () => {
     window.location.href = `/order/${orderId}`;
+  };
+
+  const handleReturn = (order: Order) => () => {
+    setSelectedOrder(order);
+    setOpenReturnDialog(true);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    
+    const newFiles = Array.from(files).slice(0, 5 - returnImages.length);
+    setReturnImages([...returnImages, ...newFiles]);
+  };
+
+  const removeImage = (index: number) => {
+    setReturnImages(returnImages.filter((_, i) => i !== index));
+  };
+
+  const handleSubmitReturn = async () => {
+    if (!selectedOrder) return;
+    if (!returnReason.trim()) {
+      toast.error("Vui lòng nhập lý do trả hàng");
+      return;
+    }
+
+    setUploadingReturn(true);
+    try {
+      // Upload images to cloudinary or your storage
+      const uploadedUrls: string[] = [];
+      
+      for (const file of returnImages) {
+        const formData = new FormData();
+        formData.append('files', file);
+        // This is a placeholder - replace with your actual upload endpoint
+        const response = await uploadMedia(formData);
+        if (!response.success) {
+          throw new Error('Upload failed');
+        }
+        else
+        {
+          // Nếu response.data là mảng, lấy phần tử đầu tiên
+          // Nếu là string, dùng trực tiếp
+          const url = Array.isArray(response.data) ? response.data[0] : response.data;
+          uploadedUrls.push(url);
+        }
+        
+      }
+
+      await returnRequestMutation.mutateAsync({
+        orderId: selectedOrder._id,
+        reason: returnReason,
+        images: uploadedUrls,
+      });
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      toast.error('Có lỗi xảy ra khi upload hình ảnh');
+    } finally {
+      setUploadingReturn(false);
+    }
   };
 
   const filtered = useMemo(() => {
@@ -359,11 +462,12 @@ export default function OrdersPage() {
                                   {updateStatusMutation.isPending ? "Đang xử lý..." : "Đã nhận"}
                                 </Button>
                                 <Button
+                                  onClick={handleReturn(order)}
                                   size="sm"
                                   className="bg-red-600 hover:bg-red-700 text-white font-semibold shadow-md h-8 text-xs"
                                 >
                                   <XCircle className="w-3.5 h-3.5 mr-1" />
-                                  Hủy đơn
+                                  Trả hàng
                                 </Button>
                               </>
                             )}
@@ -466,7 +570,8 @@ export default function OrdersPage() {
         ) : (
           <div className="space-y-3 pb-4">
             {filtered.map((order: Order, index: number) => {
-              const statusConfig = STATUS_CONFIG[order.orderStatus as keyof typeof STATUS_CONFIG];
+              const statusConfig = STATUS_CONFIG[order.orderStatus as keyof typeof STATUS_CONFIG] || 
+                { label: order.orderStatus, color: "bg-gray-100 text-gray-700 border-gray-200" };
 
               return (
                 <motion.div
@@ -595,11 +700,12 @@ export default function OrdersPage() {
                                 {updateStatusMutation.isPending ? "Đang xử lý..." : "Đã nhận"}
                               </Button>
                               <Button
+                                onClick={handleReturn(order)}
                                 size="sm"
                                 className="bg-red-600 hover:bg-red-700 text-white font-semibold shadow-md h-8 text-xs"
                               >
                                 <XCircle className="w-3.5 h-3.5 mr-1" />
-                                Hủy đơn
+                                Trả hàng
                               </Button>
                             </>
                           )}
@@ -637,6 +743,105 @@ export default function OrdersPage() {
           onSubmit={handleSubmitRating}
         />
       )}
+
+      {/* Return Dialog */}
+      <Dialog open={openReturnDialog} onOpenChange={setOpenReturnDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Yêu cầu trả hàng</DialogTitle>
+            <DialogDescription>
+              Đơn hàng: <span className="font-semibold">{selectedOrder?.code}</span>
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reason">Lý do trả hàng *</Label>
+              <Textarea
+                id="reason"
+                placeholder="Nhập lý do bạn muốn trả hàng..."
+                value={returnReason}
+                onChange={(e) => setReturnReason(e.target.value)}
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Hình ảnh minh chứng (tối đa 5 ảnh)</Label>
+              <div className="space-y-3">
+                {/* Preview images */}
+                {returnImages.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {returnImages.map((file, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg border"
+                        />
+                        <button
+                          onClick={() => removeImage(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload button */}
+                {returnImages.length < 5 && (
+                  <div>
+                    <Input
+                      id="images"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                    <Label
+                      htmlFor="images"
+                      className="flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                    >
+                      <Upload className="w-5 h-5 text-gray-400" />
+                      <span className="text-sm text-gray-600">
+                        Tải lên hình ảnh ({returnImages.length}/5)
+                      </span>
+                    </Label>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">
+                Hình ảnh giúp chúng tôi xử lý yêu cầu nhanh hơn
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setOpenReturnDialog(false);
+                setReturnReason("");
+                setReturnImages([]);
+                setSelectedOrder(null);
+              }}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={handleSubmitReturn}
+              disabled={uploadingReturn || returnRequestMutation.isPending || !returnReason.trim()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {uploadingReturn || returnRequestMutation.isPending ? "Đang gửi..." : "Gửi yêu cầu"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

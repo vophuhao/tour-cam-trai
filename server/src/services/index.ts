@@ -1,3 +1,4 @@
+
 export { default as AuthService } from "@/services/auth.service";
 
 export { default as CategoryService } from "@/services/category.service";
@@ -12,6 +13,7 @@ export { default as OrderService } from "@/services/order.service";
 
 export { default as CartService } from "@/services/cart.service";
 
+export { default as NotificationService } from "@/services/notification.service";
 // Hipcamp-style services
 export { AmenityService } from "@/services/amenity.service";
 export { BookingService } from "@/services/booking.service";

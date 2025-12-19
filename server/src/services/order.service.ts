@@ -5,6 +5,11 @@ import { OrderModel } from "@/models/order.model";
 import ProductModel from "@/models/product.model";
 import mongoose from "mongoose";
 
+import { TOKENS } from "@/di/tokens";
+import { container } from "@/di";
+import NotificationService from "./notification.service";
+
+
 const { PayOS } = require("@payos/node");
 
 const payos = new PayOS({
@@ -109,6 +114,26 @@ export default class OrderService {
 
       await session.commitTransaction();
       session.endSession();
+
+      // Send notification to all admins about new order
+      try {
+        const notificationService = container.resolve<NotificationService>(TOKENS.NotificationService);
+        const UserModel = (await import("@/models/user.model")).default;
+        const customer = await UserModel.findById(userId);
+        const admins = await UserModel.find({ role: "admin" });
+        
+        for (const admin of admins) {
+          await notificationService.createNewOrderForAdmin(
+            admin._id!.toString(),
+            order!._id!.toString(),
+            order!.code!,
+            customer?.username || "Khách hàng",
+            order!.grandTotal
+          );
+        }
+      } catch (error) {
+        console.error("Failed to send new order notification to admin:", error);
+      }
 
       return {
         success: true,
@@ -362,9 +387,129 @@ export default class OrderService {
 
     await order.save();
 
+    // Send notifications
+    try {
+      const notificationService = container.resolve<NotificationService>(TOKENS.NotificationService);
+      
+      // Map order status to notification type
+      const notificationTypeMap: Record<string, "order_confirmed" | "order_shipping" | "order_delivered" | "order_cancelled"> = {
+        confirmed: "order_confirmed",
+        shipping: "order_shipping",
+        delivered: "order_delivered",
+        cancelled: "order_cancelled",
+      };
+      
+      // Send notification to customer
+      const notificationType = notificationTypeMap[status];
+      if (notificationType) {
+        await notificationService.createOrderNotification(
+          order.user.toString(),
+          orderId,
+          order!.code!,
+          notificationType
+        );
+      }
+
+      // Send notification to admin when order is completed
+      if (status === "completed") {
+        const UserModel = (await import("@/models/user.model")).default;
+        const customer = await UserModel.findById(order.user);
+        const admins = await UserModel.find({ role: "admin" });
+        
+        for (const admin of admins) {
+          await notificationService.createNotification({
+            recipient: admin!._id!.toString(),
+            type: "order_delivered",
+            title: "Đơn hàng hoàn tất",
+            message: `Đơn hàng ${order.code} của ${customer?.username || "khách hàng"} đã hoàn tất`,
+            order: orderId,
+            link: `/admin/orders/${orderId}`,
+            actionType: "view_order",
+            priority: "medium",
+            role: "admin",
+            metadata: {
+              orderId,
+              orderCode: order.code,
+              customerName: customer?.username,
+            },
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to send order notification:", error);
+      // Don't throw - notification failure shouldn't break the order flow
+    }
+
     return {
       success: true,
       message: "Cập nhật trạng thái đơn hàng thành công",
+      order,
+    };
+  }
+
+  async submitReturnRequest(
+    orderId: string,
+    userId: string,
+    note: string,
+    images: string[]
+  ) {
+    const order = await OrderModel.findById(orderId);
+    
+    if (!order) {
+      return { success: false, message: "Đơn hàng không tồn tại" };
+    }
+
+    // Kiểm tra order thuộc về user
+    if (order.user.toString() !== userId) {
+      return { success: false, message: "Bạn không có quyền trả hàng này" };
+    }
+
+    // Chỉ cho phép trả hàng nếu đơn đã được giao
+    if (order.orderStatus !== "delivered" && order.orderStatus !== "completed") {
+      return { 
+        success: false, 
+        message: "Chỉ có thể yêu cầu trả hàng khi đơn hàng đã được giao" 
+      };
+    }
+
+    // Cập nhật trạng thái sang cancel_request
+    order.orderStatus = "cancel_request";
+
+    // Thêm vào history
+    order.history.push({
+      status: "cancel_request",
+      date: new Date(),
+      note: note,
+      images: images,
+    });
+
+    await order.save();
+
+    // Send notification to admin about return request
+    try {
+      const notificationService = container.resolve<NotificationService>(TOKENS.NotificationService);
+      const UserModel = (await import("@/models/user.model")).default;
+      const user = await UserModel.findById(userId);
+      
+      // Find all admin users
+      const admins = await UserModel.find({ role: "admin" });
+      
+      // Send notification to all admins
+      for (const admin of admins) {
+        await notificationService.createReturnRequestNotification(
+          admin!._id!.toString(),
+          orderId,
+          order!.code!,
+          user?.username || "Khách hàng"
+        );
+      }
+    } catch (error) {
+      console.error("Failed to send return request notification:", error);
+    }
+
+    return {
+      success: true,
+      message: "Yêu cầu trả hàng đã được gửi, chúng tôi sẽ xử lý trong thời gian sớm nhất",
       order,
     };
   }

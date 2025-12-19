@@ -24,4 +24,6 @@ router.post("/:orderId/cancel", authenticate, orderController.cancelOrder);
 
 router.post("/:orderId/update-status", orderController.updateOrderStatus);
 
+router.post("/:orderId/return-request", authenticate, orderController.submitReturnRequest);
+
 export default router;

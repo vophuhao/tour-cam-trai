@@ -1,3 +1,4 @@
+import { container, TOKENS } from "@/di";
 import { ErrorFactory } from "@/errors";
 import { BookingModel, PropertyModel, ReviewModel, SiteModel, type ReviewDocument } from "@/models";
 import appAssert from "@/utils/app-assert";
@@ -6,6 +7,7 @@ import type {
   HostResponseInput,
   SearchReviewInput,
 } from "@/validators/review.validator";
+import NotificationService from "./notification.service";
 
 export class ReviewService {
   /**
@@ -64,6 +66,35 @@ export class ReviewService {
       this.updateSiteRating(booking!.site.toString()),
     ]);
 
+    // Send notification to host about new review
+    try {
+      const notificationService = container.resolve<NotificationService>(TOKENS.NotificationService);
+      const UserModel = (await import("@/models/user.model")).default;
+      const property = await PropertyModel.findById(booking!.property);
+      const guest = await UserModel.findById(guestId);
+      
+      // Calculate average rating across property and site ratings
+      const avgRating = (
+        (propertyRatings.location || 0) +
+        (propertyRatings.communication || 0) +
+        (propertyRatings.value || 0) +
+        (siteRatings.cleanliness || 0) +
+        (siteRatings.accuracy || 0) +
+        (siteRatings.amenities || 0)
+      ) / 6;
+
+      await notificationService.createNewReviewForHost(
+        booking!.host.toString(),
+        review._id!.toString(),
+        booking!.property.toString(),
+        property?.name || "Property",
+        guest?.username || "Khách",
+        Math.round(avgRating * 10) / 10
+      );
+    } catch (error) {
+      console.error("Failed to send review notification:", error);
+    }
+
     return review;
   }
 
@@ -95,9 +126,27 @@ export class ReviewService {
       review!.host.toString() === hostId,
       ErrorFactory.forbidden("Bạn không phải host của review này")
     );
-    appAssert(review!.hostResponse != null, ErrorFactory.conflict("Review này đã có response"));
+    appAssert(!review!.hostResponse, ErrorFactory.conflict("Review này đã có response"));
 
     await review!.addHostResponse(input.comment);
+
+    // Send notification to guest about host response
+    try {
+      const notificationService = container.resolve<NotificationService>(TOKENS.NotificationService);
+      await notificationService.createNotification({
+        recipient: review!.guest.toString(),
+        type: "review_reply",
+        title: "Host đã phản hồi đánh giá",
+        message: "Host đã phản hồi đánh giá của bạn",
+        review: reviewId,
+        link: `/reviews/${reviewId}`,
+        actionType: "view_review",
+        priority: "low",
+        role: "guest",
+      });
+    } catch (error) {
+      console.error("Failed to send review reply notification:", error);
+    }
     return review!;
   }
 
@@ -400,7 +449,7 @@ export class ReviewService {
     reviews.forEach((review) => {
       const rating = Math.floor(review.overallRating);
       if (rating >= 1 && rating <= 5) {
-        distribution[rating - 1] += 1;
+        distribution[rating - 1]! += 1;
       }
     });
 
@@ -435,7 +484,7 @@ export class ReviewService {
     reviews.forEach((review) => {
       const rating = Math.floor(review.overallRating);
       if (rating >= 1 && rating <= 5) {
-        distribution[rating - 1] += 1;
+        distribution[rating - 1]! += 1;
       }
     });
 

@@ -218,6 +218,12 @@ export const updateOrderStatus = async (
 ): Promise<ApiResponse> =>
   API.post(`/orders/${orderId}/update-status`, { status });
 
+export const submitReturnRequest = async (
+  orderId: string,
+  data: { note: string; images: string[] }
+): Promise<ApiResponse> =>
+  API.post(`/orders/${orderId}/return-request`, data);
+
 export const getOrderById = async (
   orderId: string,
 ): Promise<ApiResponse<Order>> => API.get(`/orders/${orderId}`);

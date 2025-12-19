@@ -26,6 +26,7 @@ import cartRoutes from "./routes/cart.route";
 import dashboardHRoutes from "./routes/dashbardH.route";
 import dashboardRoutes from "./routes/dashboard.route";
 import supportRouter from "./routes/directMessage.route";
+import notificationRoutes from "./routes/notification.route";
 import payosRoutes from "./routes/payos.route,";
 import ratingRoutes from "./routes/rating.route";
 import { BookingService, OrderService } from "./services";
@@ -66,7 +67,7 @@ cron.schedule("0 * * * *", async () => {
 cron.schedule("*/15 * * * *", async () => {
   try {
 
-     const result =   await bookingService.autoCompleteBooking();
+    const result =   await bookingService.autoCompleteBooking();
     console.log(`✅ ${result} bookings auto-completed.`);
   } catch (err) {
     console.error("❌ L?i khi g?i nh?c nh?:", err);
@@ -92,6 +93,7 @@ app.use("/cart", authenticate, cartRoutes);
 app.use("/address", authenticate, addressRoutes);
 app.use("/support", authenticate, supportRouter);
 app.use("/orders", authenticate, orderRoutes);
+app.use("/notifications", notificationRoutes);
 app.use("/rating", ratingRoutes);
 app.use("/bookings", bookingRoutes);
 app.use("/reviews", reviewRoutes);

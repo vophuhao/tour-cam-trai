@@ -42,6 +42,7 @@ export interface OrderDocument extends Document {
         status: String,
         date: Date,
         note?: String,
+        images? : String[]
       },
     ],
 }
@@ -111,6 +112,7 @@ const orderSchema = new Schema<OrderDocument>(
         status: { type: String, required: true },
         date: { type: Date, required: true, default: Date.now },
         note: String,
+        images : [String]
       },
     ],
   },

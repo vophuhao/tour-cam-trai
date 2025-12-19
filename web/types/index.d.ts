@@ -264,6 +264,7 @@ declare interface Order {
     | 'completed'
     | 'cancelled';
   payOSOrderCode?: number;
+  history: { status: string; date: string; note?: string, images?: string[] }[];
   payOSCheckoutUrl?: string;
   createdAt: string;
   updatedAt: string;

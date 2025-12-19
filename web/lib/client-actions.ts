@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FavoriteItem } from '@/store/favorite.store';
 import type { Booking } from '@/types/property-site';
@@ -574,4 +575,9 @@ export async function updateFavoriteNotes(
   notes?: string,
 ): Promise<ApiResponse<FavoriteItem>> {
   return apiClient.patch(`/favorites/${favoriteId}/notes`, { notes });
+}
+
+
+export async function getAllOrders(): Promise<ApiResponse> {
+  return apiClient.get('/orders');
 }

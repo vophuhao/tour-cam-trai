@@ -3,8 +3,11 @@
 import { logout } from '@/lib/client-actions';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
+import { useUnreadCount } from '@/hooks/useNotification';
+import { useUnreadMessagesCount } from '@/hooks/useUnreadMessagesCount';
 import {
   BarChart,
+  Bell,
   Calendar,
   ChevronDown,
   ChevronRight,
@@ -18,6 +21,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 type MenuItem = {
   name: string;
@@ -37,6 +41,10 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const router = useRouter();
   const [hovered, setHovered] = useState<string | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const { data: unreadData } = useUnreadCount();
+  const unreadCount = unreadData?.unreadCount || 0;
+  const { data: unreadMessagesData } = useUnreadMessagesCount();
+  const unreadMessagesCount = unreadMessagesData?.unreadCount || 0;
 
   const handleLogout = async () => {
     const response = await logout();
@@ -57,6 +65,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     { name: 'Dashboard', href: '/host', icon: Home },
     { name: 'Booking & Lịch', href: '/host/bookings', icon: Calendar },
     { name: 'Khu đất', href: '/host/properties', icon: Tent },
+    { name: 'Thông báo', href: '/host/notifications', icon: Bell },
     { name: 'Đánh giá', href: '/host/reviews', icon: Star },
     { name: 'Hỗ trợ', href: '/host/support', icon: MessageSquare },
     { name: 'Đăng xuất', icon: LogOut, action: handleLogout },
@@ -108,7 +117,25 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
 
           const mainContent = (
             <div className="flex w-full items-center gap-3">
-              <Icon className="h-5 w-5 flex-shrink-0" />
+              <div className="relative flex-shrink-0">
+                <Icon className="h-5 w-5" />
+                {item.name === 'Thông báo' && unreadCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center p-0 text-[10px]"
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Badge>
+                )}
+                {item.name === 'Hỗ trợ' && unreadMessagesCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center p-0 text-[10px]"
+                  >
+                    {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+                  </Badge>
+                )}
+              </div>
               {!collapsed && <span className="flex-1">{item.name}</span>}
               {!collapsed && hasSubmenu && (
                 <span className="flex-shrink-0">

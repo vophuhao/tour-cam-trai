@@ -25,6 +25,17 @@ export default function ConversationsList() {
   const [searching, setSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
 
+  const formatLastMessage = (message: string) => {
+    if (!message || message.trim() === '') {
+      return '📷 Hình ảnh';
+    }
+    // Check if message contains image URLs
+    if (message.includes('cloudinary.com') || message.startsWith('http')) {
+      return '📷 Hình ảnh';
+    }
+    return message || 'Bắt đầu trò chuyện...';
+  };
+
   const loadConversations = useCallback(async () => {
     if (!user) return;
 
@@ -414,7 +425,7 @@ export default function ConversationsList() {
                               <p
                                 className={`mt-0.5 truncate text-xs ${hasUnread ? 'font-medium text-gray-600' : 'text-gray-500'}`}
                               >
-                                {conv.lastMessage || 'Bắt đầu trò chuyện...'}
+                                {formatLastMessage(conv.lastMessage)}
                               </p>
                             </div>
                           </button>
