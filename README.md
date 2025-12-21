@@ -1,12 +1,13 @@
-🌲 XÂY DỰNG WEBSITE HỖ TRỢ ĐẶT ĐỊA ĐIỂM TÍCH HỢP BÁN SẢN PHẨM CẮM TRẠI
-📌 Giới thiệu
+XÂY DỰNG WEBSITE HỖ TRỢ ĐẶT ĐỊA ĐIỂM TÍCH HỢP BÁN SẢN PHẨM CẮM TRẠI
+
+Giới thiệu
 
 Dự án xây dựng một nền tảng website hỗ trợ người dùng tìm kiếm – đánh giá – đặt chỗ các địa điểm cắm trại, đồng thời tích hợp bán các sản phẩm phục vụ cắm trại.
 Hệ thống cho phép người dùng đăng ký trở thành Host để đăng tải và quản lý các địa điểm cắm trại của mình, tạo nên một hệ sinh thái kết nối giữa người đi cắm trại – chủ khu cắm trại – nhà cung cấp sản phẩm.
 
 Website hướng đến việc trở thành nền tảng “tất cả trong một” cho những người yêu thích du lịch dã ngoại và cắm trại tại Việt Nam.
 
-🎯 Mục tiêu
+Mục tiêu
 
 Cung cấp nền tảng trực tuyến tập trung cho việc đặt địa điểm cắm trại.
 
@@ -16,7 +17,7 @@ Cho phép người dùng đăng ký vai trò Host và quản lý địa điểm 
 
 Nâng cao trải nghiệm người dùng với giao diện thân thiện, dễ sử dụng.
 
-👥 Đối tượng sử dụng
+Đối tượng sử dụng
 
 User: Tìm kiếm, xem chi tiết, đánh giá, đặt chỗ địa điểm cắm trại và mua sản phẩm.
 
@@ -24,7 +25,8 @@ Host: Đăng ký trở thành chủ địa điểm, đăng tải và quản lý 
 
 Admin (mở rộng): Quản lý hệ thống, người dùng và nội dung.
 
-⚙️ Công nghệ sử dụng
+Công nghệ sử dụng
+
 Frontend
 
 Next.js: Xây dựng giao diện hiện đại, tối ưu SEO và hiệu năng.
@@ -49,7 +51,7 @@ Cloudinary: Lưu trữ hình ảnh địa điểm và sản phẩm.
 
 PayOS (tích hợp): Thanh toán trực tuyến.
 
-🔑 Chức năng chính
+Chức năng chính
 Người dùng
 
 Đăng ký / đăng nhập tài khoản.
@@ -70,7 +72,7 @@ Quản lý lịch đặt chỗ và thông tin địa điểm.
 
 Theo dõi đánh giá từ người dùng.
 
-🚀 Hướng phát triển
+Hướng phát triển
 
 Tích hợp diễn đàn cộng đồng camping.
 
