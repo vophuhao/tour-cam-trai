@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getOrderById, updateOrderStatus } from "@/lib/api";
+import { getOrderById, updateOrderStatus, approveRefundRequest, rejectRefundRequest, adminCancelOrder } from "@/lib/api";
 import { JSX } from "react/jsx-dev-runtime";
 
 type OrderItem = {
@@ -56,7 +56,10 @@ const statusConfig: Record<string, { label: string; color: string; bgColor: stri
   delivered: { label: "Đã giao", color: "text-green-700", bgColor: "bg-green-100" },
   completed: { label: "Hoàn thành", color: "text-purple-700", bgColor: "bg-purple-100" },
   cancelled: { label: "Đã hủy", color: "text-red-700", bgColor: "bg-red-100" },
-  cancel_request: { label: "Yêu cầu trả hàng", color: "text-orange-700", bgColor: "bg-orange-100" },
+  cancel_request: { label: "Yêu cầu hủy", color: "text-orange-700", bgColor: "bg-orange-100" },
+  refund_request: { label: "Yêu cầu trả hàng", color: "text-pink-700", bgColor: "bg-pink-100" },
+  refunded: { label: "Đã hoàn tiền", color: "text-teal-700", bgColor: "bg-teal-100" },
+  refund_rejected: { label: "Từ chối trả hàng", color: "text-rose-700", bgColor: "bg-rose-100" },
 };
 
 const statusOrder = ["processing", "confirmed", "shipping", "delivered"];
@@ -132,7 +135,7 @@ export default function OrderDetail(): JSX.Element {
       confirmed: "shipping",
       shipping: "delivered",
       delivered: "completed",
-      
+
     };
     return current ? flow[current] : undefined;
   };
@@ -144,7 +147,7 @@ export default function OrderDetail(): JSX.Element {
       shipping: "Đã giao hàng",
       delivered: "Hoàn thành",
       cancel_request: "Xác nhận trả hàng",
-      cancelled : "Đơn đã hủy"
+      cancelled: "Đơn đã hủy"
     };
     return current ? labels[current] : "Cập nhật";
   };
@@ -152,18 +155,18 @@ export default function OrderDetail(): JSX.Element {
   const handleUpdateStatus = async (newStatus: string) => {
     const currentLabel = statusConfig[order?.orderStatus || ""]?.label || "";
     const newLabel = statusConfig[newStatus]?.label || "";
-    
+
     if (!window.confirm(`Bạn có chắc muốn cập nhật trạng thái từ "${currentLabel}" sang "${newLabel}"?`)) return;
-    
+
     try {
       setIsUpdating(true);
       const res = await updateOrderStatus(orderId!, newStatus);
-      
+
       if (res?.success) {
         // Cập nhật state local ngay lập tức
         setOrder(prevOrder => {
           if (!prevOrder) return null;
-          
+
           const updatedOrder = {
             ...prevOrder,
             orderStatus: newStatus,
@@ -176,10 +179,10 @@ export default function OrderDetail(): JSX.Element {
               }
             ]
           };
-          
+
           return updatedOrder;
         });
-        
+
         toast.success(`Đã cập nhật sang "${newLabel}"`);
       } else {
         toast.error(res?.message || "Cập nhật thất bại");
@@ -194,8 +197,80 @@ export default function OrderDetail(): JSX.Element {
 
   const getCurrentStatusIndex = (status?: string) => {
     if (!status) return -1;
-    if (status === "cancelled" || status === "cancel_request" || status === "completed") return -1;
+    if (status === "cancelled" || status === "cancel_request" || status === "completed" || status === "refund_request" || status === "refunded" || status === "refund_rejected") return -1;
     return statusOrder.indexOf(status);
+  };
+
+  const handleApproveRefund = async () => {
+    const note = prompt("Nhập ghi chú (không bắt buộc):");
+    if (note === null) return; // User cancelled
+
+    if (!window.confirm("Bạn có chắc muốn duyệt yêu cầu trả hàng này?")) return;
+
+    try {
+      setIsUpdating(true);
+      const res = await approveRefundRequest(orderId!, note || undefined);
+
+      if (res?.success) {
+        toast.success("Đã duyệt yêu cầu trả hàng");
+        await loadOrder();
+      } else {
+        toast.error(res?.message || "Duyệt yêu cầu thất bại");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi khi duyệt yêu cầu trả hàng");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleRejectRefund = async () => {
+    const note = prompt("Nhập lý do từ chối (không bắt buộc):");
+    if (note === null) return; // User cancelled
+
+    if (!window.confirm("Bạn có chắc muốn từ chối yêu cầu trả hàng này?")) return;
+
+    try {
+      setIsUpdating(true);
+      const res = await rejectRefundRequest(orderId!, note || undefined);
+
+      if (res?.success) {
+        toast.success("Đã từ chối yêu cầu trả hàng");
+        await loadOrder();
+      } else {
+        toast.error(res?.message || "Từ chối yêu cầu thất bại");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi khi từ chối yêu cầu trả hàng");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleAdminCancel = async () => {
+    const note = prompt("Nhập lý do hủy đơn (không bắt buộc):");
+    if (note === null) return; // User cancelled
+
+    if (!window.confirm("Bạn có chắc muốn hủy đơn hàng này? Số lượng sản phẩm sẽ được hoàn trả về kho.")) return;
+
+    try {
+      setIsUpdating(true);
+      const res = await adminCancelOrder(orderId!, note || undefined);
+
+      if (res?.success) {
+        toast.success("Đã hủy đơn hàng");
+        await loadOrder();
+      } else {
+        toast.error(res?.message || "Hủy đơn thất bại");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi khi hủy đơn hàng");
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const getStatusHistory = () => {
@@ -217,6 +292,7 @@ export default function OrderDetail(): JSX.Element {
       };
     });
   };
+  console.log("Order Data:", order);
 
   if (isLoading) {
     return (
@@ -297,18 +373,51 @@ export default function OrderDetail(): JSX.Element {
                   </div>
                 </div>
               )}
-
-              {!["delivered", "cancelled", "completed", "cancel_request"].includes(order.orderStatus ?? "") && (
-                <div className="flex items-center gap-2">
-                  {getNextStatus(order.orderStatus) && (
+              <div className="flex items-center gap-2">
+                {/* Update Status Button */}
+                {!["delivered", "cancelled", "completed", "cancel_request"].includes(order.orderStatus ?? "") &&
+                  getNextStatus(order.orderStatus) && (
                     <button
                       onClick={() => handleUpdateStatus(getNextStatus(order.orderStatus)!)}
                       disabled={isUpdating}
-                      className="bg-primary cursor-pointer text-white px-4 py-2 rounded-lg hover:bg-primary-dark disabled:bg-gray-400 transition text-sm whitespace-nowrap"
+                      className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark 
+                   disabled:bg-gray-400 transition text-sm whitespace-nowrap"
                     >
-                      {isUpdating ? "⏳ Đang cập nhật..." : ` ${getNextLabel(order.orderStatus)}`}
+                      {isUpdating ? "⏳ Đang cập nhật..." : getNextLabel(order.orderStatus)}
                     </button>
                   )}
+
+                {/* Admin Cancel Order Button */}
+                {order.paymentStatus !== "paid" &&
+                  ["pending", "processing"].includes(order.orderStatus ?? "") && (
+                    <button
+                      onClick={handleAdminCancel}
+                      disabled={isUpdating}
+                      className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 
+                   disabled:bg-gray-400 transition text-sm whitespace-nowrap"
+                    >
+                      {isUpdating ? "⏳ Đang xử lý..." : "Hủy đơn"}
+                    </button>
+                  )}
+              </div>
+
+              {/* Refund Request Action Buttons - Only when status is refund_request */}
+              {order.orderStatus === "refund_request" && (
+                <div className="mt-3 flex gap-3">
+                  <button
+                    onClick={handleApproveRefund}
+                    disabled={isUpdating}
+                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition text-sm"
+                  >
+                    {isUpdating ? "⏳ Đang xử lý..." : "Duyệt yêu cầu"}
+                  </button>
+                  <button
+                    onClick={handleRejectRefund}
+                    disabled={isUpdating}
+                    className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-400 transition text-sm"
+                  >
+                    {isUpdating ? "⏳ Đang xử lý..." : "Từ chối yêu cầu"}
+                  </button>
                 </div>
               )}
             </div>

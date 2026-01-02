@@ -296,6 +296,7 @@ export default class OrderService {
       | "processing"
       | "confirmed"
       | "shipping"
+      | "delivered"
       | "completed"
       | "cancelled";
 
@@ -303,7 +304,8 @@ export default class OrderService {
       pending: "processing",
       processing: "confirmed",
       confirmed: "shipping",
-      shipping: "completed",
+      shipping: "delivered",
+      delivered: "completed",
       completed: null,
       cancelled: null,
     };
@@ -319,6 +321,8 @@ export default class OrderService {
     }
 
     order.orderStatus = next;
+    if (next === "delivered") 
+      order.paymentStatus = "paid";
     await order.save();
 
     return {
@@ -472,12 +476,12 @@ export default class OrderService {
       };
     }
 
-    // Cập nhật trạng thái sang cancel_request
-    order.orderStatus = "cancel_request";
+    // Cập nhật trạng thái sang refund_request
+    order.orderStatus = "refund_request";
 
     // Thêm vào history
     order.history.push({
-      status: "cancel_request",
+      status: "refund_request",
       date: new Date(),
       note: note,
       images: images,
@@ -511,6 +515,178 @@ export default class OrderService {
       success: true,
       message: "Yêu cầu trả hàng đã được gửi, chúng tôi sẽ xử lý trong thời gian sớm nhất",
       order,
+    };
+  }
+
+  async approveRefundRequest(orderId: string, note?: string) {
+    const order = await OrderModel.findById(orderId);
+    
+    if (!order) {
+      return { success: false, message: "Đơn hàng không tồn tại" };
+    }
+
+    if (order.orderStatus !== "refund_request") {
+      return { 
+        success: false, 
+        message: "Đơn hàng không ở trạng thái yêu cầu trả hàng" 
+      };
+    }
+
+    // Cập nhật trạng thái sang refunded
+    order.orderStatus = "refunded";
+
+    // Thêm vào history
+    order.history.push({
+      status: "refunded",
+      date: new Date(),
+      note: note || "Admin đã duyệt yêu cầu trả hàng",
+    });
+
+    await order.save();
+    return {
+      success: true,
+      message: "Đã duyệt yêu cầu trả hàng",
+      order,
+    };
+  }
+
+  async rejectRefundRequest(orderId: string, note?: string) {
+    const order = await OrderModel.findById(orderId);
+    
+    if (!order) {
+      return { success: false, message: "Đơn hàng không tồn tại" };
+    }
+
+    if (order.orderStatus !== "refund_request") {
+      return { 
+        success: false, 
+        message: "Đơn hàng không ở trạng thái yêu cầu trả hàng" 
+      };
+    }
+
+    // Cập nhật trạng thái sang refund_rejected, quay về delivered
+    order.orderStatus = "refund_rejected";
+
+    // Thêm vào history
+    order.history.push({
+      status: "refund_rejected",
+      date: new Date(),
+      note: note || "Admin đã từ chối yêu cầu trả hàng",
+    });
+
+    await order.save();
+
+    // Send notification to user
+    
+
+    return {
+      success: true,
+      message: "Đã từ chối yêu cầu trả hàng",
+      order,
+    };
+  }
+
+  async adminCancelOrder(orderId: string, note?: string) {
+    const order = await OrderModel.findById(orderId);
+    
+    if (!order) {
+      return { success: false, message: "Đơn hàng không tồn tại" };
+    }
+
+    // Chỉ cho phép hủy khi đơn hàng chưa thanh toán và chờ xác nhận
+    if (order.paymentStatus === "paid" || !["pending", "processing"].includes(order.orderStatus)) {
+      return { 
+        success: false, 
+        message: "Chỉ có thể hủy đơn hàng chưa thanh toán và đang chờ xác nhận" 
+      };
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Hoàn trả số lượng sản phẩm về kho
+      for (const item of order.items) {
+        await ProductModel.updateOne(
+          { _id: item.product },
+          { $inc: { stock: item.quantity } },
+          { session }
+        );
+      }
+
+      // Cập nhật trạng thái
+      order.orderStatus = "cancelled";
+      order.history.push({
+        status: "cancelled",
+        date: new Date(),
+        note: note || "Admin đã hủy đơn hàng",
+      });
+
+      await order.save({ session });
+
+      await session.commitTransaction();
+      session.endSession();
+
+      // Send notification to user
+     
+
+      return {
+        success: true,
+        message: "Đã hủy đơn hàng thành công",
+        order,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
+  }
+  /** ⏰ Tự động hoàn tất đơn hàng đã giao sau 3 ngày (cron job) */
+  async autoCompleteOrders() {
+    const THREE_DAYS_IN_MS = 3 * 24 * 60 * 60 * 1000;
+    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000); // TODO: TESTING 3 MINUTES
+    const threeDaysAgo = new Date(Date.now() - THREE_DAYS_IN_MS);
+
+    // Tìm tất cả đơn hàng có trạng thái "delivered"
+    const deliveredOrders = await OrderModel.find({
+      orderStatus: "delivered",
+    });
+
+    let completedCount = 0;
+
+    for (const order of deliveredOrders) {
+      // Tìm thời điểm đơn hàng chuyển sang "delivered" trong history
+      const deliveredHistory = order.history
+        .filter((h: any) => h.status === "delivered")
+        .sort((a: any, b: any) => b.date.getTime() - a.date.getTime())[0];
+
+      if (deliveredHistory) {
+        const deliveredDate = new Date(deliveredHistory.date);
+        
+        // Nếu đã quá 3 ngày kể từ khi delivered
+        if (deliveredDate <= threeMinutesAgo) {
+          order.orderStatus = "completed";
+          order.history.push({
+            status: "completed",
+            date: new Date(),
+            note: "Tự động hoàn tất sau 3 ngày giao hàng thành công",
+          });
+
+          await order.save();
+          completedCount++;
+
+          console.log(`✅ Tự động hoàn tất đơn hàng: ${order.code} (${order._id})`)
+         
+        }
+      }
+    }
+
+    console.log(`📦 Đã tự động hoàn tất ${completedCount} đơn hàng`);
+
+    return {
+      success: true,
+      message: `Đã tự động hoàn tất ${completedCount} đơn hàng`,
+      completedCount,
     };
   }
 

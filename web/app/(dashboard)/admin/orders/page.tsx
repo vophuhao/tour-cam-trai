@@ -97,7 +97,9 @@ export default function OrdersPage() {
     { value: 'delivered', label: 'Đã giao', icon: CheckCircle2 },
     { value: 'completed', label: 'Hoàn thành', icon: TrendingUp },
     { value: 'cancelled', label: 'Đã hủy', icon: XCircle },
-    { value: 'cancel_request', label: 'Yêu cầu hủy', icon: XCircle },
+    { value: 'refund_request', label: 'Yêu cầu trả hàng', icon: XCircle },
+    { value: 'refunded', label: 'Đã trả hàng', icon: XCircle },
+
   ];
 
   const filteredOrders = ordersData.filter(o => {

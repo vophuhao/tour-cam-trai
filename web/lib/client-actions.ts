@@ -581,3 +581,7 @@ export async function updateFavoriteNotes(
 export async function getAllOrders(): Promise<ApiResponse> {
   return apiClient.get('/orders');
 }
+
+export async function blockedUser(id: string): Promise<ApiResponse> {
+  return apiClient.post(`/users/block-user/${id}`);
+}

@@ -53,7 +53,10 @@ const AuthForm = ({ type }: { type: FormType }) => {
       type === 'sign-up'
         ? await register(values)
         : await login({ email: values.email, password: values.password });
-
+    if( result.success && result?.data?.isBlocked == true) {
+      toast.error("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để biết thêm chi tiết.");
+      return;
+    }
     if (type === 'sign-in' && result.success) {
       setAuthState(result.data || null);
       // Use redirect URL if provided, otherwise default to admin/home

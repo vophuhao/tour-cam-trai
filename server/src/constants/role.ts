@@ -1,6 +1,7 @@
 export const ROLES = {
   USER: "user",
   ADMIN: "admin",
+  HOST: "host",
 } as const;
 
 /**

@@ -5,6 +5,7 @@ import {
   PropertyModel,
   ReviewModel,
   SiteModel,
+  UserModel,
   type PropertyAvailabilityDocument,
   type PropertyDocument,
 } from "@/models";
@@ -191,6 +192,12 @@ export class PropertyService {
     const shouldFilterInstantBook = instantBook ?? instantBooking;
 
     const query: any = {};
+
+    // Filter out properties from blocked hosts
+    const blockedHosts = await UserModel.find({ isBlocked: true }).distinct("_id");
+    if (blockedHosts.length > 0) {
+      query.host = { $nin: blockedHosts };
+    }
 
     // Text search
     if (search) {
@@ -547,7 +554,14 @@ export class PropertyService {
     if (isVerified !== undefined) query.isVerified = isVerified;
 
     // Host filter
-    if (host) query.host = host;
+    if (host) {
+      // Merge with existing host filter if exists (blocked hosts)
+      if (query.host && query.host.$nin) {
+        query.host = { _id: host, $nin: query.host.$nin };
+      } else {
+        query.host = host;
+      }
+    }
 
     // Rating filter
     if (minRating) query["rating.average"] = { $gte: minRating };

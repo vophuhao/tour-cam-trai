@@ -52,8 +52,13 @@ import {
   Shield,
   MapPin,
   Building2,
+  DollarSign,
+  Star,
+  TrendingUp,
+  Activity,
+  MapPinned,
 } from "lucide-react";
-import { getAllApprovedHosts, getAllHostRequests, updateHostRequestStatus } from "@/lib/client-actions";
+import { getAllApprovedHosts, getAllHostRequests, updateHostRequestStatus, blockedUser } from "@/lib/client-actions";
 
 interface HostRequest {
   _id: string;
@@ -75,11 +80,20 @@ interface ConfirmedHost {
   _id: string;
   email: string;
   username: string;
+  full_name?: string;
   avatarUrl?: string;
+  phone?: string;
+  address?: string;
   locationCount?: number;
   totalBookings?: number;
+  totalRevenue?: number;
   rating?: number;
   createdAt: string;
+  updatedAt?: string;
+  isActive?: boolean;
+  verifiedAt?: string;
+  role?: string;
+  isBlocked?: boolean;
 }
 
 export default function AdminHostsPage() {
@@ -108,6 +122,11 @@ export default function AdminHostsPage() {
     request: HostRequest | null;
   }>({ open: false, request: null });
   const [rejectionNote, setRejectionNote] = useState("");
+
+  const [blockDialog, setBlockDialog] = useState<{
+    open: boolean;
+    host: ConfirmedHost | null;
+  }>({ open: false, host: null });
 
   const queryClient = useQueryClient();
 
@@ -165,6 +184,25 @@ export default function AdminHostsPage() {
     },
     onError: () => {
       toast.error("Có lỗi xảy ra khi từ chối yêu cầu");
+    },
+  });
+
+  const blockMutation = useMutation({
+    mutationFn: async (hostId: string) => {
+      const response = await blockedUser(hostId);
+      if (!response.success) throw new Error("Failed to block/unblock");
+      return response.data;
+    },
+    onSuccess: (_, hostId) => {
+      const host = confirmedHosts.find(h => h._id === hostId);
+      const isBlocked = host?.isBlocked;
+      toast.success(isBlocked ? "Đã mở khóa Host thành công" : "Đã khóa Host thành công");
+      queryClient.invalidateQueries({ queryKey: ["admin-confirmed-hosts"] });
+      setBlockDialog({ open: false, host: null });
+      setHostDetailDialog({ open: false, host: null });
+    },
+    onError: () => {
+      toast.error("Có lỗi xảy ra khi thực hiện thao tác");
     },
   });
 
@@ -312,6 +350,15 @@ export default function AdminHostsPage() {
       requestId: noteDialog.request._id,
       note: rejectionNote,
     });
+  };
+
+  const handleBlockHost = (host: ConfirmedHost) => {
+    setBlockDialog({ open: true, host });
+  };
+
+  const handleConfirmBlock = async () => {
+    if (!blockDialog.host) return;
+    await blockMutation.mutateAsync(blockDialog.host._id);
   };
 
   const isLoading = isLoadingRequests || isLoadingHosts;
@@ -489,7 +536,7 @@ export default function AdminHostsPage() {
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <h3 className="font-semibold text-gray-900 truncate">
                                   {host.username}
                                 </h3>
@@ -500,6 +547,17 @@ export default function AdminHostsPage() {
                                   <Shield className="w-3 h-3 mr-1" />
                                   Host
                                 </Badge>
+                                {host.isBlocked ? (
+                                  <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                    <Ban className="w-3 h-3 mr-1" />
+                                    Đã khóa
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    Hoạt động
+                                  </Badge>
+                                )}
                               </div>
                               <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
                                 <span className="flex items-center gap-1 truncate">
@@ -510,27 +568,7 @@ export default function AdminHostsPage() {
                             </div>
                           </div>
 
-                          <div className="hidden md:flex items-center gap-6">
-                            <div className="text-center">
-                              <div className="flex items-center gap-1 text-sm text-gray-500">
-                                <Building2 className="h-4 w-4" />
-                                <span className="font-semibold text-gray-900">
-                                  {host.locationCount || 0}
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-500">Địa điểm</p>
-                            </div>
-                            {host.rating && (
-                              <div className="text-center">
-                                <div className="flex items-center gap-1 text-sm text-gray-500">
-                                  <span className="font-semibold text-gray-900">
-                                    {host.rating.toFixed(1)}★
-                                  </span>
-                                </div>
-                                <p className="text-xs text-gray-500">Đánh giá</p>
-                              </div>
-                            )}
-                          </div>
+                  
 
                           <div className="flex items-center gap-3 flex-shrink-0">
                             <div className="flex items-center gap-2 text-sm text-emerald-600">
@@ -650,88 +688,270 @@ export default function AdminHostsPage() {
         open={hostDetailDialog.open}
         onOpenChange={(open) => setHostDetailDialog({ ...hostDetailDialog, open })}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Thông tin Host</DialogTitle>
-            <DialogDescription>Thông tin chi tiết về Host</DialogDescription>
+            <DialogTitle className="text-2xl">Thông tin chi tiết Host</DialogTitle>
+            <DialogDescription>Xem đầy đủ thông tin về Host và hoạt động kinh doanh</DialogDescription>
           </DialogHeader>
 
           {hostDetailDialog.host && (
             <div className="space-y-6">
-              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                <Avatar className="h-16 w-16">
+              {/* Header Card */}
+              <div className="flex items-start gap-4 p-6 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-xl border border-emerald-100">
+                <Avatar className="h-20 w-20 border-4 border-white shadow-lg">
                   <AvatarImage src={hostDetailDialog.host.avatarUrl} />
-                  <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xl font-bold">
+                  <AvatarFallback className="bg-emerald-600 text-white text-2xl font-bold">
                     {hostDetailDialog.host.username?.charAt(0).toUpperCase() || "?"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg">{hostDetailDialog.host.username}</h3>
-                  <p className="text-sm text-gray-600">{hostDetailDialog.host.email}</p>
-                  <Badge
-                    variant="outline"
-                    className="mt-2 bg-emerald-50 text-emerald-700 border-emerald-200"
-                  >
-                    <Shield className="w-3 h-3 mr-1" />
-                    Host đang hoạt động
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <Building2 className="h-8 w-8 mx-auto text-blue-600 mb-2" />
-                  <p className="text-2xl font-bold text-gray-900">
-                    {hostDetailDialog.host.locationCount || 0}
-                  </p>
-                  <p className="text-sm text-gray-600">Địa điểm</p>
-                </div>
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <CheckCircle className="h-8 w-8 mx-auto text-green-600 mb-2" />
-                  <p className="text-2xl font-bold text-gray-900">
-                    {hostDetailDialog.host.totalBookings || 0}
-                  </p>
-                  <p className="text-sm text-gray-600">Đặt chỗ</p>
-                </div>
-                <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                  <span className="text-3xl mb-2 block">⭐</span>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {hostDetailDialog.host.rating?.toFixed(1) || "N/A"}
-                  </p>
-                  <p className="text-sm text-gray-600">Đánh giá</p>
-                </div>
-              </div>
-
-              <div className="grid gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Email</label>
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded border">
-                    <Mail className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-900">{hostDetailDialog.host.email}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">
-                    Ngày trở thành Host
-                  </label>
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded border">
-                    <Calendar className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm text-gray-900">
-                      {formatDate(hostDetailDialog.host.createdAt)}
-                    </span>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-bold text-2xl text-gray-900">{hostDetailDialog.host.username}</h3>
+                      {hostDetailDialog.host.full_name && (
+                        <p className="text-gray-600 mt-1">{hostDetailDialog.host.full_name}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-3">
+                        <Badge
+                          variant="outline"
+                          className="bg-emerald-600 text-white border-emerald-700"
+                        >
+                          <Shield className="w-3 h-3 mr-1" />
+                          Host chính thức
+                        </Badge>
+                        {hostDetailDialog.host.isBlocked ? (
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                            <Ban className="w-3 h-3 mr-1" />
+                            Đã khóa
+                          </Badge>
+                        ) : hostDetailDialog.host.isActive && (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            <Activity className="w-3 h-3 mr-1" />
+                            Đang hoạt động
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    {hostDetailDialog.host.rating && (
+                      <div className="text-right">
+                        <div className="flex items-center gap-1 text-yellow-600">
+                          <Star className="h-6 w-6 fill-yellow-600" />
+                          <span className="text-2xl font-bold">{hostDetailDialog.host.rating.toFixed(1)}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Đánh giá trung bình</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                  <CardContent className="p-4 text-center">
+                    <Building2 className="h-10 w-10 mx-auto text-blue-600 mb-2" />
+                    <p className="text-3xl font-bold text-blue-900">
+                      {hostDetailDialog.host.locationCount ?? 0}
+                    </p>
+                    <p className="text-sm text-blue-700 font-medium">Địa điểm</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+                  <CardContent className="p-4 text-center">
+                    <Users className="h-10 w-10 mx-auto text-emerald-600 mb-2" />
+                    <p className="text-3xl font-bold text-emerald-900">
+                      {hostDetailDialog.host.totalBookings || 0}
+                    </p>
+                    <p className="text-sm text-emerald-700 font-medium">Đơn đặt chỗ</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                  <CardContent className="p-4 text-center">
+                    <DollarSign className="h-10 w-10 mx-auto text-purple-600 mb-2" />
+                    <p className="text-3xl font-bold text-purple-900">
+                      {hostDetailDialog.host.totalRevenue 
+                        ? `${(hostDetailDialog.host.totalRevenue / 1000000).toFixed(1)}M`
+                        : '0'}
+                    </p>
+                    <p className="text-sm text-purple-700 font-medium">Doanh thu</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+                  <CardContent className="p-4 text-center">
+                    <TrendingUp className="h-10 w-10 mx-auto text-orange-600 mb-2" />
+                    <p className="text-3xl font-bold text-orange-900">
+                      {hostDetailDialog.host.totalBookings && hostDetailDialog.host.locationCount
+                        ? ((hostDetailDialog.host.totalBookings / hostDetailDialog.host.locationCount) || 0).toFixed(1)
+                        : '0'}
+                    </p>
+                    <p className="text-sm text-orange-700 font-medium">TB/Địa điểm</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Contact Information */}
+              <Card>
+                <CardContent className="p-6">
+                  <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                    <Mail className="h-5 w-5 text-emerald-600" />
+                    Thông tin liên hệ
+                  </h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">Email</label>
+                      <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+                        <Mail className="h-4 w-4 text-gray-400" />
+                        <span className="text-gray-900">{hostDetailDialog.host.email}</span>
+                      </div>
+                    </div>
+
+                    {hostDetailDialog.host.phone && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 mb-2 block">Số điện thoại</label>
+                        <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+                          <Phone className="h-4 w-4 text-gray-400" />
+                          <span className="text-gray-900">{hostDetailDialog.host.phone}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {hostDetailDialog.host.address && (
+                      <div className="md:col-span-2">
+                        <label className="text-sm font-medium text-gray-700 mb-2 block">Địa chỉ</label>
+                        <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+                          <MapPinned className="h-4 w-4 text-gray-400" />
+                          <span className="text-gray-900">{hostDetailDialog.host.address}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Account Information */}
+              <Card>
+                <CardContent className="p-6">
+                  <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-emerald-600" />
+                    Thông tin tài khoản
+                  </h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">
+                        Ngày tham gia
+                      </label>
+                      <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+                        <Calendar className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm text-gray-900">
+                          {formatDate(hostDetailDialog.host.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {hostDetailDialog.host.verifiedAt && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 mb-2 block">
+                          Ngày xác minh
+                        </label>
+                        <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                          <CheckCircle className="h-4 w-4 text-emerald-600" />
+                          <span className="text-sm text-gray-900">
+                            {formatDate(hostDetailDialog.host.verifiedAt)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {hostDetailDialog.host.updatedAt && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 mb-2 block">
+                          Cập nhật lần cuối
+                        </label>
+                        <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+                          <Clock className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm text-gray-900">
+                            {formatDate(hostDetailDialog.host.updatedAt)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">
+                        Vai trò
+                      </label>
+                      <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+                        <Shield className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm text-gray-900 uppercase">
+                          {hostDetailDialog.host.role || 'HOST'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Performance Summary */}
+              {(hostDetailDialog.host.locationCount || 0) > 0 && (
+                <Card className="bg-gradient-to-r from-emerald-50 to-blue-50 border-emerald-200">
+                  <CardContent className="p-6">
+                    <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-emerald-600" />
+                      Tóm tắt hiệu suất
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-white rounded-lg">
+                        <span className="text-sm text-gray-600">Tỷ lệ đặt chỗ thành công</span>
+                        <span className="font-semibold text-emerald-600">
+                          {hostDetailDialog.host.totalBookings && hostDetailDialog.host.locationCount
+                            ? `${((hostDetailDialog.host.totalBookings / (hostDetailDialog.host.locationCount * 10)) * 100).toFixed(1)}%`
+                            : '0%'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-white rounded-lg">
+                        <span className="text-sm text-gray-600">Doanh thu trung bình/Địa điểm</span>
+                        <span className="font-semibold text-purple-600">
+                          {hostDetailDialog.host.totalRevenue && hostDetailDialog.host.locationCount
+                            ? `${((hostDetailDialog.host.totalRevenue / hostDetailDialog.host.locationCount) / 1000).toFixed(0)}K`
+                            : '0K'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-white rounded-lg">
+                        <span className="text-sm text-gray-600">Trạng thái hoạt động</span>
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          {hostDetailDialog.host.isActive ? 'Hoạt động tốt' : 'Chưa rõ'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button
               variant="outline"
               onClick={() => setHostDetailDialog({ open: false, host: null })}
             >
               Đóng
+            </Button>
+            {hostDetailDialog.host && (
+              <Button
+                variant="outline"
+                className={hostDetailDialog.host.isBlocked ? "bg-green-50 hover:bg-green-100 text-green-700 border-green-200" : "bg-red-50 hover:bg-red-100 text-red-700 border-red-200"}
+                onClick={() => handleBlockHost(hostDetailDialog.host!)}
+              >
+                <Ban className="w-4 h-4 mr-2" />
+                {hostDetailDialog.host.isBlocked ? "Mở khóa Host" : "Khóa Host"}
+              </Button>
+            )}
+            <Button variant="outline" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200">
+              <Mail className="w-4 h-4 mr-2" />
+              Gửi tin nhắn
             </Button>
             <Button className="bg-emerald-600 hover:bg-emerald-700">
               <MapPin className="w-4 h-4 mr-2" />
@@ -937,6 +1157,33 @@ export default function AdminHostsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={blockDialog.open}
+        onOpenChange={(open) => setBlockDialog({ ...blockDialog, open })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {blockDialog.host?.isBlocked ? 'Xác nhận mở khóa Host' : 'Xác nhận khóa Host'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn {blockDialog.host?.isBlocked ? 'mở khóa' : 'khóa'} Host{" "}
+              <strong>{blockDialog.host?.username}</strong>?
+              {!blockDialog.host?.isBlocked && " Host sẽ không thể quản lý các địa điểm của mình khi bị khóa."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmBlock}
+              className={blockDialog.host?.isBlocked ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+            >
+              {blockDialog.host?.isBlocked ? 'Mở khóa' : 'Khóa'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

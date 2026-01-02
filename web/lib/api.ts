@@ -224,6 +224,24 @@ export const submitReturnRequest = async (
 ): Promise<ApiResponse> =>
   API.post(`/orders/${orderId}/return-request`, data);
 
+export const approveRefundRequest = async (
+  orderId: string,
+  note?: string
+): Promise<ApiResponse> =>
+  API.post(`/orders/${orderId}/approve-refund`, { note });
+
+export const rejectRefundRequest = async (
+  orderId: string,
+  note?: string
+): Promise<ApiResponse> =>
+  API.post(`/orders/${orderId}/reject-refund`, { note });
+
+export const adminCancelOrder = async (
+  orderId: string,
+  note?: string
+): Promise<ApiResponse> =>
+  API.post(`/orders/${orderId}/admin-cancel`, { note });
+
 export const getOrderById = async (
   orderId: string,
 ): Promise<ApiResponse<Order>> => API.get(`/orders/${orderId}`);

@@ -49,8 +49,9 @@ const TABS = [
   { key: "shipping", label: "Vận chuyển", icon: Truck, color: "text-purple-600" },
   { key: "delivered", label: "Đã giao", icon: CheckCircle2, color: "text-teal-600" },
   { key: "completed", label: "Hoàn thành", icon: CheckCircle2, color: "text-emerald-600" },
-  { key: "cancel_request", label: "Yêu cầu trả hàng", icon: RotateCcw, color: "text-yellow-600" },
   { key: "cancelled", label: "Đã hủy", icon: XCircle, color: "text-red-600" },
+  { key: "refund_request", label: "Yêu cầu trả hàng", icon: RotateCcw, color: "text-yellow-600" },
+  { key: "refunded", label: "Đã trả hàng", icon: XCircle, color: "text-red-600" },
 ];
 
 const STATUS_CONFIG = {
@@ -62,6 +63,8 @@ const STATUS_CONFIG = {
   completed: { label: "Hoàn thành", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
   cancel_request: { label: "Yêu cầu trả hàng", color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
   cancelled: { label: "Đã hủy", color: "bg-red-100 text-red-700 border-red-200" },
+  refund_request: { label: "Yêu cầu trả hàng", color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
+  refunded: { label: "Đã trả hàng", color: "bg-red-100 text-red-700 border-red-200" },
 };
 
 export default function OrdersPage() {

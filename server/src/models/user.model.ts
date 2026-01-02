@@ -15,6 +15,7 @@ export interface UserDocument extends mongoose.Document {
   isVerified: boolean;
   provider: Provider;
   googleId?: string;
+  isBlocked?: boolean;
 
   comparePassword(val: string): Promise<boolean>;
   omitPassword(): Omit<UserDocument, "password">;
@@ -67,6 +68,7 @@ const userSchema = new mongoose.Schema<UserDocument>(
       unique: true,
       sparse: true, // Cho phép nhiều giá trị null khi sử dụng unique: true
     },
+    isBlocked: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

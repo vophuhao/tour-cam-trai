@@ -5,22 +5,8 @@
 import { useEffect, useState } from 'react';
 import { Search, Filter, UserPlus, MoreVertical, Edit, Trash2, Ban, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { blockedUser, getAllUsers } from '@/lib/client-actions';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5555';
-
-interface User {
-  _id: string;
-  email: string;
-  username: string;
-  role: string;
-  avatarUrl?: string;
-  phoneNumber?: string;
-  bio?: string;
-  isVerified: boolean;
-  provider: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 export default function UsersManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -45,15 +31,10 @@ export default function UsersManagementPage() {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('accessToken');
-      const res = await fetch(`${API}/users`, {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const result = await getAllUsers();
 
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data.data || []);
+      if (result.success) {
+        setUsers((result.data as User[]) || []);
       }
     } catch (err) {
       console.error('Load users error:', err);
@@ -72,8 +53,8 @@ export default function UsersManagementPage() {
       filtered = filtered.filter(
         (u) =>
           u.username.toLowerCase().includes(query) ||
-          u.email.toLowerCase().includes(query) ||
-          u.phoneNumber?.toLowerCase().includes(query)
+          u.email.toLowerCase().includes(query) 
+         
       );
     }
 
@@ -92,81 +73,25 @@ export default function UsersManagementPage() {
     setFilteredUsers(filtered);
   };
 
-  const handleUpdateRole = async (userId: string, newRole: string) => {
-    try {
-      const token = localStorage.getItem('accessToken');
-      const res = await fetch(`${API}/users/${userId}/role`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ role: newRole }),
-      });
-
-      if (res.ok) {
-        toast.success('Cập nhật vai trò thành công');
-        loadUsers();
-        setShowEditModal(false);
-      } else {
-        toast.error('Cập nhật vai trò thất bại');
-      }
-    } catch (err) {
-      console.error('Update role error:', err);
-      toast.error('Đã có lỗi xảy ra');
-    }
-  };
-
-  const handleToggleVerified = async (userId: string, isVerified: boolean) => {
-    try {
-      const token = localStorage.getItem('accessToken');
-      const res = await fetch(`${API}/users/${userId}/verify`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ isVerified: !isVerified }),
-      });
-
-      if (res.ok) {
-        toast.success(`${!isVerified ? 'Đã xác thực' : 'Đã bỏ xác thực'} người dùng`);
-        loadUsers();
-      } else {
-        toast.error('Cập nhật trạng thái thất bại');
-      }
-    } catch (err) {
-      console.error('Toggle verified error:', err);
-      toast.error('Đã có lỗi xảy ra');
-    }
-  };
-
-  const handleDeleteUser = async () => {
+  const handleBlockUser = async () => {
     if (!selectedUser) return;
-
+    const isBlocked = selectedUser.isBlocked;
     try {
-      const token = localStorage.getItem('accessToken');
-      const res = await fetch(`${API}/users/${selectedUser._id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.ok) {
-        toast.success('Xóa người dùng thành công');
+      const response = await blockedUser(selectedUser._id); 
+      if (response.success) {
+        toast.success(isBlocked ? 'Mở khóa người dùng thành công' : 'Khóa người dùng thành công');
         loadUsers();
-        setShowDeleteModal(false);
-        setSelectedUser(null);
       } else {
-        toast.error('Xóa người dùng thất bại');
+        toast.error(response.message);
       }
     } catch (err) {
-      console.error('Delete user error:', err);
-      toast.error('Đã có lỗi xảy ra');
+      console.error('Block user error:', err);
+      toast.error(isBlocked ? 'Không thể mở khóa người dùng' : 'Không thể khóa người dùng');
     }
-  };
+    setShowDeleteModal(false);
+    setSelectedUser(null);
+  }
+
 
   const getRoleBadge = (role: string) => {
     switch (role.toLowerCase()) {
@@ -292,6 +217,9 @@ export default function UsersManagementPage() {
                   Trạng thái
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Tài khoản
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Ngày tạo
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -302,7 +230,7 @@ export default function UsersManagementPage() {
             <tbody className="divide-y divide-gray-200 bg-white">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">
                     Không tìm thấy người dùng nào
                   </td>
                 </tr>
@@ -322,12 +250,7 @@ export default function UsersManagementPage() {
                             {user.username.charAt(0).toUpperCase()}
                           </div>
                         )}
-                        <div>
-                          <div className="font-medium text-gray-900">{user.username}</div>
-                          {user.phoneNumber && (
-                            <div className="text-xs text-gray-500">{user.phoneNumber}</div>
-                          )}
-                        </div>
+                     
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -356,6 +279,19 @@ export default function UsersManagementPage() {
                         </span>
                       )}
                     </td>
+                    <td className="px-6 py-4">
+                      {user.isBlocked ? (
+                        <span className="inline-flex items-center gap-1 text-sm text-red-600">
+                          <Ban className="h-4 w-4" />
+                          Đã khóa
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-sm text-green-600">
+                          <CheckCircle className="h-4 w-4" />
+                          Hoạt động
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {new Date(user.createdAt).toLocaleDateString('vi-VN')}
                     </td>
@@ -371,17 +307,7 @@ export default function UsersManagementPage() {
                         >
                           <Edit className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => handleToggleVerified(user._id, user.isVerified)}
-                          className="rounded p-1 text-green-600 hover:bg-green-50"
-                          title={user.isVerified ? 'Bỏ xác thực' : 'Xác thực'}
-                        >
-                          {user.isVerified ? (
-                            <Ban className="h-4 w-4" />
-                          ) : (
-                            <CheckCircle className="h-4 w-4" />
-                          )}
-                        </button>
+                       
                         <button
                           onClick={() => {
                             setSelectedUser(user);
@@ -402,51 +328,16 @@ export default function UsersManagementPage() {
         </div>
       </div>
 
-      {/* Edit Role Modal */}
-      {showEditModal && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-lg font-semibold text-gray-900">
-              Thay đổi vai trò
-            </h3>
-            <div className="mb-4">
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Người dùng: {selectedUser.username}
-              </label>
-              <select
-                defaultValue={selectedUser.role}
-                onChange={(e) => handleUpdateRole(selectedUser._id, e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="user">Người dùng</option>
-                <option value="host">Chủ nhà</option>
-                <option value="admin">Quản trị viên</option>
-              </select>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setShowEditModal(false);
-                  setSelectedUser(null);
-                }}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Hủy
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Delete Confirmation Modal */}
       {showDeleteModal && selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-lg font-semibold text-gray-900">Xác nhận xóa</h3>
+            <h3 className="mb-4 text-lg font-semibold text-gray-900">
+              {selectedUser.isBlocked ? 'Xác nhận mở khóa tài khoản' : 'Xác nhận khóa tài khoản'}
+            </h3>
             <p className="mb-6 text-sm text-gray-600">
-              Bạn có chắc chắn muốn xóa người dùng{' '}
-              <span className="font-medium">{selectedUser.username}</span>? Hành động này
-              không thể hoàn tác.
+              Bạn có chắc chắn muốn {selectedUser.isBlocked ? 'mở khóa' : 'khóa'} người dùng{' '}
+              <span className="font-medium">{selectedUser.username}</span>?
             </p>
             <div className="flex justify-end gap-2">
               <button
@@ -459,10 +350,14 @@ export default function UsersManagementPage() {
                 Hủy
               </button>
               <button
-                onClick={handleDeleteUser}
-                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600"
+                onClick={handleBlockUser}
+                className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${
+                  selectedUser.isBlocked
+                    ? 'bg-green-500 hover:bg-green-600'
+                    : 'bg-red-500 hover:bg-red-600'
+                }`}
               >
-                Xóa
+                {selectedUser.isBlocked ? 'Mở khóa' : 'Khóa'}
               </button>
             </div>
           </div>

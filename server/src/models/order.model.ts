@@ -32,7 +32,7 @@ export interface OrderDocument extends Document {
   hasRated: boolean;
   orderNote?: string;
   paymentStatus: "pending" | "paid" | "failed";
-  orderStatus: "pending" | "processing" | "confirmed" | "shipping" | "delivered" |  "completed" | "cancelled" | "cancel_request";
+  orderStatus: "pending" | "processing" | "confirmed" | "shipping" | "delivered" |  "completed" | "cancelled" | "cancel_request" | "refund_request" | "refunded" | "refund_rejected";
   payOSOrderCode?: number;
   payOSCheckoutUrl?: string;
   createdAt: Date;
@@ -104,7 +104,7 @@ const orderSchema = new Schema<OrderDocument>(
 
     orderStatus: {
       type: String,
-      enum: ["pending", "processing" , "confirmed", "shipping", "delivered", "completed", "cancelled", "cancel_request"],
+      enum: ["pending", "processing" , "confirmed", "shipping", "delivered", "completed", "cancelled", "cancel_request", "refund_request", "refunded", "refund_rejected"],
       default: "pending",
     },
     history: [

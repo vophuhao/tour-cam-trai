@@ -15,7 +15,7 @@ export default class UserController {
 
   getAllHost = catchErrors(async (req, res) => {
     const hosts = await UserModel.find({ role: "host" }).select(
-      "username email avatarUrl createdAt"
+      "username email avatarUrl createdAt isBlocked"
     );
     return ResponseUtil.success(res, hosts, "Lấy danh sách host thành công");
   });
@@ -84,7 +84,7 @@ export default class UserController {
   });
 
   getAllUsers = catchErrors(async (req, res) => {
-    const users = await UserModel.find().select("username email role createdAt avatarUrl");
+    const users = await UserModel.find().select("username email role createdAt avatarUrl isBlocked");
     return ResponseUtil.success(res, users, "Lấy danh sách người dùng thành công");
   });
 
@@ -346,5 +346,14 @@ export default class UserController {
       .lean();
 
     return ResponseUtil.success(res, reviews, "Lấy danh sách review thành công");
+  });
+
+  blockUser = catchErrors(async (req, res) => {
+    const { id } = req.params;
+    const user = await UserModel.findById(id);
+    appAssert(user, ErrorFactory.resourceNotFound("User"));
+    user.isBlocked = !user.isBlocked;
+    await user.save();
+    return ResponseUtil.success(res, null, "Khóa người dùng thành công");
   });
 }

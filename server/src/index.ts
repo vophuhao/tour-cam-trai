@@ -53,6 +53,10 @@ cron.schedule("*/10 * * * *", async () => {
   console.log("?? Cron: ki?m tra don c?n h?y...");
   await orderService.cancelExpiredOrders();
 });
+cron.schedule("*/10 * * * *", async () => {
+  console.log("?? Cron: g?i nh?c thanh toan...");
+  await orderService.autoCompleteOrders();
+});
 cron.schedule("0 * * * *", async () => {
   console.log("🔄 Running booking cleanup job...");
   try {

@@ -58,4 +58,25 @@ export default class OrderController {
     const result = await this.orderService.submitReturnRequest(orderId!, userId, note, images);
     return ResponseUtil.success(res, result.order, result.message);
   });
+
+  approveRefundRequest = catchErrors(async (req, res) => {
+    const { orderId } = req.params;
+    const { note } = req.body;
+    const result = await this.orderService.approveRefundRequest(orderId?.toString() || "", note);
+    return ResponseUtil.success(res, result.order, result.message);
+  });
+
+  rejectRefundRequest = catchErrors(async (req, res) => {
+    const { orderId } = req.params;
+    const { note } = req.body;
+    const result = await this.orderService.rejectRefundRequest(orderId?.toString() || "", note);
+    return ResponseUtil.success(res, result.order, result.message);
+  });
+
+  adminCancelOrder = catchErrors(async (req, res) => {
+    const { orderId } = req.params;
+    const { note } = req.body;
+    const result = await this.orderService.adminCancelOrder(orderId?.toString() || "", note);
+    return ResponseUtil.success(res, result.order, result.message);
+  });
 }

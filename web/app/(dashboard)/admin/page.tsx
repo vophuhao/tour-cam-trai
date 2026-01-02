@@ -161,17 +161,14 @@ export default function AdminDashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Tổng quan về hoạt động hệ thống
-              </p>
+              <h1 className="text-3xl font-bold text-gray-900">Tổng quan về hoạt động hệ thống</h1>
+  
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500">Cập nhật lúc</p>
+            <div className="text-right">          
               <p className="text-lg font-semibold text-gray-900">
                 {new Date().toLocaleString("vi-VN")}
               </p>

@@ -1147,23 +1147,7 @@ export class BookingService {
             const propertyName = (booking.property as any)?.name || "Property";
             const guestName = booking.fullnameGuest || (booking.guest as any)?.username || "Khách";
 
-            // Notify guest - booking completed
-            await notificationService.createNotification({
-              recipient: booking.guest.toString(),
-              type: "system",
-              title: "Chuyến đi đã hoàn thành",
-              message: `Chuyến đi tại ${propertyName} đã hoàn thành. Hãy chia sẻ trải nghiệm của bạn!`,
-              booking: booking._id!.toString(),
-              link: `/bookings/${booking.code}/review`,
-              actionType: "view_booking",
-              priority: "medium",
-              role: "guest",
-              metadata: {
-                bookingCode: booking.code,
-                propertyName,
-              },
-            });
-
+          
             // Notify host - guest checked out
             await notificationService.createGuestCheckedOutForHost(
               booking.host.toString(),

@@ -18,5 +18,5 @@ userRoutes.get("/:username", userController.getUserByUsernameHandler);
 userRoutes.get("/", authenticate, userController.getAllUsers);
 userRoutes.post("/become-host", authenticate, userController.becomeHostHandler);
 userRoutes.post("/update-status-host/:id", authenticate, userController.updateStatusHostHandler);
-
+userRoutes.post("/block-user/:id", authenticate, userController.blockUser);
 export default userRoutes;

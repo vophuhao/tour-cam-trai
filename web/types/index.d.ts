@@ -35,6 +35,7 @@ declare interface User {
   googleId?: string;
   createdAt: string;
   updatedAt: string;
+  isBlocked?: boolean;
 }
 
 declare interface Category {
@@ -262,7 +263,10 @@ declare interface Order {
     | 'delivered'
     | 'cancel_request'
     | 'completed'
-    | 'cancelled';
+    | 'refund_request'
+    | 'cancelled'
+    | 'refunded';
+
   payOSOrderCode?: number;
   history: { status: string; date: string; note?: string, images?: string[] }[];
   payOSCheckoutUrl?: string;

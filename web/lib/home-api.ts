@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Home Page API Functions
  * Server-side data fetching for HomePage components

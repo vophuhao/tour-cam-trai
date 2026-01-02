@@ -26,4 +26,10 @@ router.post("/:orderId/update-status", orderController.updateOrderStatus);
 
 router.post("/:orderId/return-request", authenticate, orderController.submitReturnRequest);
 
+router.post("/:orderId/approve-refund", requireAdmin, orderController.approveRefundRequest);
+
+router.post("/:orderId/reject-refund", requireAdmin, orderController.rejectRefundRequest);
+
+router.post("/:orderId/admin-cancel", requireAdmin, orderController.adminCancelOrder);
+
 export default router;
