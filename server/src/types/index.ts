@@ -1,0 +1,10 @@
+export * from "./response";
+export * from "./utils";
+
+// Type guards
+export const isString = (value: unknown): value is string => typeof value === "string";
+export const isNumber = (value: unknown): value is number => typeof value === "number";
+export const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
+export const isObject = (value: unknown): value is object =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+export const isArray = <T>(value: unknown): value is T[] => Array.isArray(value);

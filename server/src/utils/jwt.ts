@@ -1,9 +1,9 @@
-import jwt, { VerifyOptions, SignOptions } from "jsonwebtoken";
-import Audience from "../constants/audience";
-import { JWT_REFRESH_SECRET, JWT_SECRET } from "../constants/env";
-import { UserDocument } from "../models/user.model";
-import { SessionDocument } from "../models/session.model";
+import { JWT_REFRESH_SECRET, JWT_SECRET, ROLES } from "@/constants";
+import type { SessionDocument, UserDocument } from "@/models";
+import type { SignOptions, VerifyOptions } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
+// ===== Types =====
 export type RefreshTokenPayload = {
   sessionId: SessionDocument["_id"];
 };
@@ -13,47 +13,66 @@ export type AccessTokenPayload = {
   sessionId: SessionDocument["_id"];
 };
 
-type SignOptionsAndSecret = SignOptions & {
+type SignOptionsWithSecret = SignOptions & {
   secret: string;
 };
 
-const defaults: SignOptions = {
-  audience: [Audience.User],
+type VerifyOptionsWithSecret = VerifyOptions & {
+  secret?: string;
 };
 
-const accessTokenSignOptions: SignOptionsAndSecret = {
-  expiresIn: "15m",
+type VerifyResult<TPayload> =
+  | { payload: TPayload; error?: never }
+  | { error: string; payload?: never };
+
+// ===== Constants =====
+const DEFAULT_SIGN_OPTIONS: SignOptions = {
+  audience: [ROLES.USER],
+};
+
+const DEFAULT_VERIFY_OPTIONS: VerifyOptions = {
+  audience: [ROLES.USER],
+};
+
+const ACCESS_TOKEN_OPTIONS: SignOptionsWithSecret = {
+  expiresIn: "1d",
   secret: JWT_SECRET,
 };
 
-export const refreshTokenSignOptions: SignOptionsAndSecret = {
-  expiresIn: "30d",
+export const REFRESH_TOKEN_OPTIONS: SignOptionsWithSecret = {
+  expiresIn: "7d",
   secret: JWT_REFRESH_SECRET,
 };
 
+// ===== Functions =====
 export const signToken = (
   payload: AccessTokenPayload | RefreshTokenPayload,
-  options?: SignOptionsAndSecret
+  options: SignOptionsWithSecret = ACCESS_TOKEN_OPTIONS
 ) => {
-  const { secret, ...signOpts } = options || accessTokenSignOptions;
+  const { secret, ...signOpts } = options;
+
   return jwt.sign(payload, secret, {
-    ...defaults,
-    ...signOpts,
+    ...DEFAULT_SIGN_OPTIONS,
+    ...signOpts, // User provided options override defaults
   });
 };
 
 export const verifyToken = <TPayload extends object = AccessTokenPayload>(
   token: string,
-  options?: VerifyOptions & {
-    secret?: string;
-  }
-) => {
-  const { secret = JWT_SECRET, ...verifyOpts } = options || {};
+  options: VerifyOptionsWithSecret = {}
+): VerifyResult<TPayload> => {
+  const { secret = JWT_SECRET, ...verifyOpts } = options;
+
   try {
     const payload = jwt.verify(token, secret, {
-      ...defaults,
-      ...verifyOpts,
-    }) as TPayload;
+      ...DEFAULT_VERIFY_OPTIONS,
+      ...verifyOpts, // User provided options override defaults
+      audience: verifyOpts.audience as  // just to satisfy typescript
+        | string
+        | RegExp
+        | [string | RegExp, ...(string | RegExp)[]]
+        | undefined,
+    }) as unknown as TPayload;
     return {
       payload,
     };
