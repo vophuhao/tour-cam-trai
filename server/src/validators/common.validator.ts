@@ -1,10 +1,5 @@
 import { z } from "zod";
 
-/**
- * Common validation schemas used across the application
- */
-
-// Basic field validators
 export const emailSchema = z
   .string()
   .email("Please provide a valid email address")
@@ -28,20 +23,19 @@ export const usernameSchema = z
 
 export const mongoIdSchema = z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid ID format");
 
-// Pagination schemas
 export const paginationSchema = z.object({
   page: z
     .string()
     .optional()
     .default("1")
-    .transform(val => parseInt(val, 10))
-    .refine(val => val > 0, "Page must be greater than 0"),
+    .transform((val) => parseInt(val, 10))
+    .refine((val) => val > 0, "Page must be greater than 0"),
   limit: z
     .string()
     .optional()
     .default("10")
-    .transform(val => parseInt(val, 10))
-    .refine(val => val > 0 && val <= 100, "Limit must be between 1 and 100"),
+    .transform((val) => parseInt(val, 10))
+    .refine((val) => val > 0 && val <= 100, "Limit must be between 1 and 100"),
   sort: z.string().optional().default("createdAt"),
   order: z.enum(["asc", "desc"]).optional().default("desc"),
 });
@@ -53,25 +47,6 @@ export const imageUrlsSchema = z
   .array(imageUrlSchema)
   .min(1, "At least one image is required")
   .max(10, "Maximum 10 images allowed");
-
-// Common text fields
-export const nameSchema = z
-  .string()
-  .min(1, "Name is required")
-  .max(100, "Name must be less than 100 characters")
-  .trim();
-
-export const bioSchema = z
-  .string()
-  .max(500, "Bio must be less than 500 characters")
-  .trim()
-  .optional();
-
-export const contentSchema = z
-  .string()
-  .min(1, "Content is required")
-  .max(2000, "Content must be less than 2000 characters")
-  .trim();
 
 // Date schemas
 export const dateRangeSchema = z.object({
@@ -85,7 +60,8 @@ export const searchSchema = z.object({
     .string()
     .min(1, "Search query is required")
     .max(100, "Search query must be less than 100 characters")
-    .trim(),
+    .trim()
+    .optional(),
   ...paginationSchema.shape,
 });
 

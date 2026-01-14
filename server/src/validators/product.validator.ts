@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { mongoIdSchema, paginationSchema } from "./common.validator";
-import { count } from "console";
 
 /**
  * Sub Schemas
@@ -38,32 +37,116 @@ const productDetailSectionSchema = z.object({
 
 // Create Product
 export const createProductSchema = z.object({
-  name: z.string().min(1, "Product name is required").max(255).trim(),
+  name: z.string().min(1, "Tên sản phẩm không được để trống"),
   slug: z.string().optional(),
-  description: z.string().max(1000, "Description too long").optional(),
-  price: z.number().min(0, "Price must be >= 0"),
-  deal: z.number().min(0, "Deal must be >= 0").optional(),
-  stock: z.number().min(0, "Stock must be >= 0").default(0),
-  images: z.array(z.string().url("Invalid image URL")).optional(),
+  description: z.string().optional(),
+  price: z.number().min(0, "Giá phải >= 0"),
+  deal: z.number().min(0).optional(),
+  stock: z.number().min(0).optional(),
+  images: z.array(z.string().url("URL hình ảnh không hợp lệ")).optional(),
   category: mongoIdSchema,
-  specifications: z.array(productSpecificationSchema).optional().default([]),
-  variants: z.array(productVariantSchema).optional().default([]),
-  details: z.array(productDetailSectionSchema).optional().default([]),
-  guide: z.array(z.string().min(1)).optional().default([]),
-  warnings: z.array(z.string().min(1)).optional().default([]),
-  isActive: z.boolean().optional().default(true),
+  isActive: z.boolean().optional(),
+
+  specifications: z
+    .array(
+      z.object({
+        label: z.string().min(1),
+        value: z.string().min(1),
+      })
+    )
+    .optional(),
+
+  variants: z
+    .array(
+      z.object({
+        size: z.string(),
+        expandedSize: z.string(),
+        foldedSize: z.string(),
+        loadCapacity: z.string(),
+        weight: z.string(),
+      })
+    )
+    .optional(),
+
+  details: z
+    .array(
+      z.object({
+        title: z.string().min(1),
+        items: z.array(
+          z.object({
+            label: z.string().min(1),
+          })
+        ),
+      })
+    )
+    .optional(),
+
+  guide: z.array(z.string()).optional(),
+
+  warnings: z.array(z.string()).optional(),
+
   rating: z
     .object({
-      average: z.number().min(0).max(5).optional().default(0),
-      count: z.number().min(0).optional().default(0),
+      average: z.number().min(0).max(5),
+      count: z.number().min(0),
     })
     .optional(),
-  count: z.number().min(0).optional().default(0),
+
+  count: z.number().min(0).optional(),
 });
 
 // Update Product
-export const updateProductSchema = createProductSchema.partial().extend({
- 
+export const updateProductSchema = z.object({
+  id: mongoIdSchema,
+
+  slug: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  price: z.number().min(0).optional(),
+  deal: z.number().min(0).optional(),
+  stock: z.number().min(0).optional(),
+
+  images: z.array(z.string().url("URL hình ảnh không hợp lệ")).optional(),
+
+  category: mongoIdSchema.optional(),
+  isActive: z.boolean().optional(),
+
+  specifications: z
+    .array(
+      z.object({
+        label: z.string().min(1),
+        value: z.string().min(1),
+      })
+    )
+    .optional(),
+
+  variants: z
+    .array(
+      z.object({
+        size: z.string(),
+        expandedSize: z.string(),
+        foldedSize: z.string(),
+        loadCapacity: z.string(),
+        weight: z.string(),
+      })
+    )
+    .optional(),
+
+  details: z
+    .array(
+      z.object({
+        title: z.string().min(1),
+        items: z.array(
+          z.object({
+            label: z.string().min(1),
+          })
+        ),
+      })
+    )
+    .optional(),
+
+  guide: z.array(z.string()).optional(),
+  warnings: z.array(z.string()).optional(),
 });
 
 // Get Product by ID
@@ -82,9 +165,18 @@ export const deleteProductSchema = z.object({
 });
 
 // Get Products (with pagination + optional filters)
-export const getProductsSchema = paginationSchema.extend({
-  search: z.string().optional(),
-  category: mongoIdSchema.optional(),
+export const getProductSchema = paginationSchema.extend({
+  search: z.string().trim().optional(),
+  categories: z
+    .union([mongoIdSchema, z.array(mongoIdSchema)])
+    .optional()
+    .transform((val) => {
+      if (!val) return undefined;
+      return Array.isArray(val) ? val : [val];
+    }),
+  minPrice: z.string().optional(),
+  maxPrice: z.string().optional(),
+  sort: z.enum(["price-asc", "price-desc", "name-asc", "name-desc"]).optional(),
 });
 
 // Export types
@@ -92,4 +184,4 @@ export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type GetProductByIdInput = z.infer<typeof getProductByIdSchema>;
 export type DeleteProductInput = z.infer<typeof deleteProductSchema>;
-export type GetProductsInput = z.infer<typeof getProductsSchema>;
+export type GetProductsInput = z.infer<typeof getProductSchema>;

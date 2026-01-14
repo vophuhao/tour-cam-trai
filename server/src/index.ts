@@ -2,18 +2,36 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import "dotenv/config";
 import express from "express";
-import connectToDatabase from "./config/database";
-import { APP_ORIGIN, NODE_ENV, PORT } from "./constants/env";
-import authenticate from "./middleware/authenticate";
-import errorHandler from "./middleware/errorHandler";
-import requireAdmin from "./middleware/requireAdmin";
-import authRoutes from "./routes/auth.route";
-import categoryRoutes from "./routes/category.route";
-import mediaRoutes from "./routes/media.route";
-import productRoutes from "./routes/product.route";
-import sessionRoutes from "./routes/session.route";
-import tourRoutes from "./routes/tour.route";
-import userRoutes from "./routes/user.route";
+import http from "http";
+import cron from "node-cron";
+import { connectRedis, connectToDatabase } from "./config";
+import { APP_ORIGIN, NODE_ENV, OK, PORT } from "./constants";
+import { authenticate, errorHandler } from "./middleware";
+import {
+  addressRoutes,
+  amenityRoutes,
+  authRoutes,
+  bookingRoutes,
+  categoryRoutes,
+  favoriteRoutes,
+  mediaRoutes,
+  orderRoutes,
+  productRoutes,
+  propertyRoutes,
+  reviewRoutes,
+  siteRoutes,
+  userRoutes,
+} from "./routes";
+import cartRoutes from "./routes/cart.route";
+import dashboardHRoutes from "./routes/dashbardH.route";
+import dashboardRoutes from "./routes/dashboard.route";
+import supportRouter from "./routes/directMessage.route";
+import notificationRoutes from "./routes/notification.route";
+import payosRoutes from "./routes/payos.route,";
+import ratingRoutes from "./routes/rating.route";
+import { BookingService, OrderService } from "./services";
+import { initializeSocket } from "./socket";
+// import dashboardRoutes from "./routes/dashboard.route";
 
 const app = express();
 
@@ -28,29 +46,78 @@ app.use(
 );
 app.use(cookieParser());
 
+const orderService = new OrderService();
+const bookingService = new BookingService();
+// Ch?y m?i 10 ph?t
+cron.schedule("*/10 * * * *", async () => {
+  console.log("?? Cron: ki?m tra don c?n h?y...");
+  await orderService.cancelExpiredOrders();
+});
+cron.schedule("*/10 * * * *", async () => {
+  console.log("?? Cron: g?i nh?c thanh toan...");
+  await orderService.autoCompleteOrders();
+});
+cron.schedule("0 * * * *", async () => {
+  console.log("🔄 Running booking cleanup job...");
+  try {
+    const result = await bookingService.cancelExpiredPendingBookings();
+    console.log(
+      `✅ Cleanup completed: ${result.remindersSent} reminders, ${result.bookingsCancelled} cancelled`
+    );
+  } catch (err) {
+    console.error("❌ Booking cleanup job failed:", err);
+  }
+});
+cron.schedule("*/15 * * * *", async () => {
+  try {
+
+    const result =   await bookingService.autoCompleteBooking();
+    console.log(`✅ ${result} bookings auto-completed.`);
+  } catch (err) {
+    console.error("❌ L?i khi g?i nh?c nh?:", err);
+  }
+ 
+});
 // health check
 app.get("/", (_, res) => {
-  return res.status(200).json({
+  return res.status(OK).json({
     status: "healthy",
   });
 });
 
-// auth routes
+// public routes
 app.use("/auth", authRoutes);
 
 // protected routes
-app.use("/user", authenticate, userRoutes);
-app.use("/sessions", authenticate, sessionRoutes);
+app.use("/users", authenticate, userRoutes);
+app.use("/categories", categoryRoutes);
+app.use("/products", productRoutes);
+app.use("/media", authenticate, mediaRoutes);
+app.use("/cart", authenticate, cartRoutes);
+app.use("/address", authenticate, addressRoutes);
+app.use("/support", authenticate, supportRouter);
+app.use("/orders", authenticate, orderRoutes);
+app.use("/notifications", notificationRoutes);
+app.use("/rating", ratingRoutes);
+app.use("/bookings", bookingRoutes);
+app.use("/reviews", reviewRoutes);
+app.use("/amenities", amenityRoutes);
+app.use("/favorites", authenticate, favoriteRoutes);
+app.use("/properties", propertyRoutes);
+app.use("/sites", siteRoutes);
+app.use("/payos/webhook", payosRoutes);
+app.use("/messages", authenticate, supportRouter);
+app.use("/dashboard", authenticate, dashboardRoutes);
+app.use("/dashboardH", authenticate, dashboardHRoutes);
+// app.use("/dashboard", authenticate, dashboardRoutes);
 
-app.use("/category", authenticate, categoryRoutes);
-app.use("/product", authenticate, productRoutes);
-app.use("/tour", authenticate, tourRoutes);
-
-app.use("/media", authenticate, requireAdmin, mediaRoutes);
-// error handler
 app.use(errorHandler);
 
-app.listen(PORT, async () => {
+const server = http.createServer(app);
+initializeSocket(server); // Kh?i t?o socket v?i server
+
+server.listen(PORT, async () => {
   console.log(`Server listening on port ${PORT} in ${NODE_ENV} environment`);
   await connectToDatabase();
+  await connectRedis();
 });

@@ -18,7 +18,13 @@
     "clean": "rimraf dist",
     "seed": "ts-node -r tsconfig-paths/register src/seeds/seedDatabase.ts",
     "seed:dev": "ts-node-dev -r tsconfig-paths/register src/seeds/seedDatabase.ts",
-    "seed:posts": "ts-node -r tsconfig-paths/register src/seeds/addMorePosts.ts"
+    "seed:posts": "ts-node -r tsconfig-paths/register src/seeds/addMorePosts.ts",
+    "seed:hipcamp": "ts-node -r tsconfig-paths/register src/seeds/seedHipcamp.ts",
+    "seed:availability": "ts-node -r tsconfig-paths/register src/seeds/seedAvailability.ts",
+    "migrate:property-site": "ts-node -r tsconfig-paths/register src/scripts/migrate-to-property-site.ts",
+    "migrate:rollback": "ts-node -r tsconfig-paths/register src/scripts/rollback-property-site.ts",
+    "validate:migration": "ts-node -r tsconfig-paths/register src/scripts/validate-migration.ts",
+    "migrate:concurrent-bookings": "ts-node -r tsconfig-paths/register src/scripts/migrate-concurrent-bookings.ts"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -28,10 +34,12 @@
   "license": "ISC",
   "dependencies": {
     "@google-cloud/vision": "^5.3.3",
+    "@payos/node": "^2.0.3",
     "axios": "^1.11.0",
     "bcrypt": "^5.1.1",
     "cloudinary": "^2.7.0",
     "colors": "^1.4.0",
+    "cookie": "^1.0.2",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -41,9 +49,14 @@
     "mongodb": "^6.19.0",
     "mongoose": "^8.2.0",
     "multer": "^2.0.2",
+    "ngrok": "^5.0.0-beta.2",
+    "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.5",
+    "redis": "^5.9.0",
     "resend": "^3.2.0",
+    "socket.io": "^4.8.1",
+    "uuid": "^13.0.0",
     "zod": "^3.23.5"
   },
   "devDependencies": {
@@ -56,6 +69,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^20.19.11",
     "@types/nodemailer": "^7.0.1",
+    "@types/redis": "^4.0.10",
     "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^8.41.0",
     "@typescript-eslint/parser": "^8.41.0",

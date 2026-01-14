@@ -1,0 +1,297 @@
+'use client';
+
+import { Button } from '@/components/ui/button';
+import { useCartCount } from '@/hooks/useCartCount';
+import { logout } from '@/lib/client-actions';
+import { useAuthStore } from '@/store/auth.store';
+import {
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  ShoppingCart,
+  Tent,
+  User,
+  X,
+} from 'lucide-react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
+
+const navItems = [
+  { name: 'Trang chủ', href: '/' },
+  { name: 'Tìm kiếm', href: '/search' },
+  { name: 'Sản phẩm', href: '/products' },
+  // { name: 'Giới thiệu', href: '/about' },
+  // { name: 'Liên hệ', href: '/contact' },
+];
+
+export default function Header() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user, isAuthenticated, setUser } = useAuthStore();
+  const cartCount = useCartCount(); // ✅ Use socket-based cart count
+
+  const handleLogout = async () => {
+    const res = await logout();
+    if (res.success) {
+      setUser(null);
+      router.push('/');
+    }
+  };
+
+  return (
+    <header className="sticky top-0 z-50 w-full bg-white/10 backdrop-blur-xs supports-backdrop-filter:bg-white/35">
+      <div className="container-padding mx-auto max-w-7xl">
+        <div className="flex-between h-16">
+          {/* Logo */}
+          <Link
+            href="/"
+            className="hover:text-primary flex items-center gap-2 text-xl font-bold transition-colors md:text-2xl"
+          >
+            <Tent className="text-primary h-6 w-6" />
+            <span>Campo</span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden items-center gap-6 md:flex">
+            {navItems.map(item => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`hover:text-primary text-sm font-medium transition-colors ${
+                    isActive ? 'text-primary' : 'text-foreground/60'
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Desktop Actions */}
+          <div className="hidden items-center gap-3 md:flex">
+            {/* Shopping Cart
+            <Button
+              onClick={() => router.push('/cart')}
+              variant="ghost"
+              size="icon"
+              className="relative cursor-pointer"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {cartCount > 0 && (
+                <span className="bg-primary flex-center absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs text-white">
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              )}
+            </Button> */}
+
+            {/* User Menu */}
+            {isAuthenticated && user ? (
+              <div className="flex items-center gap-2">
+                {user.role === 'admin' && (
+                  <Link href="/admin">
+                    <Button
+                      variant="outline"
+                      className="cursor-pointer"
+                      size="sm"
+                    >
+                      {/* <LayoutDashboard className="mr-2 h-4 w-4" /> */}
+                      Admin
+                    </Button>
+                  </Link>
+                )}
+                {user.role === 'host' && (
+                  <Link href="/host">
+                    <Button
+                      variant="outline"
+                      className="cursor-pointer"
+                      size="sm"
+                    >
+                      {/* <LayoutDashboard className="mr-2 h-4 w-4" /> */}
+                      Trang Host
+                    </Button>
+                  </Link>
+                )}
+                {user.role === 'user' && (
+                  <Link href="/become-host">
+                    <Button
+                      variant="outline"
+                      className="cursor-pointer"
+                      size="sm"
+                    >
+                      {/* <LayoutDashboard className="mr-2 h-4 w-4" /> */}
+                      Trở thành Host
+                    </Button>
+                  </Link>
+                )}
+                <Button
+                  onClick={() => router.push('/cart')}
+                  variant="ghost"
+                  size="icon"
+                  className="relative cursor-pointer"
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  {cartCount > 0 && (
+                    <span className="bg-primary flex-center absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs text-white">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
+                </Button>
+
+                <div
+                  onClick={() => router.push(`/u/${user.username}`)}
+                  className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2"
+                >
+                  <User className="h-4 w-4" />
+                  {/* <span className="text-sm font-medium">{user.username}</span> */}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLogout}
+                  title="Đăng xuất"
+                >
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link href="/sign-in">
+                  <Button variant="ghost" size="sm">
+                    Đăng nhập
+                  </Button>
+                </Link>
+                <Link href="/sign-up">
+                  <Button size="sm">Đăng ký</Button>
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile Menu Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="border-t bg-white md:hidden">
+          <nav className="container-padding mx-auto max-w-7xl space-y-1 py-4">
+            {navItems.map(item => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block rounded-md px-3 py-2 text-base font-medium transition-colors ${
+                    isActive
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-foreground/60 hover:text-primary hover:bg-gray-100'
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              );
+            })}
+
+            {/* Mobile Cart Button */}
+            <button
+              onClick={() => {
+                router.push('/cart');
+                setMobileMenuOpen(false);
+              }}
+              className="text-foreground/60 hover:text-primary flex w-full items-center justify-between rounded-md px-3 py-2 text-base font-medium hover:bg-gray-100"
+            >
+              <span className="flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5" />
+                Giỏ hàng
+              </span>
+              {cartCount > 0 && (
+                <span className="bg-primary flex h-6 w-6 items-center justify-center rounded-full text-xs text-white">
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              )}
+            </button>
+
+            <div className="border-t pt-4">
+              {isAuthenticated && user ? (
+                <div className="space-y-2">
+                  {user.role === 'admin' && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                      >
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Admin Panel
+                      </Button>
+                    </Link>
+                  )}
+                  {user.role === 'host' && (
+                    <Link href="/host" onClick={() => setMobileMenuOpen(false)}>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                      >
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Host Panel
+                      </Button>
+                    </Link>
+                  )}
+                  <div className="flex items-center gap-2 rounded-md border px-3 py-2">
+                    <User className="h-4 w-4" />
+                    <span className="text-sm font-medium">{user.username}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Đăng xuất
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Link
+                    href="/sign-in"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Button variant="outline" className="w-full">
+                      Đăng nhập
+                    </Button>
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Button className="w-full">Đăng ký</Button>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </nav>
+        </div>
+      )}
+    </header>
+  );
+}
