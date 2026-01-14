@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useChat } from '@ai-sdk/react';
 import { Bot, Loader2, MessageCircle, Send, User, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 // Quick reply suggestions for common questions
 const QUICK_REPLIES = [
@@ -259,9 +260,57 @@ export function Chatbot() {
                           </div>
                         )}
 
-                      {/* Message content */}
-                      <div className="wrap-break-word whitespace-pre-wrap">
-                        {message.content}
+                      {/* Message content with markdown support */}
+                      <div className="text-sm">
+                        <ReactMarkdown
+                          components={{
+                            // Custom link styling - blue color, clickable, opens in new tab
+                            a: ({ node, ...props }) => (
+                              <a
+                                {...props}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="cursor-pointer font-medium text-blue-500 underline transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                              />
+                            ),
+                            // Preserve other markdown elements styling
+                            p: ({ node, ...props }) => (
+                              <p
+                                {...props}
+                                className="mb-2 leading-relaxed last:mb-0"
+                              />
+                            ),
+                            ul: ({ node, ...props }) => (
+                              <ul
+                                {...props}
+                                className="my-2 list-inside list-disc space-y-1"
+                              />
+                            ),
+                            ol: ({ node, ...props }) => (
+                              <ol
+                                {...props}
+                                className="my-2 list-inside list-decimal space-y-1"
+                              />
+                            ),
+                            li: ({ node, ...props }) => (
+                              <li {...props} className="ml-2" />
+                            ),
+                            strong: ({ node, ...props }) => (
+                              <strong {...props} className="font-semibold" />
+                            ),
+                            em: ({ node, ...props }) => (
+                              <em {...props} className="italic" />
+                            ),
+                            code: ({ node, ...props }) => (
+                              <code
+                                {...props}
+                                className="rounded bg-gray-200 px-1 py-0.5 font-mono text-xs dark:bg-gray-700"
+                              />
+                            ),
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
                       </div>
                     </div>
 

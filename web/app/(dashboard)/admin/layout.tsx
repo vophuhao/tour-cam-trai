@@ -12,7 +12,7 @@ export default function AdminLayout({
 }) {
   const { user } = useAuthStore();
   const role = user?.role;
-   const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   if (role != 'admin' || !user) {
     return (
       <div className="flex h-screen flex-col items-center justify-center bg-gray-50">
@@ -40,7 +40,7 @@ export default function AdminLayout({
 
       {/* Content */}
       <main
-        className={`flex-1 transition-all duration-300 p-4`}
+        className={`flex-1 p-4 transition-all duration-300`}
         style={{ marginLeft: collapsed ? '4rem' : '11rem' }}
       >
         {children}

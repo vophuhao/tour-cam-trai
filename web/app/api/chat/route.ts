@@ -189,6 +189,11 @@ export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
 
+    // Get base URL from request headers or env
+    const host = req.headers.get('host') || 'localhost:3000';
+    const protocol = req.headers.get('x-forwarded-proto') || 'http';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+
     const result = streamText({
       model: google('gemini-2.5-flash'), // Free tier: 15 requests/min, 1M tokens/day
       system: `Bạn là AI assistant chuyên nghiệp hỗ trợ khách hàng cho nền tảng đặt chỗ camping Việt Nam.
@@ -208,12 +213,17 @@ PHONG CÁCH:
 - Sử dụng emoji phù hợp 🏕️⛺🌲🔥⭐
 - Luôn dựa vào kiến thức đã cho
 - Nếu không biết, khuyến khích liên hệ support 24/7
+- **KHI TRẢ VỀ KẾT QUẢ TÌM KIẾM**: Format mỗi property như sau:
+  * Tên property có LINK clickable (markdown format)
+  * Hiển thị địa điểm, giá, số sites, rating
+  * Example: **[Tên Property](url)** - Địa điểm | 💰 Giá từ XXXk/đêm | ⛺ X sites | ⭐ X.X (Y reviews)
 
 QUY TẮC SỬ DỤNG TOOLS:
-- **searchProperties**: Khi khách hỏi "tìm camping ở...", "địa điểm nào...", "muốn đi camping..."
+- **searchProperties**: Khi khách hỏi "tìm camping ở...", "địa điểm nào...", "muốn đi camping...", "chỗ cắm trại ở..."
   - accommodationType PHẢI là: tent, rv, glamping, cabin (viết THƯỜNG)
   - Nếu khách nói "Lều" → dùng "tent", "Nhà gỗ" → "cabin", "Camping sang" → "glamping"
-  - location: tên thành phố/tỉnh (VD: "Sapa", "Đà Lạt")
+  - location: tên thành phố/tỉnh (VD: "Sapa", "Đà Lạt", "Bảo Lộc")
+  - Tool trả về url cho mỗi property - LUÔN format thành link clickable
 - **checkAvailability**: Khi khách hỏi về availability của site cụ thể
 
 LƯU Ý QUAN TRỌNG:
@@ -230,12 +240,12 @@ LƯU Ý QUAN TRỌNG:
       tools: {
         searchProperties: {
           description:
-            'Tìm kiếm camping properties theo địa điểm hoặc tọa độ. Accommodation types: tent (lều), rv (xe cắm trại), glamping (camping sang trọng), cabin (nhà gỗ)',
+            'Tìm kiếm camping properties theo địa điểm hoặc tọa độ. Sử dụng khi user hỏi về tìm chỗ cắm trại, địa điểm camping. Accommodation types: tent (lều), rv (xe cắm trại), glamping (camping sang trọng), cabin (nhà gỗ)',
           parameters: z.object({
             location: z
               .string()
               .optional()
-              .describe('Tên địa điểm (VD: Đà Lạt, Sapa, Phú Quốc)'),
+              .describe('Tên địa điểm (VD: Đà Lạt, Sapa, Phú Quốc, Bảo Lộc)'),
             accommodationType: z
               .preprocess(
                 val => (typeof val === 'string' ? val.toLowerCase() : val),
@@ -256,12 +266,22 @@ LƯU Ý QUAN TRỌNG:
           }) => {
             try {
               const params = new URLSearchParams();
-              if (location) params.append('query', location);
+
+              // Sử dụng cả 'search' param để tìm text trong name/description
+              if (location) {
+                params.append('search', location);
+                // Also filter by city to be more precise
+                params.append('city', location);
+              }
+
               if (accommodationType)
                 params.append('campingStyle', accommodationType);
               if (minPrice) params.append('minPrice', minPrice.toString());
               if (maxPrice) params.append('maxPrice', maxPrice.toString());
-              params.append('limit', '5');
+
+              // Tăng limit lên 10 để tìm đủ kết quả
+              params.append('limit', '10');
+              params.append('page', '1');
 
               const response = await fetch(
                 `${process.env.NEXT_PUBLIC_API_URL}/properties/search?${params}`,
@@ -273,32 +293,38 @@ LƯU Ý QUAN TRỌNG:
               if (!response.ok) {
                 return {
                   properties: [],
+                  total: 0,
                   message: 'Không tìm thấy property phù hợp',
                 };
               }
 
               const data = await response.json();
               const properties = data.data || [];
+              const total = data.pagination?.total || properties.length;
 
               return {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                properties: properties.slice(0, 5).map((p: any) => ({
+                properties: properties.map((p: any) => ({
                   name: p.name,
                   location: `${p.location?.city}, ${p.location?.state}`,
                   minPrice: p.minPrice,
                   totalSites: p.stats?.totalSites || 0,
                   rating: p.rating?.average || 0,
+                  reviewCount: p.rating?.count || 0,
                   slug: p.slug,
+                  url: `${baseUrl}/land/${p.slug}`,
                 })),
+                total,
                 message:
                   properties.length > 0
-                    ? `Tìm thấy ${properties.length} properties phù hợp`
-                    : 'Không tìm thấy properties phù hợp',
+                    ? `Tìm thấy ${total} property${total > 1 ? 's' : ''} phù hợp`
+                    : 'Không tìm thấy properties phù hợp. Thử tìm kiếm với từ khóa khác hoặc mở rộng khu vực tìm kiếm.',
               };
             } catch (error) {
               console.error('Error searching properties:', error);
               return {
                 properties: [],
+                total: 0,
                 message: 'Lỗi khi tìm kiếm, vui lòng thử lại',
               };
             }
